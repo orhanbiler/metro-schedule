@@ -35,8 +35,17 @@ interface TimeSlot {
   };
 }
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+  rank?: string;
+  idNumber?: string;
+}
+
 export default function SchedulePage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [schedule, setSchedule] = useState<TimeSlot[]>([]);
@@ -77,7 +86,7 @@ export default function SchedulePage() {
     }
   };
   
-  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');

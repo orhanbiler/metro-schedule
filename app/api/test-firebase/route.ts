@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Test environment variables
     const config = {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     // Check if all required config values are present
     const missingConfig = Object.entries(config)
-      .filter(([key, value]) => !value)
+      .filter(([, value]) => !value)
       .map(([key]) => key);
 
     if (missingConfig.length > 0) {

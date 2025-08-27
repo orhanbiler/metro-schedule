@@ -39,7 +39,7 @@ const mockUsers: User[] = [
 ];
 
 // Storage for newly registered users
-let registeredUsers: User[] = [];
+const registeredUsers: User[] = [];
 let userIdCounter = 3;
 
 export function getAllUsers(): User[] {

@@ -4,10 +4,20 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Calendar, Clock, Shield } from 'lucide-react';
+import { User as UserIcon, Mail, Calendar, Clock, Shield } from 'lucide-react';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+  rank?: string;
+  idNumber?: string;
+  firebaseAuthUID?: string;
+}
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastOnline, setLastOnline] = useState<string>('');
 
@@ -71,7 +81,7 @@ export default function ProfilePage() {
       {/* Profile Header */}
       <div className="flex items-start gap-6">
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
-          <User className="w-10 h-10 text-primary" />
+          <UserIcon className="w-10 h-10 text-primary" />
         </div>
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -99,7 +109,7 @@ export default function ProfilePage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
+              <UserIcon className="w-5 h-5" />
               Account Information
             </CardTitle>
             <CardDescription>
@@ -116,7 +126,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex items-start gap-3">
-              <User className="w-5 h-5 text-muted-foreground mt-0.5" />
+              <UserIcon className="w-5 h-5 text-muted-foreground mt-0.5" />
               <div>
                 <div className="font-medium">Name</div>
                 <div className="text-sm text-muted-foreground">{user.name}</div>

@@ -2,8 +2,14 @@
 
 import { useState, useEffect } from 'react';
 
+interface User {
+  name: string;
+  email: string;
+  role: string;
+}
+
 export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');

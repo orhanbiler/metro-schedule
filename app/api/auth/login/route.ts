@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Check mock admin user first
     if (mockAdminUser.email === email && mockAdminUser.password === password) {
       console.log('Admin login successful');
-      const { password: _, ...userWithoutPassword } = mockAdminUser;
+      const { password: _password, ...userWithoutPassword } = mockAdminUser;
       return NextResponse.json(userWithoutPassword);
     }
 

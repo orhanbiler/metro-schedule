@@ -69,23 +69,24 @@ export async function POST(request: NextRequest) {
 
     console.log('POST /api/schedule - Schedule saved successfully');
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error & { code?: string };
     console.error('POST /api/schedule - Error saving schedule:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-      name: error.name
+      message: err.message,
+      code: err.code,
+      stack: err.stack,
+      name: err.name
     });
     
     // Check for specific Firebase errors
-    if (error.code === 'permission-denied') {
+    if (err.code === 'permission-denied') {
       return NextResponse.json({ 
         error: 'Permission denied. Please check Firebase security rules.',
         code: 'permission-denied'
       }, { status: 403 });
     }
     
-    if (error.code === 'unauthenticated') {
+    if (err.code === 'unauthenticated') {
       return NextResponse.json({ 
         error: 'Authentication required. Please log in.',
         code: 'unauthenticated'
@@ -94,8 +95,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       error: 'Failed to save schedule', 
-      details: error.message,
-      code: error.code
+      details: err.message,
+      code: err.code
     }, { status: 500 });
   }
 }
