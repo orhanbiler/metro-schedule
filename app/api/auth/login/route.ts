@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
     // Check mock admin user first
     if (mockAdminUser.email === email && mockAdminUser.password === password) {
       console.log('Admin login successful');
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: _password, ...userWithoutPassword } = mockAdminUser;
       return NextResponse.json(userWithoutPassword);
     }

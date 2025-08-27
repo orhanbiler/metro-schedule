@@ -51,13 +51,16 @@ export default function SchedulePage() {
   const [schedule, setSchedule] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
   
-  const formatOfficerName = (officer: any) => {
+  const formatOfficerName = (officer: string | User | Officer | null | undefined) => {
     if (!officer) return '';
     if (typeof officer === 'string') return officer; // Legacy format
-    if (officer.rank && officer.idNumber) {
+    if (typeof officer === 'object' && 'rank' in officer && 'idNumber' in officer && officer.rank && officer.idNumber) {
       return `${officer.rank} ${officer.name} #${officer.idNumber}`;
     }
-    return officer.name || officer;
+    if (typeof officer === 'object' && 'name' in officer) {
+      return officer.name || '';
+    }
+    return String(officer);
   };
 
   const getCurrentOfficerFormatted = () => {
@@ -106,6 +109,7 @@ export default function SchedulePage() {
         unsubscribe();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
@@ -120,7 +124,7 @@ export default function SchedulePage() {
       if (response.ok) {
         const users = await response.json();
         // Filter to only officers (not admins) for schedule assignment
-        setAllUsers(users.filter((u: any) => u.role === 'user'));
+        setAllUsers(users.filter((u: User) => u.role === 'user'));
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -171,7 +175,7 @@ export default function SchedulePage() {
         const data = await response.json();
         if (data.schedule && data.schedule.length > 0) {
           // Convert date strings back to Date objects and migrate data structure
-          const scheduleWithDates = data.schedule.map((slot: any) => ({
+          const scheduleWithDates = data.schedule.map((slot: TimeSlot) => ({
             ...migrateSlotData(slot),
             date: new Date(slot.date)
           }));
@@ -194,7 +198,10 @@ export default function SchedulePage() {
     }
   };
 
-  const migrateSlotData = (slot: any) => {
+  const migrateSlotData = (slot: TimeSlot & { 
+    morningSlot?: { officer?: string; customHours?: string }; 
+    afternoonSlot?: { officer?: string; customHours?: string } 
+  }) => {
     // Migrate old data structure to new structure
     const migratedSlot = { ...slot };
     
@@ -274,7 +281,7 @@ export default function SchedulePage() {
         const data = doc.data();
         if (data.schedule && data.schedule.length > 0) {
           // Convert date strings back to Date objects and migrate data structure
-          const scheduleWithDates = data.schedule.map((slot: any) => ({
+          const scheduleWithDates = data.schedule.map((slot: TimeSlot) => ({
             ...migrateSlotData(slot),
             date: new Date(slot.date)
           }));
@@ -586,7 +593,7 @@ export default function SchedulePage() {
           doc.text(`${monthNames[selectedMonth]} ${selectedYear}`, 60, 45);
           
           // Prepare table data
-          const tableData: any[] = [];
+          const tableData: Array<[string, string, string]> = [];
           
           schedule.forEach(slot => {
             // Morning slot
@@ -712,7 +719,7 @@ export default function SchedulePage() {
   };
 
   const getMyShifts = () => {
-    const myShifts: any[] = [];
+    const myShifts: Array<{ date: string; time: string; dayName: string }> = [];
     const currentOfficerName = getCurrentOfficerFormatted();
     
     schedule.forEach(slot => {
@@ -722,7 +729,7 @@ export default function SchedulePage() {
       );
       if (morningOfficer) {
         myShifts.push({
-          date: slot.date,
+          date: formatDate(slot.date),
           time: morningOfficer.customHours || slot.morningSlot.time,
           dayName: slot.dayName
         });
@@ -734,7 +741,7 @@ export default function SchedulePage() {
       );
       if (afternoonOfficer) {
         myShifts.push({
-          date: slot.date,
+          date: formatDate(slot.date),
           time: afternoonOfficer.customHours || slot.afternoonSlot.time,
           dayName: slot.dayName
         });
@@ -835,7 +842,7 @@ export default function SchedulePage() {
                             {slot.dayName} {formatDate(slot.date)}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {slot.morningSlot.customHours || displayTime(slot.morningSlot.time)}
+                            {displayTime(slot.morningSlot.time)}
                           </div>
                         </td>
                         <td className="p-3">
@@ -963,7 +970,7 @@ export default function SchedulePage() {
                       <tr key={`${slot.id}-afternoon`} className="border-t bg-muted/30 hover:bg-muted/50">
                         <td className="p-3">
                           <div className="text-sm text-muted-foreground ml-4">
-                            and/or {slot.afternoonSlot.customHours || displayTime(slot.afternoonSlot.time)}
+                            and/or {displayTime(slot.afternoonSlot.time)}
                           </div>
                         </td>
                         <td className="p-3">
@@ -1109,7 +1116,7 @@ export default function SchedulePage() {
                 <div key={index} className="flex justify-between items-center p-3 border rounded-lg bg-muted/30">
                   <div>
                     <div className="font-semibold">
-                      {shift.dayName}, {formatDate(shift.date)}
+                      {shift.dayName}, {shift.date}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Time: {shift.time.includes(':') ? shift.time : displayTime(shift.time)}

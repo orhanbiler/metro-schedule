@@ -30,7 +30,7 @@ export async function GET() {
 
     // Try to initialize Firebase
     try {
-      const { db } = await import('@/lib/firebase');
+      await import('@/lib/firebase');
       console.log('Firebase initialized successfully');
       
       return NextResponse.json({
