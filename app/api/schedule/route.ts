@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+
+// Initialize Firebase for API routes
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+const app = getApps().find(app => app.name === 'server') || initializeApp(firebaseConfig, 'server');
+const db = getFirestore(app);
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,23 +44,58 @@ export async function POST(request: NextRequest) {
   try {
     const { month, year, schedule } = await request.json();
 
+    console.log('POST /api/schedule - Request received:', { month, year, scheduleLength: schedule?.length });
+
     if (!month || !year || !schedule) {
+      console.error('POST /api/schedule - Missing required fields:', { month, year, schedule: !!schedule });
       return NextResponse.json({ error: 'Month, year, and schedule are required' }, { status: 400 });
     }
 
     const scheduleId = `${year}-${month}`;
+    console.log('POST /api/schedule - Attempting to save schedule with ID:', scheduleId);
+    
     const scheduleRef = doc(db, 'schedules', scheduleId);
     
-    await setDoc(scheduleRef, {
+    const scheduleData = {
       month,
       year,
       schedule,
       updatedAt: new Date().toISOString()
-    }, { merge: true });
+    };
 
+    console.log('POST /api/schedule - Schedule data prepared, calling setDoc...');
+    
+    await setDoc(scheduleRef, scheduleData, { merge: true });
+
+    console.log('POST /api/schedule - Schedule saved successfully');
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error saving schedule:', error);
-    return NextResponse.json({ error: 'Failed to save schedule' }, { status: 500 });
+  } catch (error: any) {
+    console.error('POST /api/schedule - Error saving schedule:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+      name: error.name
+    });
+    
+    // Check for specific Firebase errors
+    if (error.code === 'permission-denied') {
+      return NextResponse.json({ 
+        error: 'Permission denied. Please check Firebase security rules.',
+        code: 'permission-denied'
+      }, { status: 403 });
+    }
+    
+    if (error.code === 'unauthenticated') {
+      return NextResponse.json({ 
+        error: 'Authentication required. Please log in.',
+        code: 'unauthenticated'
+      }, { status: 401 });
+    }
+
+    return NextResponse.json({ 
+      error: 'Failed to save schedule', 
+      details: error.message,
+      code: error.code
+    }, { status: 500 });
   }
 }

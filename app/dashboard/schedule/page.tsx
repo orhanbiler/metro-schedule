@@ -296,7 +296,23 @@ export default function SchedulePage() {
       if (response.ok) {
         console.log('Schedule saved to API successfully');
       } else {
-        console.error('API response not ok:', response.status);
+        const errorData = await response.text();
+        console.error('API response not ok:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorData
+        });
+        
+        // Show user-friendly error message
+        if (response.status === 403) {
+          toast.error('Permission denied. Please check with your administrator.');
+        } else if (response.status === 401) {
+          toast.error('Authentication required. Please log in again.');
+        } else {
+          toast.error('Failed to save schedule. Please try again.');
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${errorData}`);
       }
     } catch (error) {
       console.error('Error saving schedule:', error);
