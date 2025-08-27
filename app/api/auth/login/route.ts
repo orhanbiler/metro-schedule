@@ -1,15 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 
-// Keep admin user as mock for demo
-const mockAdminUser = {
-  id: 'admin-1',
-  email: 'admin@cheverlypd.gov',
-  password: 'admin123',
-  name: 'Admin User',
-  role: 'admin' as const,
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,19 +15,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check mock admin user first
-    if (mockAdminUser.email === email && mockAdminUser.password === password) {
-      console.log('Admin login successful');
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password: _password, ...userWithoutPassword } = mockAdminUser;
-      return NextResponse.json(userWithoutPassword);
-    }
-
-    // Check Firestore for regular users
+    // Check Firestore for regular users using Admin SDK
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', email));
-      const querySnapshot = await getDocs(q);
+      const usersRef = adminDb.collection('users');
+      const querySnapshot = await usersRef.where('email', '==', email).get();
 
       if (querySnapshot.empty) {
         console.log('User not found in Firestore:', email);
@@ -66,6 +48,9 @@ export async function POST(request: NextRequest) {
         email: userData.email,
         name: userData.name,
         role: userData.role,
+        rank: userData.rank,
+        idNumber: userData.idNumber,
+        firebaseAuthUID: userData.firebaseAuthUID,
       };
 
       return NextResponse.json(userWithoutPassword);

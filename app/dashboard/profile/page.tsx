@@ -253,6 +253,31 @@ export default function ProfilePage() {
               <div className="font-semibold">Privacy Settings</div>
               <div className="text-sm text-muted-foreground mt-1">Manage your privacy</div>
             </Button>
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col items-start"
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/auth/sync-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.id }),
+                  });
+                  
+                  if (response.ok) {
+                    const syncedUser = await response.json();
+                    setUser(syncedUser);
+                    localStorage.setItem('user', JSON.stringify(syncedUser));
+                    window.location.reload();
+                  }
+                } catch (error) {
+                  console.error('Sync failed:', error);
+                }
+              }}
+            >
+              <div className="font-semibold">Sync Account</div>
+              <div className="text-sm text-muted-foreground mt-1">Refresh account data</div>
+            </Button>
           </div>
           <div className="mt-4 pt-4 border-t">
             <p className="text-sm text-muted-foreground">

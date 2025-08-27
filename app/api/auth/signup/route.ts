@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function POST(request: NextRequest) {
   try {
+
     const { email, password, name, idNumber, rank, firebaseAuthUID } = await request.json();
 
     console.log('Signup attempt for:', email);
@@ -22,12 +22,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already exists in Firestore
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('email', '==', email));
-    const querySnapshot = await getDocs(q);
+    // Check if user already exists in Firestore using Admin SDK
+    const usersRef = adminDb.collection('users');
+    const existingUser = await usersRef.where('email', '==', email).get();
 
-    if (!querySnapshot.empty) {
+    if (!existingUser.empty) {
       console.log('User already exists:', email);
       return NextResponse.json(
         { error: 'User with this email already exists' },
@@ -35,7 +34,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user document in Firestore (Firebase Auth user already created on client)
+    // Create user document in Firestore using Admin SDK
     const userData = {
       email,
       name,
@@ -48,20 +47,24 @@ export async function POST(request: NextRequest) {
     };
 
     let docRef;
+    let userId;
+    
     if (firebaseAuthUID) {
       // Use Firebase Auth UID as document ID for consistency
-      docRef = doc(db, 'users', firebaseAuthUID);
-      await setDoc(docRef, userData);
+      docRef = usersRef.doc(firebaseAuthUID);
+      await docRef.set(userData);
+      userId = firebaseAuthUID;
       console.log('Created Firestore user with Firebase Auth UID:', firebaseAuthUID, 'Email:', email);
     } else {
       // Fallback to auto-generated document ID
-      docRef = await addDoc(usersRef, userData);
+      docRef = await usersRef.add(userData);
+      userId = docRef.id;
       console.log('Created Firestore-only user:', docRef.id, 'Email:', email);
     }
 
     // Return user data without password
     const newUser = {
-      id: firebaseAuthUID || docRef.id,
+      id: userId,
       email,
       name,
       idNumber,
@@ -74,9 +77,17 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Signup error:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined
+    });
     
     return NextResponse.json(
-      { error: 'Failed to create user account' },
+      { 
+        error: 'Failed to create user account',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

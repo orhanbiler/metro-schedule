@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function GET() {
   try {
     console.log('Fetching all users for admin');
 
-    // Get all users from Firestore
-    const usersRef = collection(db, 'users');
-    const querySnapshot = await getDocs(usersRef);
+    // Get all users from Firestore using Admin SDK
+    const usersRef = adminDb.collection('users');
+    const querySnapshot = await usersRef.get();
 
     const users = querySnapshot.docs.map(doc => {
       const userData = doc.data();
@@ -25,22 +24,7 @@ export async function GET() {
 
     console.log(`Found ${users.length} users in Firestore`);
 
-    // Add mock admin user
-    const allUsers = [
-      {
-        id: 'admin-1',
-        email: 'admin@cheverlypd.gov',
-        name: 'Admin User',
-        role: 'admin',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        firebaseAuthUID: null,
-        isMockUser: true,
-      },
-      ...users
-    ];
-
-    return NextResponse.json(allUsers);
+    return NextResponse.json(users);
 
   } catch (error) {
     console.error('Get users error:', error);

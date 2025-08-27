@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,22 +22,35 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      // Authenticate with Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      // Get user data from Firestore using sync API
+      const response = await fetch('/api/auth/sync-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ userId: firebaseUser.uid }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Invalid email or password');
+        throw new Error('Failed to load user data');
       }
 
       const userData = await response.json();
       localStorage.setItem('user', JSON.stringify(userData));
       router.push('/dashboard');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Login failed');
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string };
+      if (firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/wrong-password') {
+        toast.error('Invalid email or password');
+      } else if (firebaseError.code === 'auth/invalid-email') {
+        toast.error('Invalid email address');
+      } else if (firebaseError.code === 'auth/user-disabled') {
+        toast.error('Account has been disabled');
+      } else {
+        toast.error(err instanceof Error ? err.message : 'Login failed');
+      }
     } finally {
       setLoading(false);
     }

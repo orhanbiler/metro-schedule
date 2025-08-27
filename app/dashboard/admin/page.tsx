@@ -16,7 +16,6 @@ interface User {
   role: 'admin' | 'user';
   createdAt: string;
   updatedAt?: string;
-  isMockUser?: boolean;
 }
 
 export default function AdminPage() {
@@ -52,19 +51,147 @@ export default function AdminPage() {
     }
   };
 
-  const calculateScheduleStats = () => {
-    // Real statistics as requested
-    const totalSlots = 42;
-    const filledSlots = 27;
-    const availableSlots = 15;
-    const activeOfficers = 9;
-    
-    setScheduleStats({
-      totalSlots,
-      filledSlots,
-      availableSlots,
-      thisMonthUsers: activeOfficers,
-    });
+  const calculateScheduleStats = async () => {
+    try {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      
+      // Calculate remaining days in the current month (from today onwards)
+      const today = currentDate.getDate();
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+      const remainingDays = daysInMonth - today + 1; // +1 to include today
+      const maxPossibleSlots = remainingDays * 4; // 2 morning + 2 afternoon slots per day
+      
+      console.log('Schedule Stats Debug:', {
+        currentMonth,
+        currentYear,
+        today,
+        daysInMonth,
+        remainingDays,
+        maxPossibleSlots
+      });
+      
+      // Fetch current month's schedule
+      const response = await fetch(`/api/schedule?month=${currentMonth}&year=${currentYear}`);
+      if (!response.ok) {
+        console.error('Failed to fetch schedule data');
+        // If no schedule exists, show all slots as available
+        const fallbackStats = {
+          totalSlots: maxPossibleSlots,
+          filledSlots: 0,
+          availableSlots: maxPossibleSlots,
+          thisMonthUsers: 0,
+        };
+        console.log('Fallback Stats (API error):', fallbackStats);
+        setScheduleStats(fallbackStats);
+        return;
+      }
+      
+      const data = await response.json();
+      // The API returns the document data directly if it exists, or { schedule: [] } if not
+      const schedule = data.schedule || data || [];
+      
+      console.log('Fetched schedule data:', { 
+        dataKeys: Object.keys(data), 
+        hasScheduleProperty: 'schedule' in data,
+        scheduleLength: Array.isArray(schedule) ? schedule.length : 0,
+        firstItem: Array.isArray(schedule) ? schedule[0] : null,
+        rawData: data
+      });
+      
+      // Ensure schedule is an array and check if empty
+      if (!Array.isArray(schedule) || schedule.length === 0) {
+        const emptyScheduleStats = {
+          totalSlots: maxPossibleSlots,
+          filledSlots: 0,
+          availableSlots: maxPossibleSlots,
+          thisMonthUsers: 0,
+        };
+        console.log('Empty Schedule Stats:', emptyScheduleStats);
+        setScheduleStats(emptyScheduleStats);
+        return;
+      }
+      
+      // Calculate actual statistics from existing schedule (only from today onwards)
+      let filledSlots = 0;
+      const uniqueOfficers = new Set<string>();
+      
+      schedule.forEach((day: { 
+        id: string; 
+        date: Date | string; 
+        morningSlot?: { officers?: { name: string }[]; maxOfficers?: number }; 
+        afternoonSlot?: { officers?: { name: string }[]; maxOfficers?: number } 
+      }) => {
+        // Only count days from today onwards
+        let dayDate;
+        let dayOfMonth;
+        
+        if (day.date instanceof Date) {
+          dayDate = day.date;
+          dayOfMonth = dayDate.getDate();
+        } else if (typeof day.date === 'string') {
+          dayDate = new Date(day.date);
+          dayOfMonth = dayDate.getDate();
+        } else {
+          // Fallback: assume it's a day number or use day ID
+          dayOfMonth = parseInt(day.id) || 1;
+        }
+        
+        console.log('Processing day:', { dayId: day.id, date: day.date, dayOfMonth, today });
+        
+        if (dayOfMonth >= today) {
+          const morningOfficers = day.morningSlot?.officers || [];
+          const afternoonOfficers = day.afternoonSlot?.officers || [];
+          
+          console.log('Counting slots for day', dayOfMonth, ':', { 
+            morning: morningOfficers.length, 
+            afternoon: afternoonOfficers.length 
+          });
+          
+          // Count filled slots
+          filledSlots += morningOfficers.length + afternoonOfficers.length;
+          
+          // Track unique officers
+          [...morningOfficers, ...afternoonOfficers].forEach((officer: { name: string } | string) => {
+            if (officer && typeof officer === 'object' && officer.name) {
+              uniqueOfficers.add(officer.name);
+            } else if (officer && typeof officer === 'string') {
+              uniqueOfficers.add(officer);
+            }
+          });
+        }
+      });
+      
+      const availableSlots = maxPossibleSlots - filledSlots;
+      
+      const stats = {
+        totalSlots: maxPossibleSlots,
+        filledSlots,
+        availableSlots,
+        thisMonthUsers: uniqueOfficers.size,
+      };
+      
+      console.log('Final Schedule Stats:', stats);
+      setScheduleStats(stats);
+    } catch (error) {
+      console.error('Error calculating schedule stats:', error);
+      // Fallback: calculate based on remaining days in current month
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      const today = currentDate.getDate();
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+      const remainingDays = daysInMonth - today + 1;
+      const maxPossibleSlots = remainingDays * 4;
+      
+      setScheduleStats({
+        totalSlots: maxPossibleSlots,
+        filledSlots: 0,
+        availableSlots: maxPossibleSlots,
+        thisMonthUsers: 0,
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -110,7 +237,12 @@ export default function AdminPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Math.round((scheduleStats.filledSlots / scheduleStats.totalSlots) * 100)}%</div>
+            <div className="text-2xl font-bold">
+              {scheduleStats.totalSlots > 0 
+                ? Math.round((scheduleStats.filledSlots / scheduleStats.totalSlots) * 100) + '%'
+                : '0%'
+              }
+            </div>
             <p className="text-xs text-muted-foreground">
               {scheduleStats.filledSlots}/{scheduleStats.totalSlots} slots filled
             </p>
@@ -197,9 +329,7 @@ export default function AdminPage() {
                         <td className="p-3">
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span className="text-sm">
-                              {user.isMockUser ? 'System User' : 'Active'}
-                            </span>
+                            <span className="text-sm">Active</span>
                           </div>
                         </td>
                         <td className="p-3">

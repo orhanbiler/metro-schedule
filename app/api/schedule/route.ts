@@ -1,19 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
-
-// Initialize Firebase for API routes
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = getApps().find(app => app.name === 'server') || initializeApp(firebaseConfig, 'server');
-const db = getFirestore(app);
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,12 +12,18 @@ export async function GET(request: NextRequest) {
     }
 
     const scheduleId = `${year}-${month}`;
-    const scheduleRef = doc(db, 'schedules', scheduleId);
-    const scheduleDoc = await getDoc(scheduleRef);
+    console.log('GET schedule - Looking for document:', scheduleId);
+    
+    const scheduleDoc = await adminDb.collection('schedules').doc(scheduleId).get();
+    console.log('GET schedule - Document exists:', scheduleDoc.exists);
 
-    if (scheduleDoc.exists()) {
-      return NextResponse.json(scheduleDoc.data());
+    if (scheduleDoc.exists) {
+      const data = scheduleDoc.data();
+      console.log('GET schedule - Document data keys:', Object.keys(data || {}));
+      console.log('GET schedule - Schedule array length:', data?.schedule?.length || 0);
+      return NextResponse.json(data);
     } else {
+      console.log('GET schedule - No document found, returning empty schedule');
       return NextResponse.json({ schedule: [] });
     }
   } catch (error) {
@@ -54,8 +46,6 @@ export async function POST(request: NextRequest) {
     const scheduleId = `${year}-${month}`;
     console.log('POST /api/schedule - Attempting to save schedule with ID:', scheduleId);
     
-    const scheduleRef = doc(db, 'schedules', scheduleId);
-    
     const scheduleData = {
       month,
       year,
@@ -63,9 +53,9 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString()
     };
 
-    console.log('POST /api/schedule - Schedule data prepared, calling setDoc...');
+    console.log('POST /api/schedule - Schedule data prepared, calling set...');
     
-    await setDoc(scheduleRef, scheduleData, { merge: true });
+    await adminDb.collection('schedules').doc(scheduleId).set(scheduleData, { merge: true });
 
     console.log('POST /api/schedule - Schedule saved successfully');
     return NextResponse.json({ success: true });
