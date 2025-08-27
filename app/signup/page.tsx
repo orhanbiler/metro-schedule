@@ -168,11 +168,6 @@ export default function SignupPage() {
                 </SelectContent>
               </Select>
             </div>
-            {error && (
-              <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
-                {error}
-              </div>
-            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button 
