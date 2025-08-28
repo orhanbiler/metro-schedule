@@ -420,11 +420,6 @@ export default function SchedulePage() {
   };
 
   const handleRemoveOfficer = async (slotId: string, slotType: 'morning' | 'afternoon', officerToRemove: string) => {
-    if (!user?.role || user.role !== 'admin') {
-      toast.error('Only administrators can remove officers from shifts.');
-      return;
-    }
-
     if (!officerToRemove?.trim()) {
       toast.error('Invalid officer information. Cannot remove from shift.');
       return;
@@ -433,6 +428,21 @@ export default function SchedulePage() {
     const slot = schedule.find(s => s.id === slotId);
     if (!slot) {
       toast.error('Shift not found. Please refresh the page and try again.');
+      return;
+    }
+
+    // Check permissions
+    const isAdmin = user?.role === 'admin';
+    const isOwnShift = officerToRemove === getCurrentOfficerFormatted() || officerToRemove === user?.name;
+    
+    if (!isAdmin && !isOwnShift) {
+      toast.error('You can only remove yourself from shifts.');
+      return;
+    }
+
+    // Check 2-day restriction for non-admins
+    if (!isAdmin && isShiftWithinDays(slot.date, 2)) {
+      toast.error('Cannot remove yourself from shifts within 2 days of the scheduled date.');
       return;
     }
 
@@ -473,7 +483,10 @@ export default function SchedulePage() {
       });
 
       await saveSchedule(updatedSchedule);
-      toast.success(`Successfully removed ${officerToRemove} from shift`);
+      const successMessage = isAdmin 
+        ? `Successfully removed ${officerToRemove} from shift`
+        : 'Successfully removed yourself from shift';
+      toast.success(successMessage);
     } catch (error) {
       console.error('Remove officer error:', error);
       toast.error('Failed to remove officer. Please try again.');
