@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent zoom on input focus on mobile devices */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* Ensure proper scrolling on mobile */
+html {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fix for iOS status bar in PWA mode */
+@media screen and (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
 /* ========================================
    CHEVERLY PD METRO - MODERN THEME
    Twitter-Inspired Design with OKLCH Colors

@@ -12,6 +12,22 @@ const openSans = Open_Sans({
 export const metadata: Metadata = {
   title: "Cheverly PD Metro Schedule",
   description: "Metro schedule management system for Cheverly Police Department",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Cheverly PD Metro",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  themeColor: "#1e3a5f",
 };
 
 export default function RootLayout({

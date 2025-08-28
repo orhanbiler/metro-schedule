@@ -73,7 +73,7 @@ export default function DashboardLayout({
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-background">
-        <nav className="sticky top-0 z-50 bg-navbar shadow-lg">
+        <nav className="sticky top-0 z-50 bg-navbar shadow-lg" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
               <div className="flex items-center">
