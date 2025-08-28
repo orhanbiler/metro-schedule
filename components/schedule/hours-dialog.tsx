@@ -68,10 +68,10 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="w-[95vw] max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-sm sm:text-base">Sign Up for Shift</DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">
+          <DialogTitle>Sign Up for Shift</DialogTitle>
+          <DialogDescription>
             Choose your working hours for this shift. You can work the full scheduled time or customize your hours.
           </DialogDescription>
         </DialogHeader>
@@ -153,18 +153,22 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
           </div>
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-          <Button variant="outline" onClick={handleCancel} className="text-xs sm:text-sm">
-            <X className="h-3 w-3 sm:mr-1" />
-            <span className="hidden sm:inline">Cancel</span>
+        <DialogFooter>
+          <Button 
+            variant="outline" 
+            onClick={handleCancel} 
+            className="min-h-[44px] sm:min-h-[36px] px-4 sm:px-3"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Cancel
           </Button>
           <Button 
             onClick={handleConfirm}
             disabled={useCustomHours && (!startTime || !endTime)}
-            className="text-xs sm:text-sm"
+            className="min-h-[44px] sm:min-h-[36px] px-4 sm:px-3"
           >
-            <Calendar className="h-3 w-3 sm:mr-1" />
-            <span className="hidden sm:inline">Sign Up for Shift</span>
+            <Calendar className="h-4 w-4 mr-2" />
+            Sign Up for Shift
           </Button>
         </DialogFooter>
       </DialogContent>
