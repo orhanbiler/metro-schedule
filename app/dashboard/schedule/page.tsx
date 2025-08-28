@@ -841,13 +841,13 @@ export default function SchedulePage() {
                           {slot.morningSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.morningSlot.officers.map((officer, index) => (
-                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between bg-muted/30 p-1.5 sm:p-2 rounded-sm">
-                                  <div className="flex-1">
-                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm`}>
+                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-2 sm:p-2 rounded-md">
+                                  <div className="flex-1 min-w-0">
+                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}>
                                       {officer.name}
                                     </span>
                                     {officer.customHours && (
-                                      <div className="text-2xs sm:text-xs text-muted-foreground">Custom: {officer.customHours}</div>
+                                      <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
                                     )}
                                   </div>
                                   {user?.role === 'admin' && (
@@ -855,12 +855,12 @@ export default function SchedulePage() {
                                       <AlertDialogTrigger asChild>
                                         <Button
                                           size="sm"
-                                          variant="ghost"
-                                          className="h-8 w-8 sm:h-7 sm:w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 ml-1 sm:ml-2 flex-shrink-0"
+                                          variant="destructive"
+                                          className="h-10 w-10 sm:h-8 sm:w-8 p-0 ml-2 flex-shrink-0 rounded-md"
                                           disabled={loading}
                                           title={`Remove ${officer.name}`}
                                         >
-                                          <Trash2 className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
+                                          <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
                                         </Button>
                                       </AlertDialogTrigger>
                                       <AlertDialogContent>
@@ -951,13 +951,13 @@ export default function SchedulePage() {
                           {slot.afternoonSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.afternoonSlot.officers.map((officer, index) => (
-                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between bg-muted/30 p-1.5 sm:p-2 rounded-sm">
-                                  <div className="flex-1">
-                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm`}>
+                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-2 sm:p-2 rounded-md">
+                                  <div className="flex-1 min-w-0">
+                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}>
                                       {officer.name}
                                     </span>
                                     {officer.customHours && (
-                                      <div className="text-2xs sm:text-xs text-muted-foreground">Custom: {officer.customHours}</div>
+                                      <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
                                     )}
                                   </div>
                                   {user?.role === 'admin' && (
@@ -965,12 +965,12 @@ export default function SchedulePage() {
                                       <AlertDialogTrigger asChild>
                                         <Button
                                           size="sm"
-                                          variant="ghost"
-                                          className="h-8 w-8 sm:h-7 sm:w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 ml-1 sm:ml-2 flex-shrink-0"
+                                          variant="destructive"
+                                          className="h-10 w-10 sm:h-8 sm:w-8 p-0 ml-2 flex-shrink-0 rounded-md"
                                           disabled={loading}
                                           title={`Remove ${officer.name}`}
                                         >
-                                          <Trash2 className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
+                                          <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
                                         </Button>
                                       </AlertDialogTrigger>
                                       <AlertDialogContent>
