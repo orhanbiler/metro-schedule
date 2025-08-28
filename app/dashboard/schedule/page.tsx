@@ -835,9 +835,10 @@ export default function SchedulePage() {
                       <tr key={`${slot.id}-morning`} className="border-t hover:bg-muted/50">
                         <td className="p-2 sm:p-3">
                           <div className="font-semibold text-foreground text-2xs sm:text-sm">
-                            <div className="sm:hidden">{slot.dayName}</div>
+                            <div className="sm:hidden">
+                              {new Date(slot.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
+                            </div>
                             <div className="hidden sm:inline">{slot.dayName} {formatDate(slot.date)}</div>
-                            <div className="sm:hidden text-2xs">{formatDate(slot.date)}</div>
                           </div>
                           <div className="text-2xs sm:text-sm text-muted-foreground">
                             {displayTime(slot.morningSlot.time)}
@@ -848,13 +849,12 @@ export default function SchedulePage() {
                             <div className="space-y-1">
                               {slot.morningSlot.officers.map((officer, index) => (
                                 <div key={index} className="text-2xs sm:text-sm flex items-center justify-between bg-muted/30 p-1.5 sm:p-2 rounded-sm">
-                                  <div className="flex-1 min-w-0">
-                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} truncate block text-2xs sm:text-sm`}>
-                                      <span className="sm:hidden">{formatOfficerName(officer.name).split(' ')[0]}...</span>
-                                      <span className="hidden sm:inline">{formatOfficerName(officer.name)}</span>
+                                  <div className="flex-1">
+                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm`}>
+                                      {formatOfficerName(officer.name)}
                                     </span>
                                     {officer.customHours && (
-                                      <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
+                                      <div className="text-2xs sm:text-xs text-muted-foreground">Custom: {officer.customHours}</div>
                                     )}
                                   </div>
                                   {user?.role === 'admin' && (
@@ -986,13 +986,12 @@ export default function SchedulePage() {
                             <div className="space-y-1">
                               {slot.afternoonSlot.officers.map((officer, index) => (
                                 <div key={index} className="text-2xs sm:text-sm flex items-center justify-between bg-muted/30 p-1.5 sm:p-2 rounded-sm">
-                                  <div className="flex-1 min-w-0">
-                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} truncate block text-2xs sm:text-sm`}>
-                                      <span className="sm:hidden">{formatOfficerName(officer.name).split(' ')[0]}...</span>
-                                      <span className="hidden sm:inline">{formatOfficerName(officer.name)}</span>
+                                  <div className="flex-1">
+                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm`}>
+                                      {formatOfficerName(officer.name)}
                                     </span>
                                     {officer.customHours && (
-                                      <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
+                                      <div className="text-2xs sm:text-xs text-muted-foreground">Custom: {officer.customHours}</div>
                                     )}
                                   </div>
                                   {user?.role === 'admin' && (
