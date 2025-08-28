@@ -6,7 +6,7 @@ export async function GET() {
     // Fetching all users from database
 
     // Get all users from Firestore using Admin SDK
-    const usersRef = adminDb.collection('users');
+    const usersRef = adminDb().collection('users');
     const querySnapshot = await usersRef.get();
 
     const users = querySnapshot.docs.map(doc => {

@@ -870,24 +870,23 @@ export default function SchedulePage() {
                                           <Trash2 className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
                                         </Button>
                                       </AlertDialogTrigger>
-                                      <AlertDialogContent className="w-[95vw] max-w-md mx-auto">
+                                      <AlertDialogContent>
                                         <AlertDialogHeader>
-                                          <AlertDialogTitle className="text-sm sm:text-base">Remove Officer from Shift</AlertDialogTitle>
-                                          <AlertDialogDescription className="text-xs sm:text-sm">
+                                          <AlertDialogTitle>Remove Officer from Shift</AlertDialogTitle>
+                                          <AlertDialogDescription>
                                             Are you sure you want to remove <strong>{formatOfficerName(officer.name)}</strong> from this shift on {slot.dayName} {formatDate(slot.date)}?
                                             <br /><br />
                                             This action cannot be undone and will make the slot available for other officers to sign up.
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
-                                        <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-                                          <AlertDialogCancel disabled={loading} className="text-xs sm:text-sm">Cancel</AlertDialogCancel>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
                                           <AlertDialogAction 
                                             onClick={() => handleRemoveOfficer(slot.id, 'morning', officer.name)}
                                             disabled={loading}
-                                            className="bg-red-600 hover:bg-red-700 text-xs sm:text-sm"
+                                            className="bg-red-600 hover:bg-red-700"
                                           >
-                                            <span className="sm:hidden">Remove</span>
-                                            <span className="hidden sm:inline">Remove Officer</span>
+                                            Remove Officer
                                           </AlertDialogAction>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
@@ -1007,24 +1006,23 @@ export default function SchedulePage() {
                                           <Trash2 className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
                                         </Button>
                                       </AlertDialogTrigger>
-                                      <AlertDialogContent className="w-[95vw] max-w-md mx-auto">
+                                      <AlertDialogContent>
                                         <AlertDialogHeader>
-                                          <AlertDialogTitle className="text-sm sm:text-base">Remove Officer from Shift</AlertDialogTitle>
-                                          <AlertDialogDescription className="text-xs sm:text-sm">
+                                          <AlertDialogTitle>Remove Officer from Shift</AlertDialogTitle>
+                                          <AlertDialogDescription>
                                             Are you sure you want to remove <strong>{formatOfficerName(officer.name)}</strong> from this afternoon shift on {slot.dayName} {formatDate(slot.date)}?
                                             <br /><br />
                                             This action cannot be undone and will make the slot available for other officers to sign up.
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
-                                        <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-                                          <AlertDialogCancel disabled={loading} className="text-xs sm:text-sm">Cancel</AlertDialogCancel>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
                                           <AlertDialogAction 
                                             onClick={() => handleRemoveOfficer(slot.id, 'afternoon', officer.name)}
                                             disabled={loading}
-                                            className="bg-red-600 hover:bg-red-700 text-xs sm:text-sm"
+                                            className="bg-red-600 hover:bg-red-700"
                                           >
-                                            <span className="sm:hidden">Remove</span>
-                                            <span className="hidden sm:inline">Remove Officer</span>
+                                            Remove Officer
                                           </AlertDialogAction>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>

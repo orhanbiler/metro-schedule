@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     // Sync user data from Firestore
 
     // Get user document from Firestore using Admin SDK
-    const userDocRef = adminDb.collection('users').doc(userId);
+    const userDocRef = adminDb().collection('users').doc(userId);
     const userDoc = await userDocRef.get();
 
     if (!userDoc.exists) {
