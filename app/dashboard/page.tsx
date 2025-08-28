@@ -199,8 +199,8 @@ export default function DashboardPage() {
           <CheckCircle className="h-4 w-4 text-green-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">{scheduleStats.availableSlots} remaining</div>
-          <p className="text-xs text-muted-foreground">Open for signup</p>
+          <div className="text-2xl font-bold text-green-600">{scheduleStats.availableSlots}</div>
+          <p className="text-xs text-muted-foreground">Shifts remaining for the rest of this month</p>
         </CardContent>
       </Card>
 

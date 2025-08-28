@@ -285,7 +285,7 @@ export default function AdminPage() {
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{scheduleStats.availableSlots}</div>
             <p className="text-xs text-muted-foreground">
-              Open for signup
+              Shifts remaining for the rest of this month
             </p>
           </CardContent>
         </Card>
