@@ -10,7 +10,7 @@ import { HoursDialog } from '@/components/schedule/hours-dialog';
 import { AdminAssignDialog } from '@/components/schedule/admin-assign-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Download, Trash2, Plus, Settings, Calendar } from 'lucide-react';
+import { Download, Trash2, Plus, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Officer {
@@ -51,18 +51,7 @@ export default function SchedulePage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [schedule, setSchedule] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
-  
-  const formatOfficerName = (officer: string | User | Officer | null | undefined) => {
-    if (!officer) return '';
-    if (typeof officer === 'string') return officer; // Legacy format
-    if (typeof officer === 'object' && 'rank' in officer && 'idNumber' in officer && officer.rank && officer.idNumber) {
-      return `${officer.rank} ${officer.name} #${officer.idNumber}`;
-    }
-    if (typeof officer === 'object' && 'name' in officer) {
-      return officer.name || '';
-    }
-    return String(officer);
-  };
+
 
   const getCurrentOfficerFormatted = () => {
     if (user?.rank && user?.idNumber) {
@@ -601,7 +590,7 @@ export default function SchedulePage() {
                 tableData.push([
                   index === 0 ? `${slot.dayName} ${formatDate(slot.date)}` : '',
                   displayTime,
-                  formatOfficerName(officer.name)
+                  officer.name
                 ]);
               });
               
@@ -633,7 +622,7 @@ export default function SchedulePage() {
                 tableData.push([
                   '',
                   `and/or ${displayTime}`,
-                  formatOfficerName(officer.name)
+                  officer.name
                 ]);
               });
               
@@ -854,7 +843,7 @@ export default function SchedulePage() {
                                 <div key={index} className="text-2xs sm:text-sm flex items-center justify-between bg-muted/30 p-1.5 sm:p-2 rounded-sm">
                                   <div className="flex-1">
                                     <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm`}>
-                                      {formatOfficerName(officer.name)}
+                                      {officer.name}
                                     </span>
                                     {officer.customHours && (
                                       <div className="text-2xs sm:text-xs text-muted-foreground">Custom: {officer.customHours}</div>
@@ -877,7 +866,7 @@ export default function SchedulePage() {
                                         <AlertDialogHeader>
                                           <AlertDialogTitle>Remove Officer from Shift</AlertDialogTitle>
                                           <AlertDialogDescription>
-                                            Are you sure you want to remove <strong>{formatOfficerName(officer.name)}</strong> from this shift on {slot.dayName} {formatDate(slot.date)}?
+                                            Are you sure you want to remove <strong>{officer.name}</strong> from this shift on {slot.dayName} {formatDate(slot.date)}?
                                             <br /><br />
                                             This action cannot be undone and will make the slot available for other officers to sign up.
                                           </AlertDialogDescription>
@@ -908,78 +897,46 @@ export default function SchedulePage() {
                           )}
                         </td>
                         <td className="p-2 sm:p-3 text-center">
-                          {slot.morningSlot.available && !hasUserSignedUpForSlot(slot.date, 'morning') ? (
-                            <div className="flex gap-1 sm:gap-2 justify-center">
-                              <HoursDialog
-                                originalTime={slot.morningSlot.time}
-                                onConfirm={(customHours) => handleSignUp(slot.id, 'morning', customHours)}
-                                onCancel={() => {}}
-                              >
-                                <Button size="sm" disabled={loading} className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
-                                  <Plus className="h-4 w-4 sm:mr-1" />
-                                  <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
-                                </Button>
-                              </HoursDialog>
-                              {user?.role === 'admin' && slot.morningSlot.officers.length < slot.morningSlot.maxOfficers && (
-                                <AdminAssignDialog
-                                  users={allUsers.filter(u => u.role === 'user')}
-                                  originalTime={slot.morningSlot.time}
-                                  onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
-                                  disabled={loading}
-                                />
-                              )}
-                            </div>
-                          ) : hasUserSignedUpForSlot(slot.date, 'morning') ? (
-                            <span className="text-xs sm:text-sm text-muted-foreground flex items-center justify-center">
-                              <Calendar className="h-3 w-3 sm:mr-1" />
-                              <span className="hidden sm:inline">Signed up</span>
-                            </span>
-                          ) : !slot.morningSlot.available && slot.morningSlot.officers.length === 0 ? (
-                            <div className="flex gap-1 sm:gap-2 justify-center">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2"
-                                title="Fix corrupted slot"
-                                onClick={async () => {
-                                  // Fix corrupted data
-                                  const updatedSchedule = schedule.map(s => {
-                                    if (s.id === slot.id) {
-                                      return {
-                                        ...s,
-                                        morningSlot: {
-                                          ...s.morningSlot,
-                                          available: true
-                                        }
-                                      };
-                                    }
-                                    return s;
-                                  });
-                                  await saveSchedule(updatedSchedule);
-                                  toast.success('Fixed corrupted slot data');
-                                }}
-                              >
-                                <Settings className="h-4 w-4 sm:mr-1" />
-                                <span className="hidden sm:inline text-xs sm:text-sm">Fix</span>
-                              </Button>
-                            </div>
-                          ) : !slot.morningSlot.available ? (
-                            <div className="flex gap-1 sm:gap-2 justify-center items-center">
-                              <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.morningSlot.officers.length}/{slot.morningSlot.maxOfficers})</span>
-                            </div>
-                          ) : (
-                            <div className="flex gap-1 sm:gap-2 justify-center items-center">
-                              {user?.role === 'admin' && slot.morningSlot.officers.length < slot.morningSlot.maxOfficers && (
-                                <AdminAssignDialog
-                                  users={allUsers.filter(u => u.role === 'user')}
-                                  originalTime={slot.morningSlot.time}
-                                  onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
-                                  disabled={loading}
-                                />
-                              )}
-                              <span className="text-xs sm:text-sm text-muted-foreground">Available</span>
-                            </div>
-                          )}
+                          {(() => {
+                            const userSignedUp = hasUserSignedUpForSlot(slot.date, 'morning');
+                            const slotsAvailable = slot.morningSlot.officers.length < slot.morningSlot.maxOfficers;
+                            const isAdmin = user?.role === 'admin';
+                            
+                            if (!slotsAvailable && !userSignedUp) {
+                              return <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.morningSlot.officers.length}/{slot.morningSlot.maxOfficers})</span>;
+                            }
+                            
+                            return (
+                              <div className="flex gap-1 sm:gap-2 justify-center">
+                                {userSignedUp ? (
+                                  <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
+                                    <Calendar className="h-3 w-3 sm:mr-1" />
+                                    <span className="hidden sm:inline">Signed up</span>
+                                  </span>
+                                ) : slotsAvailable ? (
+                                  <HoursDialog
+                                    originalTime={slot.morningSlot.time}
+                                    onConfirm={(customHours) => handleSignUp(slot.id, 'morning', customHours)}
+                                    onCancel={() => {}}
+                                  >
+                                    <Button size="sm" disabled={loading} className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
+                                      <Plus className="h-4 w-4 sm:mr-1" />
+                                      <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
+                                    </Button>
+                                  </HoursDialog>
+                                ) : null}
+                                {isAdmin && slotsAvailable && (
+                                  <AdminAssignDialog
+                                    users={allUsers.filter(u => u.role === 'user')}
+                                    originalTime={slot.morningSlot.time}
+                                    onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
+                                    disabled={loading}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })()}
+
                         </td>
                       </tr>
                       <tr key={`${slot.id}-afternoon`} className="border-t bg-muted/30 hover:bg-muted/50">
@@ -996,7 +953,7 @@ export default function SchedulePage() {
                                 <div key={index} className="text-2xs sm:text-sm flex items-center justify-between bg-muted/30 p-1.5 sm:p-2 rounded-sm">
                                   <div className="flex-1">
                                     <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm`}>
-                                      {formatOfficerName(officer.name)}
+                                      {officer.name}
                                     </span>
                                     {officer.customHours && (
                                       <div className="text-2xs sm:text-xs text-muted-foreground">Custom: {officer.customHours}</div>
@@ -1019,7 +976,7 @@ export default function SchedulePage() {
                                         <AlertDialogHeader>
                                           <AlertDialogTitle>Remove Officer from Shift</AlertDialogTitle>
                                           <AlertDialogDescription>
-                                            Are you sure you want to remove <strong>{formatOfficerName(officer.name)}</strong> from this afternoon shift on {slot.dayName} {formatDate(slot.date)}?
+                                            Are you sure you want to remove <strong>{officer.name}</strong> from this afternoon shift on {slot.dayName} {formatDate(slot.date)}?
                                             <br /><br />
                                             This action cannot be undone and will make the slot available for other officers to sign up.
                                           </AlertDialogDescription>
@@ -1050,78 +1007,45 @@ export default function SchedulePage() {
                           )}
                         </td>
                         <td className="p-2 sm:p-3 text-center">
-                          {slot.afternoonSlot.available && !hasUserSignedUpForSlot(slot.date, 'afternoon') ? (
-                            <div className="flex gap-1 sm:gap-2 justify-center">
-                              <HoursDialog
-                                originalTime={slot.afternoonSlot.time}
-                                onConfirm={(customHours) => handleSignUp(slot.id, 'afternoon', customHours)}
-                                onCancel={() => {}}
-                              >
-                                <Button size="sm" disabled={loading} className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
-                                  <Plus className="h-4 w-4 sm:mr-1" />
-                                  <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
-                                </Button>
-                              </HoursDialog>
-                              {user?.role === 'admin' && slot.afternoonSlot.officers.length < slot.afternoonSlot.maxOfficers && (
-                                <AdminAssignDialog
-                                  users={allUsers.filter(u => u.role === 'user')}
-                                  originalTime={slot.afternoonSlot.time}
-                                  onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
-                                  disabled={loading}
-                                />
-                              )}
-                            </div>
-                          ) : hasUserSignedUpForSlot(slot.date, 'afternoon') ? (
-                            <span className="text-xs sm:text-sm text-muted-foreground flex items-center justify-center">
-                              <Calendar className="h-3 w-3 sm:mr-1" />
-                              <span className="hidden sm:inline">Signed up</span>
-                            </span>
-                          ) : !slot.afternoonSlot.available && slot.afternoonSlot.officers.length === 0 ? (
-                            <div className="flex gap-1 sm:gap-2 justify-center">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2"
-                                title="Fix corrupted slot"
-                                onClick={async () => {
-                                  // Fix corrupted data
-                                  const updatedSchedule = schedule.map(s => {
-                                    if (s.id === slot.id) {
-                                      return {
-                                        ...s,
-                                        afternoonSlot: {
-                                          ...s.afternoonSlot,
-                                          available: true
-                                        }
-                                      };
-                                    }
-                                    return s;
-                                  });
-                                  await saveSchedule(updatedSchedule);
-                                  toast.success('Fixed corrupted slot data');
-                                }}
-                              >
-                                <Settings className="h-4 w-4 sm:mr-1" />
-                                <span className="hidden sm:inline text-xs sm:text-sm">Fix</span>
-                              </Button>
-                            </div>
-                          ) : !slot.afternoonSlot.available ? (
-                            <div className="flex gap-1 sm:gap-2 justify-center items-center">
-                              <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.afternoonSlot.officers.length}/{slot.afternoonSlot.maxOfficers})</span>
-                            </div>
-                          ) : (
-                            <div className="flex gap-1 sm:gap-2 justify-center items-center">
-                              {user?.role === 'admin' && slot.afternoonSlot.officers.length < slot.afternoonSlot.maxOfficers && (
-                                <AdminAssignDialog
-                                  users={allUsers.filter(u => u.role === 'user')}
-                                  originalTime={slot.afternoonSlot.time}
-                                  onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
-                                  disabled={loading}
-                                />
-                              )}
-                              <span className="text-xs sm:text-sm text-muted-foreground">Available</span>
-                            </div>
-                          )}
+                          {(() => {
+                            const userSignedUp = hasUserSignedUpForSlot(slot.date, 'afternoon');
+                            const slotsAvailable = slot.afternoonSlot.officers.length < slot.afternoonSlot.maxOfficers;
+                            const isAdmin = user?.role === 'admin';
+                            
+                            if (!slotsAvailable && !userSignedUp) {
+                              return <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.afternoonSlot.officers.length}/{slot.afternoonSlot.maxOfficers})</span>;
+                            }
+                            
+                            return (
+                              <div className="flex gap-1 sm:gap-2 justify-center">
+                                {userSignedUp ? (
+                                  <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
+                                    <Calendar className="h-3 w-3 sm:mr-1" />
+                                    <span className="hidden sm:inline">Signed up</span>
+                                  </span>
+                                ) : slotsAvailable ? (
+                                  <HoursDialog
+                                    originalTime={slot.afternoonSlot.time}
+                                    onConfirm={(customHours) => handleSignUp(slot.id, 'afternoon', customHours)}
+                                    onCancel={() => {}}
+                                  >
+                                    <Button size="sm" disabled={loading} className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
+                                      <Plus className="h-4 w-4 sm:mr-1" />
+                                      <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
+                                    </Button>
+                                  </HoursDialog>
+                                ) : null}
+                                {isAdmin && slotsAvailable && (
+                                  <AdminAssignDialog
+                                    users={allUsers.filter(u => u.role === 'user')}
+                                    originalTime={slot.afternoonSlot.time}
+                                    onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
+                                    disabled={loading}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     </React.Fragment>
