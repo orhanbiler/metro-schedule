@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { HoursDialog } from '@/components/schedule/hours-dialog';
+import { AdminAssignDialog } from '@/components/schedule/admin-assign-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Download, Trash2, UserPlus, Plus, Settings, Calendar } from 'lucide-react';
+import { Download, Trash2, Plus, Settings, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Officer {
@@ -468,7 +469,7 @@ export default function SchedulePage() {
     }
   };
 
-  const handleAdminAssign = async (slotId: string, slotType: 'morning' | 'afternoon', officerName: string) => {
+  const handleAdminAssign = async (slotId: string, slotType: 'morning' | 'afternoon', officerName: string, customHours?: string) => {
     if (!user?.role || user.role !== 'admin') {
       toast.error('Only administrators can assign officers to shifts.');
       return;
@@ -498,7 +499,7 @@ export default function SchedulePage() {
         if (slot.id === slotId) {
           const newOfficer: Officer = {
             name: officerName,
-            customHours: undefined
+            customHours: customHours || undefined
           };
 
           if (slotType === 'morning') {
@@ -661,16 +662,16 @@ export default function SchedulePage() {
           doc.setLineWidth(0.5);
           doc.line(20, 55, pageWidth - 20, 55);
           
-          // Add table
+          // Add table with more compact settings
           autoTable(doc, {
             head: [['DATE', 'TIME', 'OFFICER ASSIGNMENT']],
             body: tableData,
-            startY: 65,
-            margin: { left: 20, right: 20 },
+            startY: 60,
+            margin: { left: 15, right: 15 },
             styles: {
-              fontSize: 8,
-              cellPadding: 2,
-              minCellHeight: 8,
+              fontSize: 7,
+              cellPadding: 1.5,
+              minCellHeight: 6,
               lineWidth: 0.1,
               lineColor: [200, 200, 200],
               font: 'helvetica',
@@ -679,20 +680,22 @@ export default function SchedulePage() {
               fillColor: [25, 35, 120], // Professional navy blue
               textColor: 255,
               fontStyle: 'bold',
-              fontSize: 9,
+              fontSize: 8,
               halign: 'center',
-              minCellHeight: 10,
+              minCellHeight: 8,
+              cellPadding: 2,
             },
             columnStyles: {
-              0: { cellWidth: 50, halign: 'left', fontStyle: 'bold' }, // Date column
-              1: { cellWidth: 40, halign: 'center' }, // Time column  
+              0: { cellWidth: 45, halign: 'left', fontStyle: 'bold' }, // Date column
+              1: { cellWidth: 35, halign: 'center' }, // Time column  
               2: { cellWidth: 'auto', halign: 'left' }, // Officer column
             },
             alternateRowStyles: {
               fillColor: [248, 249, 250],
             },
             tableLineColor: [180, 180, 180],
-            tableLineWidth: 0.2,
+            tableLineWidth: 0.15,
+            rowPageBreak: 'avoid',
           });
           
         doc.save(`metro-schedule-${monthNames[selectedMonth].toLowerCase()}-${selectedYear}.pdf`);
@@ -917,19 +920,13 @@ export default function SchedulePage() {
                                   <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
                                 </Button>
                               </HoursDialog>
-                              {user?.role === 'admin' && (
-                                <Select onValueChange={(officerName) => handleAdminAssign(slot.id, 'morning', officerName)}>
-                                  <SelectTrigger className="w-8 h-8 sm:w-8 sm:h-8 p-1">
-                                    <UserPlus className="h-4 w-4" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {allUsers.filter(u => u.role === 'user').map(officer => (
-                                      <SelectItem key={officer.id} value={formatOfficerName(officer)}>
-                                        {formatOfficerName(officer)}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                              {user?.role === 'admin' && slot.morningSlot.officers.length < slot.morningSlot.maxOfficers && (
+                                <AdminAssignDialog
+                                  users={allUsers.filter(u => u.role === 'user')}
+                                  originalTime={slot.morningSlot.time}
+                                  onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
+                                  disabled={loading}
+                                />
                               )}
                             </div>
                           ) : hasUserSignedUpForSlot(slot.date, 'morning') ? (
@@ -967,9 +964,21 @@ export default function SchedulePage() {
                               </Button>
                             </div>
                           ) : !slot.morningSlot.available ? (
-                            <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.morningSlot.officers.length}/{slot.morningSlot.maxOfficers})</span>
+                            <div className="flex gap-1 sm:gap-2 justify-center items-center">
+                              <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.morningSlot.officers.length}/{slot.morningSlot.maxOfficers})</span>
+                            </div>
                           ) : (
-                            <span className="text-xs sm:text-sm text-muted-foreground">Available</span>
+                            <div className="flex gap-1 sm:gap-2 justify-center items-center">
+                              {user?.role === 'admin' && slot.morningSlot.officers.length < slot.morningSlot.maxOfficers && (
+                                <AdminAssignDialog
+                                  users={allUsers.filter(u => u.role === 'user')}
+                                  originalTime={slot.morningSlot.time}
+                                  onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
+                                  disabled={loading}
+                                />
+                              )}
+                              <span className="text-xs sm:text-sm text-muted-foreground">Available</span>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -1053,19 +1062,13 @@ export default function SchedulePage() {
                                   <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
                                 </Button>
                               </HoursDialog>
-                              {user?.role === 'admin' && (
-                                <Select onValueChange={(officerName) => handleAdminAssign(slot.id, 'afternoon', officerName)}>
-                                  <SelectTrigger className="w-8 h-8 sm:w-8 sm:h-8 p-1">
-                                    <UserPlus className="h-4 w-4" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {allUsers.filter(u => u.role === 'user').map(officer => (
-                                      <SelectItem key={officer.id} value={formatOfficerName(officer)}>
-                                        {formatOfficerName(officer)}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                              {user?.role === 'admin' && slot.afternoonSlot.officers.length < slot.afternoonSlot.maxOfficers && (
+                                <AdminAssignDialog
+                                  users={allUsers.filter(u => u.role === 'user')}
+                                  originalTime={slot.afternoonSlot.time}
+                                  onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
+                                  disabled={loading}
+                                />
                               )}
                             </div>
                           ) : hasUserSignedUpForSlot(slot.date, 'afternoon') ? (
@@ -1103,9 +1106,21 @@ export default function SchedulePage() {
                               </Button>
                             </div>
                           ) : !slot.afternoonSlot.available ? (
-                            <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.afternoonSlot.officers.length}/{slot.afternoonSlot.maxOfficers})</span>
+                            <div className="flex gap-1 sm:gap-2 justify-center items-center">
+                              <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.afternoonSlot.officers.length}/{slot.afternoonSlot.maxOfficers})</span>
+                            </div>
                           ) : (
-                            <span className="text-xs sm:text-sm text-muted-foreground">Available</span>
+                            <div className="flex gap-1 sm:gap-2 justify-center items-center">
+                              {user?.role === 'admin' && slot.afternoonSlot.officers.length < slot.afternoonSlot.maxOfficers && (
+                                <AdminAssignDialog
+                                  users={allUsers.filter(u => u.role === 'user')}
+                                  originalTime={slot.afternoonSlot.time}
+                                  onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
+                                  disabled={loading}
+                                />
+                              )}
+                              <span className="text-xs sm:text-sm text-muted-foreground">Available</span>
+                            </div>
                           )}
                         </td>
                       </tr>
