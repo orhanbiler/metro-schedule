@@ -114,7 +114,8 @@ export default function SchedulePage() {
       if (response.ok) {
         const users = await response.json();
         // Filter to only officers (not admins) for schedule assignment
-        setAllUsers(users.filter((u: User) => u.role === 'user'));
+        const officers = users.filter((u: User) => u.role === 'user');
+        setAllUsers(officers);
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);

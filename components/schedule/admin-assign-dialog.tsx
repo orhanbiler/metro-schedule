@@ -48,7 +48,8 @@ export function AdminAssignDialog({
     if (user.rank && user.idNumber) {
       return `${user.rank} ${user.name} #${user.idNumber}`;
     }
-    return user.name;
+    // Fallback to just name if rank/idNumber not available
+    return user.name || user.email || 'Unknown Officer';
   };
 
   const handleConfirm = () => {

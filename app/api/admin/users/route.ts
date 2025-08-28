@@ -16,6 +16,8 @@ export async function GET() {
         email: userData.email,
         name: userData.name,
         role: userData.role,
+        rank: userData.rank || null,
+        idNumber: userData.idNumber || null,
         createdAt: userData.createdAt,
         updatedAt: userData.updatedAt,
         firebaseAuthUID: userData.firebaseAuthUID || null,
