@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { HoursDialog } from '@/components/schedule/hours-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Download, Trash2, UserPlus } from 'lucide-react';
+import { Download, Trash2, UserPlus, Plus, Settings, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Officer {
@@ -298,7 +298,7 @@ export default function SchedulePage() {
 
   const saveSchedule = async (updatedSchedule: TimeSlot[]) => {
     try {
-      console.log('Calling API to save schedule...');
+      // Saving schedule to API
       const response = await fetch('/api/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -310,14 +310,10 @@ export default function SchedulePage() {
       });
       
       if (response.ok) {
-        console.log('Schedule saved to API successfully');
+        // Schedule saved successfully
       } else {
         const errorData = await response.text();
-        console.error('API response not ok:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorData
-        });
+        // API returned error response
         
         // Show user-friendly error message
         if (response.status === 403) {
@@ -817,19 +813,19 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-md overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="bg-navy-900 text-white">
-                  <th className="text-left p-3 font-semibold">Date/Time</th>
-                  <th className="text-left p-3 font-semibold">Officer Name</th>
-                  <th className="text-center p-3 font-semibold">Action</th>
+                  <th className="text-left p-2 sm:p-3 font-semibold text-xs sm:text-sm">Date/Time</th>
+                  <th className="text-left p-2 sm:p-3 font-semibold text-xs sm:text-sm">Officer Name</th>
+                  <th className="text-center p-2 sm:p-3 font-semibold text-xs sm:text-sm">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {schedule.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="text-center p-8 text-muted-foreground">
+                    <td colSpan={3} className="text-center p-4 sm:p-8 text-xs sm:text-sm text-muted-foreground">
                       No shifts available for this month
                     </td>
                   </tr>
@@ -837,25 +833,28 @@ export default function SchedulePage() {
                   schedule.map((slot) => (
                     <React.Fragment key={slot.id}>
                       <tr key={`${slot.id}-morning`} className="border-t hover:bg-muted/50">
-                        <td className="p-3">
-                          <div className="font-semibold text-foreground">
-                            {slot.dayName} {formatDate(slot.date)}
+                        <td className="p-2 sm:p-3">
+                          <div className="font-semibold text-foreground text-2xs sm:text-sm">
+                            <div className="sm:hidden">{slot.dayName}</div>
+                            <div className="hidden sm:inline">{slot.dayName} {formatDate(slot.date)}</div>
+                            <div className="sm:hidden text-2xs">{formatDate(slot.date)}</div>
                           </div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-2xs sm:text-sm text-muted-foreground">
                             {displayTime(slot.morningSlot.time)}
                           </div>
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 sm:p-3">
                           {slot.morningSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.morningSlot.officers.map((officer, index) => (
-                                <div key={index} className="text-sm flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                                  <div className="flex-1">
-                                    <span className={officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''}>
-                                      {formatOfficerName(officer.name)}
+                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between bg-muted/30 p-1.5 sm:p-2 rounded-sm">
+                                  <div className="flex-1 min-w-0">
+                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} truncate block text-2xs sm:text-sm`}>
+                                      <span className="sm:hidden">{formatOfficerName(officer.name).split(' ')[0]}...</span>
+                                      <span className="hidden sm:inline">{formatOfficerName(officer.name)}</span>
                                     </span>
                                     {officer.customHours && (
-                                      <div className="text-xs text-muted-foreground">Custom: {officer.customHours}</div>
+                                      <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
                                     )}
                                   </div>
                                   {user?.role === 'admin' && (
@@ -864,30 +863,31 @@ export default function SchedulePage() {
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 ml-2 flex-shrink-0"
+                                          className="h-8 w-8 sm:h-7 sm:w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 ml-1 sm:ml-2 flex-shrink-0"
                                           disabled={loading}
                                           title={`Remove ${officer.name}`}
                                         >
-                                          <Trash2 className="h-3 w-3" />
+                                          <Trash2 className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
                                         </Button>
                                       </AlertDialogTrigger>
-                                      <AlertDialogContent>
+                                      <AlertDialogContent className="w-[95vw] max-w-md mx-auto">
                                         <AlertDialogHeader>
-                                          <AlertDialogTitle>Remove Officer from Shift</AlertDialogTitle>
-                                          <AlertDialogDescription>
+                                          <AlertDialogTitle className="text-sm sm:text-base">Remove Officer from Shift</AlertDialogTitle>
+                                          <AlertDialogDescription className="text-xs sm:text-sm">
                                             Are you sure you want to remove <strong>{formatOfficerName(officer.name)}</strong> from this shift on {slot.dayName} {formatDate(slot.date)}?
                                             <br /><br />
                                             This action cannot be undone and will make the slot available for other officers to sign up.
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+                                        <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                                          <AlertDialogCancel disabled={loading} className="text-xs sm:text-sm">Cancel</AlertDialogCancel>
                                           <AlertDialogAction 
                                             onClick={() => handleRemoveOfficer(slot.id, 'morning', officer.name)}
                                             disabled={loading}
-                                            className="bg-red-600 hover:bg-red-700"
+                                            className="bg-red-600 hover:bg-red-700 text-xs sm:text-sm"
                                           >
-                                            Remove Officer
+                                            <span className="sm:hidden">Remove</span>
+                                            <span className="hidden sm:inline">Remove Officer</span>
                                           </AlertDialogAction>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
@@ -896,30 +896,31 @@ export default function SchedulePage() {
                                 </div>
                               ))}
                               {slot.morningSlot.officers.length < slot.morningSlot.maxOfficers && (
-                                <div className="text-xs text-muted-foreground italic">
+                                <div className="text-2xs sm:text-xs text-muted-foreground italic">
                                   {slot.morningSlot.maxOfficers - slot.morningSlot.officers.length} slot(s) available
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <span className="text-muted-foreground italic">Available ({slot.morningSlot.maxOfficers} slots)</span>
+                            <span className="text-2xs sm:text-sm text-muted-foreground italic">Available ({slot.morningSlot.maxOfficers} slots)</span>
                           )}
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-2 sm:p-3 text-center">
                           {slot.morningSlot.available && !hasUserSignedUpForSlot(slot.date, 'morning') ? (
-                            <div className="flex gap-2 justify-center">
+                            <div className="flex gap-1 sm:gap-2 justify-center">
                               <HoursDialog
                                 originalTime={slot.morningSlot.time}
                                 onConfirm={(customHours) => handleSignUp(slot.id, 'morning', customHours)}
                                 onCancel={() => {}}
                               >
-                                <Button size="sm" disabled={loading}>
-                                  Sign Up
+                                <Button size="sm" disabled={loading} className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
+                                  <Plus className="h-4 w-4 sm:mr-1" />
+                                  <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
                                 </Button>
                               </HoursDialog>
                               {user?.role === 'admin' && (
                                 <Select onValueChange={(officerName) => handleAdminAssign(slot.id, 'morning', officerName)}>
-                                  <SelectTrigger className="w-8 h-8 p-1">
+                                  <SelectTrigger className="w-8 h-8 sm:w-8 sm:h-8 p-1">
                                     <UserPlus className="h-4 w-4" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -933,12 +934,17 @@ export default function SchedulePage() {
                               )}
                             </div>
                           ) : hasUserSignedUpForSlot(slot.date, 'morning') ? (
-                            <span className="text-sm text-muted-foreground">Already signed up</span>
+                            <span className="text-xs sm:text-sm text-muted-foreground flex items-center justify-center">
+                              <Calendar className="h-3 w-3 sm:mr-1" />
+                              <span className="hidden sm:inline">Signed up</span>
+                            </span>
                           ) : !slot.morningSlot.available && slot.morningSlot.officers.length === 0 ? (
-                            <div className="flex gap-2 justify-center">
+                            <div className="flex gap-1 sm:gap-2 justify-center">
                               <Button 
                                 size="sm" 
                                 variant="outline"
+                                className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2"
+                                title="Fix corrupted slot"
                                 onClick={async () => {
                                   // Fix corrupted data
                                   const updatedSchedule = schedule.map(s => {
@@ -957,33 +963,36 @@ export default function SchedulePage() {
                                   toast.success('Fixed corrupted slot data');
                                 }}
                               >
-                                Fix Slot
+                                <Settings className="h-4 w-4 sm:mr-1" />
+                                <span className="hidden sm:inline text-xs sm:text-sm">Fix</span>
                               </Button>
                             </div>
                           ) : !slot.morningSlot.available ? (
-                            <span className="text-sm text-muted-foreground">Full ({slot.morningSlot.officers.length}/{slot.morningSlot.maxOfficers})</span>
+                            <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.morningSlot.officers.length}/{slot.morningSlot.maxOfficers})</span>
                           ) : (
-                            <span className="text-sm text-muted-foreground">Debug: Available={slot.morningSlot.available.toString()}, Officers={slot.morningSlot.officers.length}</span>
+                            <span className="text-xs sm:text-sm text-muted-foreground">Available</span>
                           )}
                         </td>
                       </tr>
                       <tr key={`${slot.id}-afternoon`} className="border-t bg-muted/30 hover:bg-muted/50">
-                        <td className="p-3">
-                          <div className="text-sm text-muted-foreground ml-4">
-                            and/or {displayTime(slot.afternoonSlot.time)}
+                        <td className="p-2 sm:p-3">
+                          <div className="text-2xs sm:text-sm text-muted-foreground ml-2 sm:ml-4">
+                            <span className="sm:hidden">or</span>
+                            <span className="hidden sm:inline">and/or</span> {displayTime(slot.afternoonSlot.time)}
                           </div>
                         </td>
-                        <td className="p-3">
+                        <td className="p-2 sm:p-3">
                           {slot.afternoonSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.afternoonSlot.officers.map((officer, index) => (
-                                <div key={index} className="text-sm flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                                  <div className="flex-1">
-                                    <span className={officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''}>
-                                      {formatOfficerName(officer.name)}
+                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between bg-muted/30 p-1.5 sm:p-2 rounded-sm">
+                                  <div className="flex-1 min-w-0">
+                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} truncate block text-2xs sm:text-sm`}>
+                                      <span className="sm:hidden">{formatOfficerName(officer.name).split(' ')[0]}...</span>
+                                      <span className="hidden sm:inline">{formatOfficerName(officer.name)}</span>
                                     </span>
                                     {officer.customHours && (
-                                      <div className="text-xs text-muted-foreground">Custom: {officer.customHours}</div>
+                                      <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
                                     )}
                                   </div>
                                   {user?.role === 'admin' && (
@@ -992,30 +1001,31 @@ export default function SchedulePage() {
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 ml-2 flex-shrink-0"
+                                          className="h-8 w-8 sm:h-7 sm:w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 ml-1 sm:ml-2 flex-shrink-0"
                                           disabled={loading}
                                           title={`Remove ${officer.name}`}
                                         >
-                                          <Trash2 className="h-3 w-3" />
+                                          <Trash2 className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
                                         </Button>
                                       </AlertDialogTrigger>
-                                      <AlertDialogContent>
+                                      <AlertDialogContent className="w-[95vw] max-w-md mx-auto">
                                         <AlertDialogHeader>
-                                          <AlertDialogTitle>Remove Officer from Shift</AlertDialogTitle>
-                                          <AlertDialogDescription>
+                                          <AlertDialogTitle className="text-sm sm:text-base">Remove Officer from Shift</AlertDialogTitle>
+                                          <AlertDialogDescription className="text-xs sm:text-sm">
                                             Are you sure you want to remove <strong>{formatOfficerName(officer.name)}</strong> from this afternoon shift on {slot.dayName} {formatDate(slot.date)}?
                                             <br /><br />
                                             This action cannot be undone and will make the slot available for other officers to sign up.
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+                                        <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                                          <AlertDialogCancel disabled={loading} className="text-xs sm:text-sm">Cancel</AlertDialogCancel>
                                           <AlertDialogAction 
                                             onClick={() => handleRemoveOfficer(slot.id, 'afternoon', officer.name)}
                                             disabled={loading}
-                                            className="bg-red-600 hover:bg-red-700"
+                                            className="bg-red-600 hover:bg-red-700 text-xs sm:text-sm"
                                           >
-                                            Remove Officer
+                                            <span className="sm:hidden">Remove</span>
+                                            <span className="hidden sm:inline">Remove Officer</span>
                                           </AlertDialogAction>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
@@ -1024,30 +1034,31 @@ export default function SchedulePage() {
                                 </div>
                               ))}
                               {slot.afternoonSlot.officers.length < slot.afternoonSlot.maxOfficers && (
-                                <div className="text-xs text-muted-foreground italic">
+                                <div className="text-2xs sm:text-xs text-muted-foreground italic">
                                   {slot.afternoonSlot.maxOfficers - slot.afternoonSlot.officers.length} slot(s) available
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <span className="text-muted-foreground italic">Available ({slot.afternoonSlot.maxOfficers} slots)</span>
+                            <span className="text-2xs sm:text-sm text-muted-foreground italic">Available ({slot.afternoonSlot.maxOfficers} slots)</span>
                           )}
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-2 sm:p-3 text-center">
                           {slot.afternoonSlot.available && !hasUserSignedUpForSlot(slot.date, 'afternoon') ? (
-                            <div className="flex gap-2 justify-center">
+                            <div className="flex gap-1 sm:gap-2 justify-center">
                               <HoursDialog
                                 originalTime={slot.afternoonSlot.time}
                                 onConfirm={(customHours) => handleSignUp(slot.id, 'afternoon', customHours)}
                                 onCancel={() => {}}
                               >
-                                <Button size="sm" disabled={loading}>
-                                  Sign Up
+                                <Button size="sm" disabled={loading} className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
+                                  <Plus className="h-4 w-4 sm:mr-1" />
+                                  <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
                                 </Button>
                               </HoursDialog>
                               {user?.role === 'admin' && (
                                 <Select onValueChange={(officerName) => handleAdminAssign(slot.id, 'afternoon', officerName)}>
-                                  <SelectTrigger className="w-8 h-8 p-1">
+                                  <SelectTrigger className="w-8 h-8 sm:w-8 sm:h-8 p-1">
                                     <UserPlus className="h-4 w-4" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1061,12 +1072,17 @@ export default function SchedulePage() {
                               )}
                             </div>
                           ) : hasUserSignedUpForSlot(slot.date, 'afternoon') ? (
-                            <span className="text-sm text-muted-foreground">Already signed up</span>
+                            <span className="text-xs sm:text-sm text-muted-foreground flex items-center justify-center">
+                              <Calendar className="h-3 w-3 sm:mr-1" />
+                              <span className="hidden sm:inline">Signed up</span>
+                            </span>
                           ) : !slot.afternoonSlot.available && slot.afternoonSlot.officers.length === 0 ? (
-                            <div className="flex gap-2 justify-center">
+                            <div className="flex gap-1 sm:gap-2 justify-center">
                               <Button 
                                 size="sm" 
                                 variant="outline"
+                                className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2"
+                                title="Fix corrupted slot"
                                 onClick={async () => {
                                   // Fix corrupted data
                                   const updatedSchedule = schedule.map(s => {
@@ -1085,13 +1101,14 @@ export default function SchedulePage() {
                                   toast.success('Fixed corrupted slot data');
                                 }}
                               >
-                                Fix Slot
+                                <Settings className="h-4 w-4 sm:mr-1" />
+                                <span className="hidden sm:inline text-xs sm:text-sm">Fix</span>
                               </Button>
                             </div>
                           ) : !slot.afternoonSlot.available ? (
-                            <span className="text-sm text-muted-foreground">Full ({slot.afternoonSlot.officers.length}/{slot.afternoonSlot.maxOfficers})</span>
+                            <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.afternoonSlot.officers.length}/{slot.afternoonSlot.maxOfficers})</span>
                           ) : (
-                            <span className="text-sm text-muted-foreground">Debug: Available={slot.afternoonSlot.available.toString()}, Officers={slot.afternoonSlot.officers.length}</span>
+                            <span className="text-xs sm:text-sm text-muted-foreground">Available</span>
                           )}
                         </td>
                       </tr>

@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
 
     const { email, password, name, idNumber, rank, firebaseAuthUID } = await request.json();
 
-    console.log('Signup attempt for:', email);
+    // Processing user registration request
 
     if (!email || !password || !name || !idNumber || !rank) {
       return NextResponse.json(
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const existingUser = await usersRef.where('email', '==', email).get();
 
     if (!existingUser.empty) {
-      console.log('User already exists:', email);
+      // User with this email already exists
       return NextResponse.json(
         { error: 'User with this email already exists' },
         { status: 400 }
@@ -54,12 +54,12 @@ export async function POST(request: NextRequest) {
       docRef = usersRef.doc(firebaseAuthUID);
       await docRef.set(userData);
       userId = firebaseAuthUID;
-      console.log('Created Firestore user with Firebase Auth UID:', firebaseAuthUID, 'Email:', email);
+      // Created user with Firebase Auth UID
     } else {
       // Fallback to auto-generated document ID
       docRef = await usersRef.add(userData);
       userId = docRef.id;
-      console.log('Created Firestore-only user:', docRef.id, 'Email:', email);
+      // Created user with auto-generated ID
     }
 
     // Return user data without password
@@ -77,11 +77,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Signup error:', error);
-    console.error('Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : undefined
-    });
     
     return NextResponse.json(
       { 

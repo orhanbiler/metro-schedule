@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
 
-    console.log('Login attempt for:', email);
+    // Processing login request
 
     if (!email || !password) {
       return NextResponse.json(
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       const querySnapshot = await usersRef.where('email', '==', email).get();
 
       if (querySnapshot.empty) {
-        console.log('User not found in Firestore:', email);
+        // User not found in database
         return NextResponse.json(
           { error: 'Invalid email or password' },
           { status: 401 }
@@ -33,14 +33,14 @@ export async function POST(request: NextRequest) {
       
       // Verify password (in production, use bcrypt.compare)
       if (userData.password !== password) {
-        console.log('Invalid password for user:', email);
+        // Password verification failed
         return NextResponse.json(
           { error: 'Invalid email or password' },
           { status: 401 }
         );
       }
 
-      console.log('Firestore user login successful:', email, 'Role:', userData.role);
+      // User authentication successful
 
       // Return user data without password
       const userWithoutPassword = {

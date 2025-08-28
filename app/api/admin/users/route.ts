@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebase-admin';
 
 export async function GET() {
   try {
-    console.log('Fetching all users for admin');
+    // Fetching all users from database
 
     // Get all users from Firestore using Admin SDK
     const usersRef = adminDb.collection('users');
@@ -22,12 +22,12 @@ export async function GET() {
       };
     });
 
-    console.log(`Found ${users.length} users in Firestore`);
+    // Successfully retrieved user data
 
     return NextResponse.json(users);
 
-  } catch (error) {
-    console.error('Get users error:', error);
+  } catch {
+    // Error occurred while fetching users
     return NextResponse.json(
       { error: 'Failed to fetch users' },
       { status: 500 }

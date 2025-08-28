@@ -10,32 +10,11 @@ export interface User {
   createdAt: string;
 }
 
-// Mock users for demo
+// Production Note: In production, use Firebase Authentication
+// These demo accounts are disabled for security
 const mockUsers: User[] = [
-  {
-    id: 'admin-1',
-    email: 'admin@cheverlypd.gov',
-    password: 'admin123',
-    name: 'Admin User',
-    role: 'admin',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'user-1',
-    email: 'officer@cheverlypd.gov',
-    password: 'officer123',
-    name: 'Officer Smith',
-    role: 'user',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'user-2',
-    email: 'officer2@cheverlypd.gov',
-    password: 'officer123',
-    name: 'Officer Johnson',
-    role: 'user',
-    createdAt: new Date().toISOString(),
-  },
+  // Demo accounts disabled for production security
+  // Use Firebase Authentication for user management
 ];
 
 // Storage for newly registered users

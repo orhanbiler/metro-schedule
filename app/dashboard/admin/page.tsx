@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, Calendar, CheckCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface User {
   id: string;
@@ -31,6 +33,29 @@ export default function AdminPage() {
   useEffect(() => {
     fetchUsers();
     calculateScheduleStats();
+    
+    // Set up real-time listener for schedule changes
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth(); // 0-indexed for schedule ID
+    const currentYear = currentDate.getFullYear();
+    const scheduleId = `${currentYear}-${currentMonth}`;
+    const scheduleRef = doc(db, 'schedules', scheduleId);
+    
+    // Setting up real-time listener for schedule changes
+    
+    const unsubscribe = onSnapshot(scheduleRef, () => {
+      // Schedule document changed, recalculating statistics
+      // Recalculate stats when schedule changes
+      calculateScheduleStats();
+    }, (error) => {
+      console.error('Error listening to schedule changes in admin:', error);
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
 
@@ -54,28 +79,32 @@ export default function AdminPage() {
   const calculateScheduleStats = async () => {
     try {
       const currentDate = new Date();
-      const currentMonth = currentDate.getMonth() + 1;
+      const currentMonth = currentDate.getMonth(); // Keep 0-indexed for API consistency
       const currentYear = currentDate.getFullYear();
       
-      // Calculate remaining days in the current month (from today onwards)
+      // Calculate remaining WEEKDAYS in the current month (from today onwards, excluding weekends)
       const today = currentDate.getDate();
-      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-      const remainingDays = daysInMonth - today + 1; // +1 to include today
-      const maxPossibleSlots = remainingDays * 4; // 2 morning + 2 afternoon slots per day
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate(); // currentMonth + 1 because Date constructor expects 1-indexed month for this calculation
       
-      console.log('Schedule Stats Debug:', {
-        currentMonth,
-        currentYear,
-        today,
-        daysInMonth,
-        remainingDays,
-        maxPossibleSlots
-      });
+      let remainingWeekdays = 0;
+      for (let day = today; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, currentMonth, day); // currentMonth is 0-indexed here, which is correct for Date constructor
+        const dayOfWeek = date.getDay();
+        // Skip weekends (0 = Sunday, 6 = Saturday)
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          remainingWeekdays++;
+        }
+      }
+      
+      const maxPossibleSlots = remainingWeekdays * 4; // 2 morning + 2 afternoon slots per weekday
+      
+      // Calculating schedule statistics for current month
       
       // Fetch current month's schedule
+      // Fetching schedule data for current month
       const response = await fetch(`/api/schedule?month=${currentMonth}&year=${currentYear}`);
       if (!response.ok) {
-        console.error('Failed to fetch schedule data');
+        // Failed to fetch schedule data, using fallback statistics
         // If no schedule exists, show all slots as available
         const fallbackStats = {
           totalSlots: maxPossibleSlots,
@@ -83,7 +112,7 @@ export default function AdminPage() {
           availableSlots: maxPossibleSlots,
           thisMonthUsers: 0,
         };
-        console.log('Fallback Stats (API error):', fallbackStats);
+        // Using fallback statistics due to API error
         setScheduleStats(fallbackStats);
         return;
       }
@@ -92,13 +121,7 @@ export default function AdminPage() {
       // The API returns the document data directly if it exists, or { schedule: [] } if not
       const schedule = data.schedule || data || [];
       
-      console.log('Fetched schedule data:', { 
-        dataKeys: Object.keys(data), 
-        hasScheduleProperty: 'schedule' in data,
-        scheduleLength: Array.isArray(schedule) ? schedule.length : 0,
-        firstItem: Array.isArray(schedule) ? schedule[0] : null,
-        rawData: data
-      });
+      // Processing fetched schedule data
       
       // Ensure schedule is an array and check if empty
       if (!Array.isArray(schedule) || schedule.length === 0) {
@@ -108,7 +131,7 @@ export default function AdminPage() {
           availableSlots: maxPossibleSlots,
           thisMonthUsers: 0,
         };
-        console.log('Empty Schedule Stats:', emptyScheduleStats);
+        // No schedule data found, using empty schedule statistics
         setScheduleStats(emptyScheduleStats);
         return;
       }
@@ -138,16 +161,13 @@ export default function AdminPage() {
           dayOfMonth = parseInt(day.id) || 1;
         }
         
-        console.log('Processing day:', { dayId: day.id, date: day.date, dayOfMonth, today });
+        // Processing schedule day for statistics calculation
         
         if (dayOfMonth >= today) {
           const morningOfficers = day.morningSlot?.officers || [];
           const afternoonOfficers = day.afternoonSlot?.officers || [];
           
-          console.log('Counting slots for day', dayOfMonth, ':', { 
-            morning: morningOfficers.length, 
-            afternoon: afternoonOfficers.length 
-          });
+          // Counting filled slots for this day
           
           // Count filled slots
           filledSlots += morningOfficers.length + afternoonOfficers.length;
@@ -172,18 +192,27 @@ export default function AdminPage() {
         thisMonthUsers: uniqueOfficers.size,
       };
       
-      console.log('Final Schedule Stats:', stats);
+      // Schedule statistics calculated successfully
       setScheduleStats(stats);
     } catch (error) {
       console.error('Error calculating schedule stats:', error);
-      // Fallback: calculate based on remaining days in current month
+      // Fallback: calculate based on remaining weekdays in current month
       const currentDate = new Date();
-      const currentMonth = currentDate.getMonth() + 1;
+      const currentMonth = currentDate.getMonth(); // 0-indexed
       const currentYear = currentDate.getFullYear();
       const today = currentDate.getDate();
-      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-      const remainingDays = daysInMonth - today + 1;
-      const maxPossibleSlots = remainingDays * 4;
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      
+      let remainingWeekdays = 0;
+      for (let day = today; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, currentMonth, day);
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          remainingWeekdays++;
+        }
+      }
+      
+      const maxPossibleSlots = remainingWeekdays * 4;
       
       setScheduleStats({
         totalSlots: maxPossibleSlots,

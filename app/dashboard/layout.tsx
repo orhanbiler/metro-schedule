@@ -47,7 +47,7 @@ export default function DashboardLayout({
           if (response.ok) {
             const syncedUser = await response.json();
             if (syncedUser.role !== user.role) {
-              console.log('Role changed from', user.role, 'to', syncedUser.role);
+              // Role updated after sync
               setUser(syncedUser);
               localStorage.setItem('user', JSON.stringify(syncedUser));
             }
@@ -72,8 +72,8 @@ export default function DashboardLayout({
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <nav className="bg-navy-800 shadow-lg">
+      <div className="min-h-screen bg-background">
+        <nav className="sticky top-0 z-50 bg-navbar shadow-lg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
               <div className="flex items-center">
@@ -85,33 +85,33 @@ export default function DashboardLayout({
                     height={32}
                     className="rounded"
                   />
-                  <h1 className="text-white text-lg sm:text-xl font-bold">
+                  <h1 className="text-navbar-foreground text-lg sm:text-xl font-bold">
                     Cheverly PD Metro
                   </h1>
                 </div>
                 <div className="hidden md:ml-6 md:flex md:space-x-4 lg:space-x-8">
                   <Link
                     href="/dashboard"
-                    className="text-white hover:bg-navy-600 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                    className="text-navbar-foreground hover:bg-navbar-hover px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/dashboard/schedule"
-                    className="text-white hover:bg-navy-600 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                    className="text-navbar-foreground hover:bg-navbar-hover px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
                   >
                     Schedule
                   </Link>
                   <Link
                     href="/dashboard/profile"
-                    className="text-white hover:bg-navy-600 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                    className="text-navbar-foreground hover:bg-navbar-hover px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
                   >
                     Profile
                   </Link>
                   {user?.role === 'admin' && (
                     <Link
                       href="/dashboard/admin"
-                      className="text-white hover:bg-navy-600 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                      className="text-navbar-foreground hover:bg-navbar-hover px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
                     >
                       Admin
                     </Link>
@@ -119,11 +119,20 @@ export default function DashboardLayout({
                 </div>
               </div>
               <div className="hidden md:ml-6 md:flex md:items-center space-x-2 lg:space-x-4">
+                <div className="w-8 h-8 bg-navbar-foreground/10 rounded-full flex items-center justify-center overflow-hidden">
+                  <Image
+                    src="/media/avatar/police-avatar-no-bg.png"
+                    alt="User Avatar"
+                    width={24}
+                    height={24}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
                 <div className="flex flex-col items-end">
-                  <span className="text-white text-sm font-medium">
+                  <span className="text-navbar-foreground text-sm font-medium">
                     {user?.rank && user?.idNumber ? `${user.rank} ${user.name}` : user?.name}
                   </span>
-                  <span className="text-navy-300 text-xs">
+                  <span className="text-navbar-foreground opacity-70 text-xs">
                     {user?.idNumber ? `#${user.idNumber}` : user?.role}
                   </span>
                 </div>
@@ -141,7 +150,7 @@ export default function DashboardLayout({
                 <ThemeToggle />
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}
-                  className="text-white hover:bg-navy-600 p-2 rounded-md transition-colors"
+                  className="text-navbar-foreground hover:bg-navbar-hover p-2 rounded-md transition-colors"
                   aria-label="Toggle menu"
                 >
                   <svg
@@ -164,25 +173,25 @@ export default function DashboardLayout({
             </div>
           </div>
           {menuOpen && (
-            <div className="md:hidden bg-navy-700 border-t border-navy-600">
+            <div className="md:hidden bg-navbar-hover border-t border-navbar-hover/50">
               <div className="px-4 pt-4 pb-3 space-y-1">
                 <Link
                   href="/dashboard"
-                  className="text-white block px-3 py-3 rounded-md text-base font-medium hover:bg-navy-600 transition-colors"
+                  className="text-navbar-foreground block px-3 py-3 rounded-md text-base font-medium hover:bg-navbar-hover transition-colors"
                   onClick={() => setMenuOpen(false)}
                 >
                   Dashboard
                 </Link>
                 <Link
                   href="/dashboard/schedule"
-                  className="text-white block px-3 py-3 rounded-md text-base font-medium hover:bg-navy-600 transition-colors"
+                  className="text-navbar-foreground block px-3 py-3 rounded-md text-base font-medium hover:bg-navbar-hover transition-colors"
                   onClick={() => setMenuOpen(false)}
                 >
                   Schedule
                 </Link>
                 <Link
                   href="/dashboard/profile"
-                  className="text-white block px-3 py-3 rounded-md text-base font-medium hover:bg-navy-600 transition-colors"
+                  className="text-navbar-foreground block px-3 py-3 rounded-md text-base font-medium hover:bg-navbar-hover transition-colors"
                   onClick={() => setMenuOpen(false)}
                 >
                   Profile
@@ -190,24 +199,35 @@ export default function DashboardLayout({
                 {user?.role === 'admin' && (
                   <Link
                     href="/dashboard/admin"
-                    className="text-white block px-3 py-3 rounded-md text-base font-medium hover:bg-navy-600 transition-colors"
+                    className="text-navbar-foreground block px-3 py-3 rounded-md text-base font-medium hover:bg-navbar-hover transition-colors"
                     onClick={() => setMenuOpen(false)}
                   >
                     Admin
                   </Link>
                 )}
-                <div className="border-t border-navy-600 pt-4 mt-4">
-                  <div className="px-3 py-2 mb-3">
-                    <div className="text-white font-medium">
-                      {user?.rank && user?.idNumber ? `${user.rank} ${user.name}` : user?.name}
+                <div className="border-t border-navbar-hover/50 pt-4 mt-4">
+                  <div className="px-3 py-2 mb-3 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-navbar-foreground/10 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                      <Image
+                        src="/media/avatar/police-avatar-no-bg.png"
+                        alt="User Avatar"
+                        width={32}
+                        height={32}
+                        className="w-full h-full object-contain"
+                      />
                     </div>
-                    <div className="text-navy-300 text-sm">
-                      {user?.idNumber ? `#${user.idNumber} • ${user?.role}` : user?.role}
+                    <div className="flex-1">
+                      <div className="text-navbar-foreground font-medium">
+                        {user?.rank && user?.idNumber ? `${user.rank} ${user.name}` : user?.name}
+                      </div>
+                      <div className="text-navbar-foreground opacity-70 text-sm">
+                        {user?.idNumber ? `#${user.idNumber} • ${user?.role}` : user?.role}
+                      </div>
                     </div>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="text-white w-full text-left px-3 py-3 rounded-md text-base font-medium hover:bg-navy-600 transition-colors"
+                    className="text-navbar-foreground w-full text-left px-3 py-3 rounded-md text-base font-medium hover:bg-navbar-hover transition-colors"
                   >
                     Logout
                   </button>

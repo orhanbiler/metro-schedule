@@ -2,50 +2,175 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========================================
+   CHEVERLY PD METRO - MODERN THEME
+   Twitter-Inspired Design with OKLCH Colors
+   Single Source of Truth for All Styling
+   ======================================== */
+
 @layer base {
+  /* LIGHT THEME (Twitter-inspired with OKLCH) */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    /* Core Layout */
+    --background: oklch(1.0000 0 0);                        /* Pure white */
+    --foreground: oklch(0.1884 0.0128 248.5103);            /* Dark blue-gray text */
+    
+    /* Cards & Surfaces */
+    --card: oklch(0.9784 0.0011 197.1387);                  /* Off-white cards */
+    --card-foreground: oklch(0.1884 0.0128 248.5103);       /* Dark text on cards */
+    --popover: oklch(1.0000 0 0);                           /* White popover */
+    --popover-foreground: oklch(0.1884 0.0128 248.5103);    /* Dark text in popover */
+    
+    /* Primary Brand (Modern Blue) */
+    --primary: oklch(0.6723 0.1606 244.9955);               /* Modern blue primary */
+    --primary-foreground: oklch(1.0000 0 0);                /* White text on primary */
+    
+    /* Secondary Colors */
+    --secondary: oklch(0.1884 0.0128 248.5103);             /* Dark secondary */
+    --secondary-foreground: oklch(1.0000 0 0);              /* White text on secondary */
+    
+    /* Muted/Subdued */
+    --muted: oklch(0.9222 0.0013 286.3737);                 /* Subtle gray background */
+    --muted-foreground: oklch(0.1884 0.0128 248.5103);      /* Dark muted text */
+    
+    /* Accent Colors */
+    --accent: oklch(0.9392 0.0166 250.8453);                /* Light accent background */
+    --accent-foreground: oklch(0.6723 0.1606 244.9955);     /* Primary blue text on accent */
+    
+    /* Status Colors */
+    --destructive: oklch(0.6188 0.2376 25.7658);            /* Modern red */
+    --destructive-foreground: oklch(1.0000 0 0);            /* White text on red */
+    --success: oklch(0.6907 0.1554 160.3454);               /* Modern green */
+    --success-foreground: oklch(1.0000 0 0);                /* White text on green */
+    --warning: oklch(0.8214 0.1600 82.5337);                /* Modern orange */
+    --warning-foreground: oklch(0.1884 0.0128 248.5103);    /* Dark text on warning */
+    
+    /* Form Elements */
+    --border: oklch(0.9317 0.0118 231.6594);                /* Light border */
+    --input: oklch(0.9809 0.0025 228.7836);                 /* Input background */
+    --ring: oklch(0.6818 0.1584 243.3540);                  /* Focus ring */
+    
+    /* Charts & Data Visualization */
+    --chart-1: oklch(0.6723 0.1606 244.9955);               /* Primary chart color */
+    --chart-2: oklch(0.6907 0.1554 160.3454);               /* Green chart color */
+    --chart-3: oklch(0.8214 0.1600 82.5337);                /* Orange chart color */
+    --chart-4: oklch(0.7064 0.1822 151.7125);               /* Teal chart color */
+    --chart-5: oklch(0.5919 0.2186 10.5826);                /* Red chart color */
+    
+    /* Navbar (Professional Navy Blue) */
+    --navbar-bg: oklch(0.3000 0.1200 244.0000);             /* Professional navy */
+    --navbar-text: oklch(1.0000 0 0);                       /* White text */
+    --navbar-hover: oklch(0.4000 0.1200 244.0000);          /* Lighter navy hover */
+    
+    /* Sidebar (if needed) */
+    --sidebar: oklch(0.9784 0.0011 197.1387);               /* Light sidebar */
+    --sidebar-foreground: oklch(0.1884 0.0128 248.5103);    /* Dark sidebar text */
+    --sidebar-primary: oklch(0.6723 0.1606 244.9955);       /* Primary in sidebar */
+    --sidebar-primary-foreground: oklch(1.0000 0 0);        /* White text */
+    --sidebar-accent: oklch(0.9392 0.0166 250.8453);        /* Sidebar accent */
+    --sidebar-accent-foreground: oklch(0.6723 0.1606 244.9955); /* Primary text */
+    --sidebar-border: oklch(0.9271 0.0101 238.5177);        /* Sidebar border */
+    --sidebar-ring: oklch(0.6818 0.1584 243.3540);          /* Sidebar focus ring */
+    
+    /* Typography */
+    --font-sans: "Open Sans", sans-serif;
+    --font-serif: "Georgia", serif;
+    --font-mono: "Menlo", monospace;
+    
+    /* Border Radius (Compact/Professional) */
     --radius: 0.5rem;
+    
+    /* Shadow System (Subtle) */
+    --shadow-2xs: 0px 1px 2px 0px oklch(0.1884 0.0128 248.5103 / 0.05);
+    --shadow-xs: 0px 1px 3px 0px oklch(0.1884 0.0128 248.5103 / 0.08);
+    --shadow-sm: 0px 2px 4px -1px oklch(0.1884 0.0128 248.5103 / 0.10);
+    --shadow: 0px 4px 6px -1px oklch(0.1884 0.0128 248.5103 / 0.12);
+    --shadow-md: 0px 6px 8px -1px oklch(0.1884 0.0128 248.5103 / 0.14);
+    --shadow-lg: 0px 10px 15px -3px oklch(0.1884 0.0128 248.5103 / 0.16);
+    --shadow-xl: 0px 20px 25px -5px oklch(0.1884 0.0128 248.5103 / 0.18);
+    --shadow-2xl: 0px 25px 50px -12px oklch(0.1884 0.0128 248.5103 / 0.20);
   }
  
+  /* DARK THEME (Modern Dark with OKLCH) */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* Core Layout */
+    --background: oklch(0 0 0);                              /* True black */
+    --foreground: oklch(0.9328 0.0025 228.7857);             /* Off-white text */
+    
+    /* Cards & Surfaces */
+    --card: oklch(0.2097 0.0080 274.5332);                   /* Dark blue-gray cards */
+    --card-foreground: oklch(0.8853 0 0);                    /* Light text on cards */
+    --popover: oklch(0 0 0);                                 /* Black popover */
+    --popover-foreground: oklch(0.9328 0.0025 228.7857);     /* Light text */
+    
+    /* Primary Brand */
+    --primary: oklch(0.6692 0.1607 245.0110);               /* Bright blue primary */
+    --primary-foreground: oklch(1.0000 0 0);                /* White text */
+    
+    /* Secondary Colors */
+    --secondary: oklch(0.9622 0.0035 219.5331);             /* Light secondary */
+    --secondary-foreground: oklch(0.1884 0.0128 248.5103);  /* Dark text */
+    
+    /* Muted/Subdued */
+    --muted: oklch(0.2090 0 0);                             /* Dark muted background */
+    --muted-foreground: oklch(0.5637 0.0078 247.9662);      /* Mid-tone text */
+    
+    /* Accent Colors */
+    --accent: oklch(0.1928 0.0331 242.5459);                /* Dark accent */
+    --accent-foreground: oklch(0.6692 0.1607 245.0110);     /* Bright blue text */
+    
+    /* Status Colors */
+    --destructive: oklch(0.6188 0.2376 25.7658);            /* Red (same as light) */
+    --destructive-foreground: oklch(1.0000 0 0);            /* White text */
+    --success: oklch(0.6907 0.1554 160.3454);               /* Green (same as light) */
+    --success-foreground: oklch(1.0000 0 0);                /* White text */
+    --warning: oklch(0.8214 0.1600 82.5337);                /* Orange (same as light) */
+    --warning-foreground: oklch(0.1884 0.0128 248.5103);    /* Dark text */
+    
+    /* Form Elements */
+    --border: oklch(0.2674 0.0047 248.0045);                /* Dark border */
+    --input: oklch(0.3020 0.0288 244.8244);                 /* Dark input */
+    --ring: oklch(0.6818 0.1584 243.3540);                  /* Blue focus ring */
+    
+    /* Charts (Same as light theme) */
+    --chart-1: oklch(0.6723 0.1606 244.9955);
+    --chart-2: oklch(0.6907 0.1554 160.3454);
+    --chart-3: oklch(0.8214 0.1600 82.5337);
+    --chart-4: oklch(0.7064 0.1822 151.7125);
+    --chart-5: oklch(0.5919 0.2186 10.5826);
+    
+    /* Navbar (Consistent across themes) */
+    --navbar-bg: oklch(0.3000 0.1200 244.0000);             /* Same navy */
+    --navbar-text: oklch(1.0000 0 0);                       /* White text */
+    --navbar-hover: oklch(0.4000 0.1200 244.0000);          /* Same hover */
+    
+    /* Sidebar */
+    --sidebar: oklch(0.2097 0.0080 274.5332);               /* Dark sidebar */
+    --sidebar-foreground: oklch(0.8853 0 0);                /* Light text */
+    --sidebar-primary: oklch(0.6818 0.1584 243.3540);       /* Sidebar primary */
+    --sidebar-primary-foreground: oklch(1.0000 0 0);        /* White text */
+    --sidebar-accent: oklch(0.1928 0.0331 242.5459);        /* Dark accent */
+    --sidebar-accent-foreground: oklch(0.6692 0.1607 245.0110); /* Blue text */
+    --sidebar-border: oklch(0.3795 0.0220 240.5943);        /* Sidebar border */
+    --sidebar-ring: oklch(0.6818 0.1584 243.3540);          /* Focus ring */
+    
+    /* Typography (Same) */
+    --font-sans: "Open Sans", sans-serif;
+    --font-serif: "Georgia", serif;
+    --font-mono: "Menlo", monospace;
+    
+    /* Border Radius (Same) */
+    --radius: 0.5rem;
+    
+    /* Shadow System (Darker) */
+    --shadow-2xs: 0px 1px 2px 0px oklch(0 0 0 / 0.20);
+    --shadow-xs: 0px 1px 3px 0px oklch(0 0 0 / 0.25);
+    --shadow-sm: 0px 2px 4px -1px oklch(0 0 0 / 0.30);
+    --shadow: 0px 4px 6px -1px oklch(0 0 0 / 0.35);
+    --shadow-md: 0px 6px 8px -1px oklch(0 0 0 / 0.40);
+    --shadow-lg: 0px 10px 15px -3px oklch(0 0 0 / 0.45);
+    --shadow-xl: 0px 20px 25px -5px oklch(0 0 0 / 0.50);
+    --shadow-2xl: 0px 25px 50px -12px oklch(0 0 0 / 0.60);
   }
 }
 
@@ -55,5 +180,21 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .text-2xs {
+    font-size: 0.625rem;
+    line-height: 0.75rem;
+  }
+  
+  /* Compact mobile table styling */
+  .table-compact-mobile {
+    @screen sm {
+      .table-compact-mobile {
+        font-size: inherit;
+      }
+    }
   }
 }

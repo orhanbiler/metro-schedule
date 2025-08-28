@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { User as UserIcon, Mail, Calendar, Clock, Shield } from 'lucide-react';
+import Image from 'next/image';
 
 interface User {
   id: string;
@@ -80,8 +80,14 @@ export default function ProfilePage() {
     <div className="space-y-6 max-w-4xl">
       {/* Profile Header */}
       <div className="flex items-start gap-6">
-        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
-          <UserIcon className="w-10 h-10 text-primary" />
+        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
+          <Image
+            src="/media/avatar/police-avatar-no-bg.png"
+            alt="Police Officer Avatar"
+            width={80}
+            height={80}
+            className="w-full h-full object-contain"
+          />
         </div>
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -231,61 +237,6 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      {/* Account Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Actions</CardTitle>
-          <CardDescription>
-            Manage your account settings and preferences
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-start">
-              <div className="font-semibold">Update Profile</div>
-              <div className="text-sm text-muted-foreground mt-1">Change name or email</div>
-            </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-start">
-              <div className="font-semibold">Change Password</div>
-              <div className="text-sm text-muted-foreground mt-1">Update your password</div>
-            </Button>
-            <Button variant="outline" className="h-auto p-4 flex flex-col items-start">
-              <div className="font-semibold">Privacy Settings</div>
-              <div className="text-sm text-muted-foreground mt-1">Manage your privacy</div>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-start"
-              onClick={async () => {
-                try {
-                  const response = await fetch('/api/auth/sync-user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.id }),
-                  });
-                  
-                  if (response.ok) {
-                    const syncedUser = await response.json();
-                    setUser(syncedUser);
-                    localStorage.setItem('user', JSON.stringify(syncedUser));
-                    window.location.reload();
-                  }
-                } catch (error) {
-                  console.error('Sync failed:', error);
-                }
-              }}
-            >
-              <div className="font-semibold">Sync Account</div>
-              <div className="text-sm text-muted-foreground mt-1">Refresh account data</div>
-            </Button>
-          </div>
-          <div className="mt-4 pt-4 border-t">
-            <p className="text-sm text-muted-foreground">
-              Need help? Contact your system administrator or visit the help documentation.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

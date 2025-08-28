@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar, X } from 'lucide-react';
 
 interface HoursDialogProps {
   children: React.ReactNode;
@@ -67,19 +68,19 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="w-[95vw] max-w-md mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Sign Up for Shift</DialogTitle>
-          <DialogDescription>
-            Choose your working hours for this shift. You can work the full scheduled time or customize your hours within the available window.
+          <DialogTitle className="text-sm sm:text-base">Sign Up for Shift</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
+            Choose your working hours for this shift. You can work the full scheduled time or customize your hours.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-6 py-4">
-          <div className="space-y-4">
-            <div className="rounded-lg border p-4 bg-muted/30">
-              <Label className="text-sm font-medium">Available Shift Window</Label>
-              <p className="text-lg font-semibold mt-1">
+        <div className="space-y-4 py-2">
+          <div className="space-y-3">
+            <div className="rounded-md border p-3 bg-muted/30">
+              <Label className="text-xs sm:text-sm font-medium">Available Shift Window</Label>
+              <p className="text-sm sm:text-lg font-semibold mt-1">
                 {originalStart.slice(0, 2)}:{originalStart.slice(2)} - {originalEnd.slice(0, 2)}:{originalEnd.slice(2)}
               </p>
             </div>
@@ -92,18 +93,18 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
                 onChange={(e) => setUseCustomHours(e.target.checked)}
                 className="rounded"
               />
-              <Label htmlFor="customHours" className="text-sm font-medium">
-                I want to work custom hours within this window
+              <Label htmlFor="customHours" className="text-xs sm:text-sm font-medium">
+                Custom hours within this window
               </Label>
             </div>
 
             {useCustomHours && (
-              <div className="grid grid-cols-2 gap-4 p-4 rounded-lg border bg-background">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-md border bg-background">
                 <div className="space-y-2">
-                  <Label htmlFor="startTime">Start Time</Label>
+                  <Label htmlFor="startTime" className="text-xs sm:text-sm">Start Time</Label>
                   <Select value={startTime} onValueChange={setStartTime}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select start time" />
+                    <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
+                      <SelectValue placeholder="Select start" />
                     </SelectTrigger>
                     <SelectContent>
                       {timeOptions
@@ -118,10 +119,10 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="endTime">End Time</Label>
+                  <Label htmlFor="endTime" className="text-xs sm:text-sm">End Time</Label>
                   <Select value={endTime} onValueChange={setEndTime}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select end time" />
+                    <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
+                      <SelectValue placeholder="Select end" />
                     </SelectTrigger>
                     <SelectContent>
                       {timeOptions
@@ -139,12 +140,12 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
             )}
 
             {useCustomHours && startTime && endTime && (
-              <div className="rounded-lg border p-4 bg-primary/10">
-                <Label className="text-sm font-medium">Your Selected Hours</Label>
-                <p className="text-lg font-semibold mt-1">
+              <div className="rounded-md border p-3 bg-primary/10">
+                <Label className="text-xs sm:text-sm font-medium">Your Selected Hours</Label>
+                <p className="text-sm sm:text-lg font-semibold mt-1">
                   {startTime.slice(0, 2)}:{startTime.slice(2)} - {endTime.slice(0, 2)}:{endTime.slice(2)}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                   Total: {(parseInt(endTime) - parseInt(startTime)) / 100} hours
                 </p>
               </div>
@@ -152,15 +153,18 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel}>
-            Cancel
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+          <Button variant="outline" onClick={handleCancel} className="text-xs sm:text-sm">
+            <X className="h-3 w-3 sm:mr-1" />
+            <span className="hidden sm:inline">Cancel</span>
           </Button>
           <Button 
             onClick={handleConfirm}
             disabled={useCustomHours && (!startTime || !endTime)}
+            className="text-xs sm:text-sm"
           >
-            Sign Up for Shift
+            <Calendar className="h-3 w-3 sm:mr-1" />
+            <span className="hidden sm:inline">Sign Up for Shift</span>
           </Button>
         </DialogFooter>
       </DialogContent>

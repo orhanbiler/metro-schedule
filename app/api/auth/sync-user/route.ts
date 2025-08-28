@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Syncing user data for ID:', userId);
+    // Sync user data from Firestore
 
     // Get user document from Firestore using Admin SDK
     const userDocRef = adminDb.collection('users').doc(userId);
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userData = userDoc.data();
-    console.log('Synced user data:', userData?.email, 'Role:', userData?.role);
+    // User data retrieved successfully
 
     // Return updated user data without password
     const syncedUser = {

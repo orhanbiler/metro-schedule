@@ -12,18 +12,17 @@ export async function GET(request: NextRequest) {
     }
 
     const scheduleId = `${year}-${month}`;
-    console.log('GET schedule - Looking for document:', scheduleId);
+    // Looking up schedule document
     
     const scheduleDoc = await adminDb.collection('schedules').doc(scheduleId).get();
-    console.log('GET schedule - Document exists:', scheduleDoc.exists);
+    // Checking if schedule document exists
 
     if (scheduleDoc.exists) {
       const data = scheduleDoc.data();
-      console.log('GET schedule - Document data keys:', Object.keys(data || {}));
-      console.log('GET schedule - Schedule array length:', data?.schedule?.length || 0);
+      // Schedule document found and loaded
       return NextResponse.json(data);
     } else {
-      console.log('GET schedule - No document found, returning empty schedule');
+      // No schedule document found, returning empty schedule
       return NextResponse.json({ schedule: [] });
     }
   } catch (error) {
@@ -36,15 +35,15 @@ export async function POST(request: NextRequest) {
   try {
     const { month, year, schedule } = await request.json();
 
-    console.log('POST /api/schedule - Request received:', { month, year, scheduleLength: schedule?.length });
+    // Processing schedule save request
 
     if (!month || !year || !schedule) {
-      console.error('POST /api/schedule - Missing required fields:', { month, year, schedule: !!schedule });
+      // Missing required fields for schedule save
       return NextResponse.json({ error: 'Month, year, and schedule are required' }, { status: 400 });
     }
 
     const scheduleId = `${year}-${month}`;
-    console.log('POST /api/schedule - Attempting to save schedule with ID:', scheduleId);
+    // Preparing to save schedule
     
     const scheduleData = {
       month,
@@ -53,20 +52,15 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString()
     };
 
-    console.log('POST /api/schedule - Schedule data prepared, calling set...');
+    // Saving schedule data to database
     
     await adminDb.collection('schedules').doc(scheduleId).set(scheduleData, { merge: true });
 
-    console.log('POST /api/schedule - Schedule saved successfully');
+    // Schedule saved successfully
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const err = error as Error & { code?: string };
-    console.error('POST /api/schedule - Error saving schedule:', {
-      message: err.message,
-      code: err.code,
-      stack: err.stack,
-      name: err.name
-    });
+    // Error occurred while saving schedule
     
     // Check for specific Firebase errors
     if (err.code === 'permission-denied') {
