@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   title: "Cheverly PD Metro Schedule",
   description: "Metro schedule management system for Cheverly Police Department",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
