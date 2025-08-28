@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Open_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -12,12 +12,6 @@ const openSans = Open_Sans({
 export const metadata: Metadata = {
   title: "Cheverly PD Metro Schedule",
   description: "Metro schedule management system for Cheverly Police Department",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -27,6 +21,13 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   themeColor: "#1e3a5f",
 };
 

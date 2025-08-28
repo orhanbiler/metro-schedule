@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists in Firestore using Admin SDK
-    const usersRef = adminDb.collection('users');
+    const usersRef = adminDb().collection('users');
     const existingUser = await usersRef.where('email', '==', email).get();
 
     if (!existingUser.empty) {

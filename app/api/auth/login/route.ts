@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Check Firestore for regular users using Admin SDK
     try {
-      const usersRef = adminDb.collection('users');
+      const usersRef = adminDb().collection('users');
       const querySnapshot = await usersRef.where('email', '==', email).get();
 
       if (querySnapshot.empty) {

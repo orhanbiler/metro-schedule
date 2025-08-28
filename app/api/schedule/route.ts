@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const scheduleId = `${year}-${month}`;
     // Looking up schedule document
     
-    const scheduleDoc = await adminDb.collection('schedules').doc(scheduleId).get();
+    const scheduleDoc = await adminDb().collection('schedules').doc(scheduleId).get();
     // Checking if schedule document exists
 
     if (scheduleDoc.exists) {
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     // Saving schedule data to database
     
-    await adminDb.collection('schedules').doc(scheduleId).set(scheduleData, { merge: true });
+    await adminDb().collection('schedules').doc(scheduleId).set(scheduleData, { merge: true });
 
     // Schedule saved successfully
     return NextResponse.json({ success: true });
