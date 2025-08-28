@@ -637,16 +637,16 @@ export default function SchedulePage() {
                 tableData.push([
                   slot.morningSlot.officers.length === 0 && i === 0 ? `${slot.dayName} ${formatDate(slot.date)}` : '',
                   `${slot.morningSlot.time.slice(0, 4)}-${slot.morningSlot.time.slice(4)}`,
-                  'Available'
+                  ''  // Leave blank instead of 'Available'
                 ]);
               }
             } else {
-              // No officers, show available slots
+              // No officers, show empty slots
               for (let i = 0; i < slot.morningSlot.maxOfficers; i++) {
                 tableData.push([
                   i === 0 ? `${slot.dayName} ${formatDate(slot.date)}` : '',
                   `${slot.morningSlot.time.slice(0, 4)}-${slot.morningSlot.time.slice(4)}`,
-                  'Available'
+                  ''  // Leave blank instead of 'Available'
                 ]);
               }
             }
@@ -669,16 +669,16 @@ export default function SchedulePage() {
                 tableData.push([
                   '',
                   `and/or ${slot.afternoonSlot.time.slice(0, 4)}-${slot.afternoonSlot.time.slice(4)}`,
-                  'Available'
+                  ''  // Leave blank instead of 'Available'
                 ]);
               }
             } else {
-              // No officers, show available slots
+              // No officers, show empty slots
               for (let i = 0; i < slot.afternoonSlot.maxOfficers; i++) {
                 tableData.push([
                   '',
                   `and/or ${slot.afternoonSlot.time.slice(0, 4)}-${slot.afternoonSlot.time.slice(4)}`,
-                  'Available'
+                  ''  // Leave blank instead of 'Available'
                 ]);
               }
             }
@@ -846,9 +846,9 @@ export default function SchedulePage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-navy-900 text-white">
-                  <th className="text-left p-2 sm:p-3 font-semibold text-xs sm:text-sm">Date/Time</th>
-                  <th className="text-left p-2 sm:p-3 font-semibold text-xs sm:text-sm">Officer Name</th>
-                  <th className="text-center p-2 sm:p-3 font-semibold text-xs sm:text-sm">Action</th>
+                  <th className="text-left p-2 sm:p-2 font-semibold text-xs sm:text-sm">Date/Time</th>
+                  <th className="text-left p-2 sm:p-2 font-semibold text-xs sm:text-sm">Officer Name</th>
+                  <th className="text-center p-2 sm:p-2 font-semibold text-xs sm:text-sm">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -862,7 +862,7 @@ export default function SchedulePage() {
                   schedule.map((slot) => (
                     <React.Fragment key={slot.id}>
                       <tr key={`${slot.id}-morning`} className="border-t hover:bg-muted/50">
-                        <td className="p-2 sm:p-3">
+                        <td className="p-2 sm:py-1.5 sm:px-2">
                           <div className="font-semibold text-foreground text-2xs sm:text-sm">
                             <div className="sm:hidden">
                               {new Date(slot.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
@@ -873,11 +873,11 @@ export default function SchedulePage() {
                             {displayTime(slot.morningSlot.time)}
                           </div>
                         </td>
-                        <td className="p-2 sm:p-3">
+                        <td className="p-2 sm:py-1.5 sm:px-2">
                           {slot.morningSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.morningSlot.officers.map((officer, index) => (
-                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-1.5 sm:p-2 rounded-md">
+                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-1.5 sm:p-1.5 rounded-md">
                                   <div className="flex-1 min-w-0">
                                     <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}>
                                       {officer.name}
@@ -936,7 +936,7 @@ export default function SchedulePage() {
                             <span className="text-2xs sm:text-sm text-muted-foreground italic">Available ({slot.morningSlot.maxOfficers} slots)</span>
                           )}
                         </td>
-                        <td className="p-2 sm:p-3 text-center">
+                        <td className="p-2 sm:py-1.5 sm:px-2 text-center">
                           {(() => {
                             const userSignedUp = hasUserSignedUpForSlot(slot.date, 'morning');
                             const slotsAvailable = slot.morningSlot.officers.length < slot.morningSlot.maxOfficers;
@@ -980,17 +980,17 @@ export default function SchedulePage() {
                         </td>
                       </tr>
                       <tr key={`${slot.id}-afternoon`} className="border-t bg-muted/30 hover:bg-muted/50">
-                        <td className="p-2 sm:p-3">
+                        <td className="p-2 sm:py-1.5 sm:px-2">
                           <div className="text-2xs sm:text-sm text-muted-foreground ml-2 sm:ml-4">
                             <span className="sm:hidden">or</span>
                             <span className="hidden sm:inline">and/or</span> {displayTime(slot.afternoonSlot.time)}
                           </div>
                         </td>
-                        <td className="p-2 sm:p-3">
+                        <td className="p-2 sm:py-1.5 sm:px-2">
                           {slot.afternoonSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.afternoonSlot.officers.map((officer, index) => (
-                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-1.5 sm:p-2 rounded-md">
+                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-1.5 sm:p-1.5 rounded-md">
                                   <div className="flex-1 min-w-0">
                                     <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}>
                                       {officer.name}
@@ -1049,7 +1049,7 @@ export default function SchedulePage() {
                             <span className="text-2xs sm:text-sm text-muted-foreground italic">Available ({slot.afternoonSlot.maxOfficers} slots)</span>
                           )}
                         </td>
-                        <td className="p-2 sm:p-3 text-center">
+                        <td className="p-2 sm:py-1.5 sm:px-2 text-center">
                           {(() => {
                             const userSignedUp = hasUserSignedUpForSlot(slot.date, 'afternoon');
                             const slotsAvailable = slot.afternoonSlot.officers.length < slot.afternoonSlot.maxOfficers;
