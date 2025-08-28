@@ -113,9 +113,8 @@ export default function SchedulePage() {
       const response = await fetch('/api/admin/users');
       if (response.ok) {
         const users = await response.json();
-        // Filter to only officers (not admins) for schedule assignment
-        const officers = users.filter((u: User) => u.role === 'user');
-        setAllUsers(officers);
+        // Get all users for schedule assignment (including admins)
+        setAllUsers(users);
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -928,7 +927,7 @@ export default function SchedulePage() {
                                 ) : null}
                                 {isAdmin && slotsAvailable && (
                                   <AdminAssignDialog
-                                    users={allUsers.filter(u => u.role === 'user')}
+                                    users={allUsers}
                                     originalTime={slot.morningSlot.time}
                                     onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
                                     disabled={loading}
@@ -1038,7 +1037,7 @@ export default function SchedulePage() {
                                 ) : null}
                                 {isAdmin && slotsAvailable && (
                                   <AdminAssignDialog
-                                    users={allUsers.filter(u => u.role === 'user')}
+                                    users={allUsers}
                                     originalTime={slot.afternoonSlot.time}
                                     onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
                                     disabled={loading}
