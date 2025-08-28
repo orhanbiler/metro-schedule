@@ -841,7 +841,7 @@ export default function SchedulePage() {
                           {slot.morningSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.morningSlot.officers.map((officer, index) => (
-                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-2 sm:p-2 rounded-md">
+                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-1.5 sm:p-2 rounded-md">
                                   <div className="flex-1 min-w-0">
                                     <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}>
                                       {officer.name}
@@ -856,11 +856,11 @@ export default function SchedulePage() {
                                         <Button
                                           size="sm"
                                           variant="destructive"
-                                          className="h-10 w-10 sm:h-8 sm:w-8 p-0 ml-2 flex-shrink-0 rounded-md"
+                                          className="h-8 w-8 sm:h-7 sm:w-7 p-0 ml-2 flex-shrink-0 rounded-md"
                                           disabled={loading}
                                           title={`Remove ${officer.name}`}
                                         >
-                                          <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
+                                          <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                                         </Button>
                                       </AlertDialogTrigger>
                                       <AlertDialogContent>
@@ -951,7 +951,7 @@ export default function SchedulePage() {
                           {slot.afternoonSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.afternoonSlot.officers.map((officer, index) => (
-                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-2 sm:p-2 rounded-md">
+                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-1.5 sm:p-2 rounded-md">
                                   <div className="flex-1 min-w-0">
                                     <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}>
                                       {officer.name}
@@ -966,11 +966,11 @@ export default function SchedulePage() {
                                         <Button
                                           size="sm"
                                           variant="destructive"
-                                          className="h-10 w-10 sm:h-8 sm:w-8 p-0 ml-2 flex-shrink-0 rounded-md"
+                                          className="h-8 w-8 sm:h-7 sm:w-7 p-0 ml-2 flex-shrink-0 rounded-md"
                                           disabled={loading}
                                           title={`Remove ${officer.name}`}
                                         >
-                                          <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
+                                          <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                                         </Button>
                                       </AlertDialogTrigger>
                                       <AlertDialogContent>
