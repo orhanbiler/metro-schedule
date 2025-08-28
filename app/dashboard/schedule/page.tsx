@@ -60,6 +60,30 @@ export default function SchedulePage() {
     return user?.name || 'Current Officer';
   };
 
+  const isShiftWithinDays = (shiftDate: Date, days: number): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset to start of day
+    const shift = new Date(shiftDate);
+    shift.setHours(0, 0, 0, 0); // Reset to start of day
+    const diffTime = shift.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= days;
+  };
+
+  const canUserRemoveFromShift = (officer: Officer, shiftDate: Date): boolean => {
+    // Admin can always remove anyone
+    if (user?.role === 'admin') return true;
+    
+    // Regular users can only remove themselves
+    const isOwnShift = officer.name === getCurrentOfficerFormatted() || officer.name === user?.name;
+    if (!isOwnShift) return false;
+    
+    // Cannot remove if shift is within 2 days
+    if (isShiftWithinDays(shiftDate, 2)) return false;
+    
+    return true;
+  };
+
   const hasUserSignedUpForSlot = (date: Date, slotType: 'morning' | 'afternoon') => {
     const currentOfficerName = getCurrentOfficerFormatted();
     const targetSlot = schedule.find(slot => 
@@ -849,7 +873,7 @@ export default function SchedulePage() {
                                       <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
                                     )}
                                   </div>
-                                  {user?.role === 'admin' && (
+                                  {canUserRemoveFromShift(officer, slot.date) && (
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
                                         <Button
@@ -857,17 +881,20 @@ export default function SchedulePage() {
                                           variant="destructive"
                                           className="h-8 w-8 sm:h-7 sm:w-7 p-0 ml-2 flex-shrink-0 rounded-md"
                                           disabled={loading}
-                                          title={`Remove ${officer.name}`}
+                                          title={isShiftWithinDays(slot.date, 2) ? 'Cannot remove - shift is within 2 days' : `Remove ${officer.name}`}
                                         >
                                           <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                                         </Button>
                                       </AlertDialogTrigger>
                                       <AlertDialogContent>
                                         <AlertDialogHeader>
-                                          <AlertDialogTitle>Remove Officer from Shift</AlertDialogTitle>
+                                          <AlertDialogTitle>Remove {user?.role === 'admin' ? 'Officer' : 'Yourself'} from Shift</AlertDialogTitle>
                                           <AlertDialogDescription>
                                             Are you sure you want to remove <strong>{officer.name}</strong> from this shift on {slot.dayName} {formatDate(slot.date)}?
                                             <br /><br />
+                                            {user?.role !== 'admin' && (
+                                              <>Note: You cannot remove yourself from shifts within 2 days of the scheduled date.<br /><br /></>
+                                            )}
                                             This action cannot be undone and will make the slot available for other officers to sign up.
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
@@ -878,7 +905,7 @@ export default function SchedulePage() {
                                             disabled={loading}
                                             className="bg-red-600 hover:bg-red-700"
                                           >
-                                            Remove Officer
+                                            {user?.role === 'admin' ? 'Remove Officer' : 'Remove Me'}
                                           </AlertDialogAction>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
@@ -959,7 +986,7 @@ export default function SchedulePage() {
                                       <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
                                     )}
                                   </div>
-                                  {user?.role === 'admin' && (
+                                  {canUserRemoveFromShift(officer, slot.date) && (
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
                                         <Button
@@ -967,17 +994,20 @@ export default function SchedulePage() {
                                           variant="destructive"
                                           className="h-8 w-8 sm:h-7 sm:w-7 p-0 ml-2 flex-shrink-0 rounded-md"
                                           disabled={loading}
-                                          title={`Remove ${officer.name}`}
+                                          title={isShiftWithinDays(slot.date, 2) ? 'Cannot remove - shift is within 2 days' : `Remove ${officer.name}`}
                                         >
                                           <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                                         </Button>
                                       </AlertDialogTrigger>
                                       <AlertDialogContent>
                                         <AlertDialogHeader>
-                                          <AlertDialogTitle>Remove Officer from Shift</AlertDialogTitle>
+                                          <AlertDialogTitle>Remove {user?.role === 'admin' ? 'Officer' : 'Yourself'} from Shift</AlertDialogTitle>
                                           <AlertDialogDescription>
                                             Are you sure you want to remove <strong>{officer.name}</strong> from this afternoon shift on {slot.dayName} {formatDate(slot.date)}?
                                             <br /><br />
+                                            {user?.role !== 'admin' && (
+                                              <>Note: You cannot remove yourself from shifts within 2 days of the scheduled date.<br /><br /></>
+                                            )}
                                             This action cannot be undone and will make the slot available for other officers to sign up.
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
@@ -988,7 +1018,7 @@ export default function SchedulePage() {
                                             disabled={loading}
                                             className="bg-red-600 hover:bg-red-700"
                                           >
-                                            Remove Officer
+                                            {user?.role === 'admin' ? 'Remove Officer' : 'Remove Me'}
                                           </AlertDialogAction>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
