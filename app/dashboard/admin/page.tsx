@@ -313,110 +313,68 @@ export default function AdminPage() {
             View and manage all system users
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6">
           {loading ? (
             <div className="flex justify-center p-8">
               <div className="text-muted-foreground">Loading users...</div>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-lg border">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-navy-900 text-white">
-                    <th className="text-left p-3 font-semibold">User</th>
-                    <th className="text-left p-3 font-semibold">Role</th>
-                    <th className="text-left p-3 font-semibold">Status</th>
-                    <th className="text-left p-3 font-semibold">Joined</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="text-center p-8 text-muted-foreground">
-                        No users found
-                      </td>
+            <div className="overflow-x-auto">
+              <div className="min-w-[640px] rounded-lg border">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-navy-900 text-white">
+                      <th className="text-left p-3 font-semibold whitespace-nowrap">User</th>
+                      <th className="text-left p-3 font-semibold whitespace-nowrap">Role</th>
+                      <th className="text-left p-3 font-semibold whitespace-nowrap">Status</th>
+                      <th className="text-left p-3 font-semibold whitespace-nowrap">Joined</th>
                     </tr>
-                  ) : (
-                    users.map((user, index) => (
-                      <tr key={user.id} className={`border-t hover:bg-muted/50 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}>
-                        <td className="p-3">
-                          <div>
-                            <div className="font-semibold">
-                              {user.rank && user.idNumber ? `${user.rank} ${user.name} #${user.idNumber}` : user.name}
-                            </div>
-                            <div className="text-sm text-muted-foreground">{user.email}</div>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <Badge 
-                            variant={user.role === 'admin' ? 'default' : 'secondary'}
-                            className={user.role === 'admin' ? 'bg-navy-800 text-white' : ''}
-                          >
-                            {user.role}
-                          </Badge>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span className="text-sm">Active</span>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="text-sm">
-                            {formatDate(user.createdAt)}
-                          </div>
+                  </thead>
+                  <tbody>
+                    {users.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="text-center p-8 text-muted-foreground">
+                          No users found
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      users.map((user, index) => (
+                        <tr key={user.id} className={`border-t hover:bg-muted/50 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}>
+                          <td className="p-3">
+                            <div className="min-w-[200px]">
+                              <div className="font-semibold whitespace-nowrap">
+                                {user.rank && user.idNumber ? `${user.rank} ${user.name} #${user.idNumber}` : user.name}
+                              </div>
+                              <div className="text-sm text-muted-foreground break-all">{user.email}</div>
+                            </div>
+                          </td>
+                          <td className="p-3 whitespace-nowrap">
+                            <Badge 
+                              variant={user.role === 'admin' ? 'default' : 'secondary'}
+                              className={user.role === 'admin' ? 'bg-navy-800 text-white' : ''}
+                            >
+                              {user.role}
+                            </Badge>
+                          </td>
+                          <td className="p-3 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="text-sm">Active</span>
+                            </div>
+                          </td>
+                          <td className="p-3 whitespace-nowrap">
+                            <div className="text-sm">
+                              {formatDate(user.createdAt)}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common administrative tasks</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-start"
-              onClick={() => toast.success('Feature coming soon!')}
-            >
-              <div className="font-semibold">Export User Data</div>
-              <div className="text-sm text-muted-foreground mt-1">Download user list as CSV</div>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-start"
-              onClick={() => toast.success('Navigate to Schedule page to manage shifts')}
-            >
-              <div className="font-semibold">Manage Schedule</div>
-              <div className="text-sm text-muted-foreground mt-1">Add or remove shift assignments</div>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-start"
-              onClick={() => window.location.reload()}
-            >
-              <div className="font-semibold">Refresh Data</div>
-              <div className="text-sm text-muted-foreground mt-1">Update user and schedule information</div>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-start"
-              onClick={() => toast.success('System status: All services operational')}
-            >
-              <div className="font-semibold">System Status</div>
-              <div className="text-sm text-muted-foreground mt-1">Check system health</div>
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
