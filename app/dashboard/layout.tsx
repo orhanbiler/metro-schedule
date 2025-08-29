@@ -30,7 +30,7 @@ export default function DashboardLayout({
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center flex-1 min-w-0">
                 <div className="flex-shrink-0 flex items-center gap-3">
-                  <div className="relative h-16 w-[72px] sm:w-[76px] lg:w-20 xl:w-24">
+                  <div className="relative h-16 w-[72px] sm:w-[72px] lg:w-[76px] xl:w-20">
                     <Image 
                       src="/logo-cool.png" 
                       alt="Cheverly Police Department" 
@@ -38,7 +38,11 @@ export default function DashboardLayout({
                       height={120}
                       quality={100}
                       priority
-                      className="absolute top-1/2 -translate-y-1/2 left-0 rounded w-[72px] h-[72px] sm:w-[76px] sm:h-[76px] lg:w-20 lg:h-20 xl:w-24 xl:h-24"
+                      className="absolute left-0 rounded w-[72px] h-[72px] sm:w-[72px] sm:h-[72px] lg:w-[76px] lg:h-[76px] xl:w-20 xl:h-20"
+                      style={{ 
+                        top: '50%',
+                        transform: 'translateY(-45%)'
+                      }}
                     />
                   </div>
                   <h1 className="text-navbar-foreground text-lg sm:text-xl font-bold truncate">
