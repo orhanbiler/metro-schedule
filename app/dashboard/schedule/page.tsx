@@ -1159,8 +1159,8 @@ export default function SchedulePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>My Scheduled Shifts</CardTitle>
-          <CardDescription>Your upcoming overtime assignments</CardDescription>
+          <CardTitle>My Scheduled Shifts - {monthNames[selectedMonth]} {selectedYear}</CardTitle>
+          <CardDescription>Your overtime assignments for {monthNames[selectedMonth]} {selectedYear}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -1181,7 +1181,7 @@ export default function SchedulePage() {
                 </div>
               ))
             ) : (
-              <p className="text-muted-foreground">No shifts scheduled</p>
+              <p className="text-muted-foreground">No shifts scheduled for {monthNames[selectedMonth]} {selectedYear}</p>
             )}
           </div>
         </CardContent>
