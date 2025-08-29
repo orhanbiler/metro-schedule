@@ -733,7 +733,8 @@ export default function SchedulePage() {
               lineWidth: 0.1,
               lineColor: [200, 200, 200],
               font: 'helvetica',
-              fillColor: false, // No background color for cells
+              fillColor: [255, 255, 255], // Explicitly set white background
+              textColor: [0, 0, 0], // Black text
             },
             headStyles: {
               fillColor: [25, 35, 120], // Professional navy blue
@@ -744,12 +745,14 @@ export default function SchedulePage() {
               minCellHeight: 8,
               cellPadding: 2,
             },
+            bodyStyles: {
+              fillColor: [255, 255, 255], // Explicitly set white background for body cells
+            },
             columnStyles: {
               0: { cellWidth: 45, halign: 'left', fontStyle: 'bold' }, // Date column
               1: { cellWidth: 35, halign: 'center' }, // Time column  
               2: { cellWidth: 'auto', halign: 'left' }, // Officer column
             },
-            // Removed alternateRowStyles to eliminate alternating row colors
             tableLineColor: [180, 180, 180],
             tableLineWidth: 0.15,
             rowPageBreak: 'avoid',
