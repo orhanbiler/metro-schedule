@@ -30,16 +30,16 @@ export default function DashboardLayout({
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center flex-1 min-w-0">
                 <div className="flex-shrink-0 flex items-center gap-3 relative">
-                  <div className="relative sm:absolute sm:-top-2 sm:left-0">
+                  <div className="relative sm:absolute sm:-top-3 sm:left-0 lg:-top-4">
                     <Image 
                       src="/logo-cool.png" 
                       alt="Cheverly Police Department" 
                       width={32} 
                       height={32}
-                      className="rounded sm:w-12 sm:h-12 lg:w-14 lg:h-14"
+                      className="rounded sm:w-14 sm:h-14 lg:w-20 lg:h-20 xl:w-24 xl:h-24"
                     />
                   </div>
-                  <h1 className="text-navbar-foreground text-lg sm:text-xl font-bold truncate sm:ml-14 lg:ml-16">
+                  <h1 className="text-navbar-foreground text-lg sm:text-xl font-bold truncate sm:ml-16 lg:ml-24 xl:ml-28">
                     <span className="hidden lg:inline">Cheverly PD Metro</span>
                     <span className="lg:hidden">Cheverly PD</span>
                   </h1>
