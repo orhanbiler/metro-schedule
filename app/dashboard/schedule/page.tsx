@@ -70,9 +70,36 @@ export default function SchedulePage() {
     return diffDays <= days;
   };
 
+  const isPastMonth = (): boolean => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    
+    // If selected year is before current year, it's in the past
+    if (selectedYear < currentYear) return true;
+    
+    // If same year but selected month is before current month, it's in the past
+    if (selectedYear === currentYear && selectedMonth < currentMonth) return true;
+    
+    return false;
+  };
+
+  const canUserModifySchedule = (): boolean => {
+    // Admins can always modify any schedule
+    if (user?.role === 'admin') return true;
+    
+    // Regular users cannot modify past months
+    if (isPastMonth()) return false;
+    
+    return true;
+  };
+
   const canUserRemoveFromShift = (officer: Officer, shiftDate: Date): boolean => {
     // Admin can always remove anyone
     if (user?.role === 'admin') return true;
+    
+    // Check if schedule can be modified
+    if (!canUserModifySchedule()) return false;
     
     // Regular users can only remove themselves
     const isOwnShift = officer.name === getCurrentOfficerFormatted() || officer.name === user?.name;
@@ -349,6 +376,12 @@ export default function SchedulePage() {
 
 
   const handleSignUp = async (slotId: string, slotType: 'morning' | 'afternoon', customHours: string) => {
+    // Check if user can modify schedule
+    if (!canUserModifySchedule()) {
+      toast.error('Cannot modify past months\' schedules. Only current and future months can be edited.');
+      return;
+    }
+    
     if (!user?.name) {
       toast.error('User authentication failed. Please log in again.');
       return;
@@ -435,6 +468,12 @@ export default function SchedulePage() {
     // Check permissions
     const isAdmin = user?.role === 'admin';
     const isOwnShift = officerToRemove === getCurrentOfficerFormatted() || officerToRemove === user?.name;
+    
+    // Check if user can modify schedule (past month restriction)
+    if (!isAdmin && isPastMonth()) {
+      toast.error('Cannot modify past months\' schedules. Only current and future months can be edited.');
+      return;
+    }
     
     if (!isAdmin && !isOwnShift) {
       toast.error('You can only remove yourself from shifts.');
@@ -792,9 +831,16 @@ export default function SchedulePage() {
             <div>
               <CardTitle className="text-2xl font-bold">
                 Metro Sign Up Schedule - {monthNames[selectedMonth]} {selectedYear}
+                {isPastMonth() && user?.role !== 'admin' && (
+                  <span className="ml-3 text-sm font-normal text-orange-600">(Read-only - Past Month)</span>
+                )}
               </CardTitle>
               <CardDescription>
-                Sign up for available overtime shifts at Cheverly Metro Station
+                {isPastMonth() && user?.role !== 'admin' ? (
+                  <span className="text-orange-600">This is a past month&apos;s schedule. Modifications are not allowed.</span>
+                ) : (
+                  'Sign up for available overtime shifts at Cheverly Metro Station'
+                )}
               </CardDescription>
             </div>
             {user?.role === 'admin' && (
@@ -942,9 +988,15 @@ export default function SchedulePage() {
                             const userSignedUp = hasUserSignedUpForSlot(slot.date, 'morning');
                             const slotsAvailable = slot.morningSlot.officers.length < slot.morningSlot.maxOfficers;
                             const isAdmin = user?.role === 'admin';
+                            const canModify = canUserModifySchedule();
                             
                             if (!slotsAvailable && !userSignedUp) {
                               return <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.morningSlot.officers.length}/{slot.morningSlot.maxOfficers})</span>;
+                            }
+                            
+                            // Show message for past months for regular users
+                            if (!isAdmin && !canModify && slotsAvailable && !userSignedUp) {
+                              return <span className="text-xs sm:text-sm text-muted-foreground italic">Past month</span>;
                             }
                             
                             return (
@@ -954,7 +1006,7 @@ export default function SchedulePage() {
                                     <Calendar className="h-3 w-3 sm:mr-1" />
                                     <span className="hidden sm:inline">Signed up</span>
                                   </span>
-                                ) : slotsAvailable ? (
+                                ) : slotsAvailable && canModify ? (
                                   <HoursDialog
                                     originalTime={slot.morningSlot.time}
                                     onConfirm={(customHours) => handleSignUp(slot.id, 'morning', customHours)}
@@ -1055,9 +1107,15 @@ export default function SchedulePage() {
                             const userSignedUp = hasUserSignedUpForSlot(slot.date, 'afternoon');
                             const slotsAvailable = slot.afternoonSlot.officers.length < slot.afternoonSlot.maxOfficers;
                             const isAdmin = user?.role === 'admin';
+                            const canModify = canUserModifySchedule();
                             
                             if (!slotsAvailable && !userSignedUp) {
                               return <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.afternoonSlot.officers.length}/{slot.afternoonSlot.maxOfficers})</span>;
+                            }
+                            
+                            // Show message for past months for regular users
+                            if (!isAdmin && !canModify && slotsAvailable && !userSignedUp) {
+                              return <span className="text-xs sm:text-sm text-muted-foreground italic">Past month</span>;
                             }
                             
                             return (
@@ -1067,7 +1125,7 @@ export default function SchedulePage() {
                                     <Calendar className="h-3 w-3 sm:mr-1" />
                                     <span className="hidden sm:inline">Signed up</span>
                                   </span>
-                                ) : slotsAvailable ? (
+                                ) : slotsAvailable && canModify ? (
                                   <HoursDialog
                                     originalTime={slot.afternoonSlot.time}
                                     onConfirm={(customHours) => handleSignUp(slot.id, 'afternoon', customHours)}
