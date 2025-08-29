@@ -817,8 +817,8 @@ export default function SchedulePage() {
   return (
     <div className="space-y-6">
 
-      <Card>
-        <CardHeader>
+      <Card className="sm:mx-0 -mx-2">
+        <CardHeader className="px-3 py-3 sm:p-6">
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="text-2xl font-bold">
@@ -848,7 +848,7 @@ export default function SchedulePage() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 pb-3 sm:p-6 pt-0 sm:pt-0">
           <div className="flex gap-4 mb-6">
             <div className="flex gap-2">
               <Label className="self-center">Month:</Label>
@@ -885,8 +885,8 @@ export default function SchedulePage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-navy-900 text-white">
-                  <th className="text-left p-2 sm:p-2 font-semibold text-xs sm:text-sm">Date/Time</th>
-                  <th className="text-left p-2 sm:p-2 font-semibold text-xs sm:text-sm">Officer Name</th>
+                  <th className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Date/Time</th>
+                  <th className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Officer Name</th>
                   <th className="text-center p-2 sm:p-2 font-semibold text-xs sm:text-sm">Action</th>
                 </tr>
               </thead>
@@ -901,7 +901,7 @@ export default function SchedulePage() {
                   schedule.map((slot) => (
                     <React.Fragment key={slot.id}>
                       <tr key={`${slot.id}-morning`} className="border-t hover:bg-muted/50">
-                        <td className="p-2 sm:py-1.5 sm:px-2">
+                        <td className="p-1.5 sm:py-1.5 sm:px-2">
                           <div className="font-semibold text-foreground text-2xs sm:text-sm">
                             <div className="sm:hidden">
                               {new Date(slot.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
@@ -912,11 +912,11 @@ export default function SchedulePage() {
                             {displayTime(slot.morningSlot.time)}
                           </div>
                         </td>
-                        <td className="p-2 sm:py-1.5 sm:px-2">
+                        <td className="p-1.5 sm:py-1.5 sm:px-2">
                           {slot.morningSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.morningSlot.officers.map((officer, index) => (
-                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-1.5 sm:p-1.5 rounded-md">
+                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-1 sm:gap-2 bg-muted/30 p-1 sm:p-1.5 rounded-md">
                                   <div className="flex-1 min-w-0">
                                     <span 
                                       className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}
@@ -934,11 +934,11 @@ export default function SchedulePage() {
                                         <Button
                                           size="sm"
                                           variant="destructive"
-                                          className="h-8 w-8 sm:h-7 sm:w-7 p-0 ml-2 flex-shrink-0 rounded-md"
+                                          className="h-6 w-6 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
                                           disabled={loading}
                                           title={isShiftWithinDays(slot.date, 2) ? 'Cannot remove - shift is within 2 days' : `Remove ${officer.name}`}
                                         >
-                                          <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                                          <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                         </Button>
                                       </AlertDialogTrigger>
                                       <AlertDialogContent>
@@ -978,7 +978,7 @@ export default function SchedulePage() {
                             <span className="text-2xs sm:text-sm text-muted-foreground italic">Available ({slot.morningSlot.maxOfficers} slots)</span>
                           )}
                         </td>
-                        <td className="p-2 sm:py-1.5 sm:px-2 text-center">
+                        <td className="p-1.5 sm:py-1.5 sm:px-2 text-center">
                           {(() => {
                             const userSignedUp = hasUserSignedUpForSlot(slot.date, 'morning');
                             const slotsAvailable = slot.morningSlot.officers.length < slot.morningSlot.maxOfficers;
@@ -1007,8 +1007,8 @@ export default function SchedulePage() {
                                     onConfirm={(customHours) => handleSignUp(slot.id, 'morning', customHours)}
                                     onCancel={() => {}}
                                   >
-                                    <Button size="sm" disabled={loading} className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
-                                      <Plus className="h-4 w-4 sm:mr-1" />
+                                    <Button size="sm" disabled={loading} className="h-6 w-6 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
+                                      <Plus className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
                                       <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
                                     </Button>
                                   </HoursDialog>
@@ -1028,17 +1028,17 @@ export default function SchedulePage() {
                         </td>
                       </tr>
                       <tr key={`${slot.id}-afternoon`} className="border-t bg-muted/30 hover:bg-muted/50">
-                        <td className="p-2 sm:py-1.5 sm:px-2">
+                        <td className="p-1.5 sm:py-1.5 sm:px-2">
                           <div className="text-2xs sm:text-sm text-muted-foreground ml-2 sm:ml-4">
                             <span className="sm:hidden">or</span>
                             <span className="hidden sm:inline">and/or</span> {displayTime(slot.afternoonSlot.time)}
                           </div>
                         </td>
-                        <td className="p-2 sm:py-1.5 sm:px-2">
+                        <td className="p-1.5 sm:py-1.5 sm:px-2">
                           {slot.afternoonSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.afternoonSlot.officers.map((officer, index) => (
-                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-1.5 sm:p-1.5 rounded-md">
+                                <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-1 sm:gap-2 bg-muted/30 p-1 sm:p-1.5 rounded-md">
                                   <div className="flex-1 min-w-0">
                                     <span 
                                       className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}
@@ -1056,11 +1056,11 @@ export default function SchedulePage() {
                                         <Button
                                           size="sm"
                                           variant="destructive"
-                                          className="h-8 w-8 sm:h-7 sm:w-7 p-0 ml-2 flex-shrink-0 rounded-md"
+                                          className="h-6 w-6 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
                                           disabled={loading}
                                           title={isShiftWithinDays(slot.date, 2) ? 'Cannot remove - shift is within 2 days' : `Remove ${officer.name}`}
                                         >
-                                          <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                                          <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                         </Button>
                                       </AlertDialogTrigger>
                                       <AlertDialogContent>
@@ -1100,7 +1100,7 @@ export default function SchedulePage() {
                             <span className="text-2xs sm:text-sm text-muted-foreground italic">Available ({slot.afternoonSlot.maxOfficers} slots)</span>
                           )}
                         </td>
-                        <td className="p-2 sm:py-1.5 sm:px-2 text-center">
+                        <td className="p-1.5 sm:py-1.5 sm:px-2 text-center">
                           {(() => {
                             const userSignedUp = hasUserSignedUpForSlot(slot.date, 'afternoon');
                             const slotsAvailable = slot.afternoonSlot.officers.length < slot.afternoonSlot.maxOfficers;
@@ -1129,8 +1129,8 @@ export default function SchedulePage() {
                                     onConfirm={(customHours) => handleSignUp(slot.id, 'afternoon', customHours)}
                                     onCancel={() => {}}
                                   >
-                                    <Button size="sm" disabled={loading} className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
-                                      <Plus className="h-4 w-4 sm:mr-1" />
+                                    <Button size="sm" disabled={loading} className="h-6 w-6 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
+                                      <Plus className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
                                       <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
                                     </Button>
                                   </HoursDialog>
