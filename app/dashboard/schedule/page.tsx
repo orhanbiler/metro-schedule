@@ -923,8 +923,8 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          <div className="border rounded-md overflow-x-auto">
-            <table className="w-full min-w-[600px]">
+          <div className="border rounded-md overflow-x-auto sm:overflow-hidden">
+            <table className="w-full sm:min-w-0 min-w-[600px]">
               <thead>
                 <tr className="bg-navy-900 text-white">
                   <th className="text-left p-2 sm:p-2 font-semibold text-xs sm:text-sm">Date/Time</th>
@@ -964,7 +964,8 @@ export default function SchedulePage() {
                                       className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}
                                       title={officer.name}
                                     >
-                                      {formatOfficerNameForDisplay(officer.name)}
+                                      <span className="sm:hidden">{formatOfficerNameForDisplay(officer.name)}</span>
+                                      <span className="hidden sm:inline">{officer.name}</span>
                                     </span>
                                     {officer.customHours && (
                                       <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
@@ -1086,7 +1087,8 @@ export default function SchedulePage() {
                                       className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}
                                       title={officer.name}
                                     >
-                                      {formatOfficerNameForDisplay(officer.name)}
+                                      <span className="sm:hidden">{formatOfficerNameForDisplay(officer.name)}</span>
+                                      <span className="hidden sm:inline">{officer.name}</span>
                                     </span>
                                     {officer.customHours && (
                                       <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
