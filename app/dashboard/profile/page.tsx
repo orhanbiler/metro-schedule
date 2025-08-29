@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { User as UserIcon, Mail, Calendar, Clock, Shield } from 'lucide-react';
 import Image from 'next/image';
+import { formatOfficerName } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -91,7 +92,7 @@ export default function ProfilePage() {
         </div>
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {user.rank && user.idNumber ? `${user.rank} ${user.name} #${user.idNumber}` : user.name}
+            {user.rank && user.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user.name}
           </h1>
           <p className="text-muted-foreground mt-1">{user.email}</p>
           <div className="flex items-center gap-2 mt-2">

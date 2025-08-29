@@ -7,6 +7,7 @@ import { Users, Calendar, CheckCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { formatOfficerName } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -342,7 +343,7 @@ export default function AdminPage() {
                           <td className="p-3">
                             <div className="min-w-[200px]">
                               <div className="font-semibold whitespace-nowrap">
-                                {user.rank && user.idNumber ? `${user.rank} ${user.name} #${user.idNumber}` : user.name}
+                                {user.rank && user.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user.name}
                               </div>
                               <div className="text-sm text-muted-foreground break-all">{user.email}</div>
                             </div>

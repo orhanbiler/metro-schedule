@@ -7,6 +7,7 @@ import ProtectedRoute from '@/components/auth/protected-route';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useAuth } from '@/lib/auth-context';
+import { formatOfficerName } from '@/lib/utils';
 
 export default function DashboardLayout({
   children,
@@ -82,7 +83,7 @@ export default function DashboardLayout({
                 </div>
                 <div className="flex flex-col items-end max-w-[120px] lg:max-w-[160px] xl:max-w-none">
                   <span className="text-navbar-foreground text-sm font-medium truncate w-full text-right">
-                    {user?.rank && user?.idNumber ? `${user.rank} ${user.name}` : user?.name}
+                    {user?.rank && user?.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user?.name}
                   </span>
                   <span className="text-navbar-foreground opacity-70 text-xs truncate w-full text-right">
                     {user?.idNumber ? `#${user.idNumber}` : user?.role}
@@ -170,7 +171,7 @@ export default function DashboardLayout({
                     </div>
                     <div className="flex-1">
                       <div className="text-navbar-foreground font-medium">
-                        {user?.rank && user?.idNumber ? `${user.rank} ${user.name}` : user?.name}
+                        {user?.rank && user?.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user?.name}
                       </div>
                       <div className="text-navbar-foreground opacity-70 text-sm">
                         {user?.idNumber ? `#${user.idNumber} • ${user?.role}` : user?.role}

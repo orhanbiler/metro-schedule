@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Download, Trash2, Plus, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatOfficerName, formatOfficerNameForDisplay } from '@/lib/utils';
 
 interface Officer {
   name: string;
@@ -53,61 +54,13 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(false);
 
 
-  const abbreviateRank = (rank: string): string => {
-    // Map of long ranks to abbreviated versions
-    const rankAbbreviations: { [key: string]: string } = {
-      'Asst. Chief': 'A/C',
-      'Assistant Chief': 'A/C',
-      'Chief': 'Chief',
-      'Captain': 'Capt.',
-      'Capt.': 'Capt.',
-      'Lieutenant': 'Lt.',
-      'Lt.': 'Lt.',
-      'Sergeant': 'Sgt.',
-      'Sgt.': 'Sgt.',
-      'Corporal': 'Cpl.',
-      'Cpl.': 'Cpl.',
-      'PFC.': 'PFC',
-      'Officer': 'Ofc.',
-      'Trainee': 'Trn.'
-    };
-    
-    return rankAbbreviations[rank] || rank;
-  };
-
-  const formatOfficerNameForDisplay = (officerName: string): string => {
-    // Handle "Asst. Chief LastName #ID" format
-    // The regex needs to be greedy for the rank part to capture "Asst. Chief"
-    const match = officerName.match(/^(.+?)\s+(\S+)\s+#(\d+)$/);
-    
-    if (match) {
-      const [, rank, lastName, idNumber] = match;
-      const abbreviatedRank = abbreviateRank(rank.trim());
-      return `${abbreviatedRank} ${lastName} #${idNumber}`;
-    }
-    
-    // Fallback: if no # found, just try to abbreviate known ranks at the beginning
-    const parts = officerName.split(' ');
-    
-    // Check for "Asst. Chief" specifically
-    if (parts[0] === 'Asst.' && parts[1] === 'Chief') {
-      return `A/C ${parts.slice(2).join(' ')}`;
-    }
-    
-    // Check for other single-word ranks
-    const firstPart = parts[0];
-    const abbreviated = abbreviateRank(firstPart);
-    if (abbreviated !== firstPart) {
-      return `${abbreviated} ${parts.slice(1).join(' ')}`;
-    }
-    
-    return officerName;
-  };
 
   const getCurrentOfficerFormatted = (useAbbreviation: boolean = false) => {
     if (user?.rank && user?.idNumber) {
-      const rank = useAbbreviation ? abbreviateRank(user.rank) : user.rank;
-      return `${rank} ${user.name} #${user.idNumber}`;
+      if (useAbbreviation) {
+        return formatOfficerName(user.name, user.rank, user.idNumber);
+      }
+      return `${user.rank} ${user.name} #${user.idNumber}`;
     }
     return user?.name || 'Current Officer';
   };
@@ -982,8 +935,7 @@ export default function SchedulePage() {
                                       className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}
                                       title={officer.name}
                                     >
-                                      <span className="sm:hidden">{formatOfficerNameForDisplay(officer.name)}</span>
-                                      <span className="hidden sm:inline">{officer.name}</span>
+                                      {formatOfficerNameForDisplay(officer.name)}
                                     </span>
                                     {officer.customHours && (
                                       <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
@@ -1105,8 +1057,7 @@ export default function SchedulePage() {
                                       className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}
                                       title={officer.name}
                                     >
-                                      <span className="sm:hidden">{formatOfficerNameForDisplay(officer.name)}</span>
-                                      <span className="hidden sm:inline">{officer.name}</span>
+                                      {formatOfficerNameForDisplay(officer.name)}
                                     </span>
                                     {officer.customHours && (
                                       <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>

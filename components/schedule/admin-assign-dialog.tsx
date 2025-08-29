@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { UserPlus } from 'lucide-react';
+import { formatOfficerName } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -44,9 +45,9 @@ export function AdminAssignDialog({
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
 
-  const formatOfficerName = (user: User) => {
+  const getOfficerDisplayName = (user: User) => {
     if (user.rank && user.idNumber) {
-      return `${user.rank} ${user.name} #${user.idNumber}`;
+      return formatOfficerName(user.name, user.rank, user.idNumber);
     }
     // Fallback to just name if rank/idNumber not available
     return user.name || user.email || 'Unknown Officer';
@@ -121,8 +122,8 @@ export function AdminAssignDialog({
               </SelectTrigger>
               <SelectContent>
                 {users.map(user => (
-                  <SelectItem key={user.id} value={formatOfficerName(user)}>
-                    {formatOfficerName(user)}
+                  <SelectItem key={user.id} value={getOfficerDisplayName(user)}>
+                    {getOfficerDisplayName(user)}
                   </SelectItem>
                 ))}
               </SelectContent>
