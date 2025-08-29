@@ -77,12 +77,32 @@ export default function SchedulePage() {
 
   const formatOfficerNameForDisplay = (officerName: string): string => {
     // Parse the officer name to extract rank, name, and ID
-    const match = officerName.match(/^(.*?)\s+(\S+)\s+#(\d+)$/);
-    if (match) {
-      const [, rank, lastName, idNumber] = match;
+    // Handle both formats: "Rank Name #ID" and "Rank Name ID"
+    const matchWithHash = officerName.match(/^(.*?)\s+(\S+)\s+#(\d+)$/);
+    const matchWithoutHash = officerName.match(/^(.*?)\s+(\S+)\s+(\d+)$/);
+    
+    if (matchWithHash) {
+      const [, rank, lastName, idNumber] = matchWithHash;
       const abbreviatedRank = abbreviateRank(rank);
       return `${abbreviatedRank} ${lastName} #${idNumber}`;
+    } else if (matchWithoutHash) {
+      const [, rank, lastName, idNumber] = matchWithoutHash;
+      const abbreviatedRank = abbreviateRank(rank);
+      return `${abbreviatedRank} ${lastName} ${idNumber}`;
     }
+    
+    // If no pattern matches, try to abbreviate just the first part if it's a known rank
+    const parts = officerName.split(' ');
+    if (parts.length > 0) {
+      const possibleRank = parts[0] + (parts[1]?.startsWith('Chief') ? ' ' + parts[1] : '');
+      const abbreviatedRank = abbreviateRank(possibleRank);
+      if (abbreviatedRank !== possibleRank) {
+        // Rank was abbreviated, reconstruct the name
+        const remainingParts = possibleRank.includes('Chief') ? parts.slice(2) : parts.slice(1);
+        return `${abbreviatedRank} ${remainingParts.join(' ')}`;
+      }
+    }
+    
     return officerName;
   };
 
