@@ -733,6 +733,7 @@ export default function SchedulePage() {
               lineWidth: 0.1,
               lineColor: [200, 200, 200],
               font: 'helvetica',
+              fillColor: false, // No background color for cells
             },
             headStyles: {
               fillColor: [25, 35, 120], // Professional navy blue
@@ -748,9 +749,7 @@ export default function SchedulePage() {
               1: { cellWidth: 35, halign: 'center' }, // Time column  
               2: { cellWidth: 'auto', halign: 'left' }, // Officer column
             },
-            alternateRowStyles: {
-              fillColor: [248, 249, 250],
-            },
+            // Removed alternateRowStyles to eliminate alternating row colors
             tableLineColor: [180, 180, 180],
             tableLineWidth: 0.15,
             rowPageBreak: 'avoid',
