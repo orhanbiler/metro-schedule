@@ -32,7 +32,7 @@ export default function DashboardLayout({
                 <div className="flex-shrink-0 flex items-center gap-3 relative">
                   <div className="relative sm:absolute sm:-top-2 sm:left-0">
                     <Image 
-                      src="/logo.png" 
+                      src="/logo-cool.png" 
                       alt="Cheverly Police Department" 
                       width={32} 
                       height={32}

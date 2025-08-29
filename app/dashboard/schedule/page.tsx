@@ -625,7 +625,7 @@ export default function SchedulePage() {
       
       // Add logo
       const logoImg = new Image();
-      logoImg.src = '/logo.png';
+      logoImg.src = '/logo-cool.png';
       await new Promise((resolve) => {
         logoImg.onload = resolve;
       });
