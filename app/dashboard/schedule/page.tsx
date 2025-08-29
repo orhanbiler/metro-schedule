@@ -324,7 +324,8 @@ export default function SchedulePage() {
       });
       
       if (response.ok) {
-        // Schedule saved successfully
+        // Schedule saved successfully - update local state immediately
+        setSchedule(updatedSchedule);
       } else {
         const errorData = await response.text();
         // API returned error response
