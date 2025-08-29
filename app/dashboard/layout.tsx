@@ -30,7 +30,7 @@ export default function DashboardLayout({
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center flex-1 min-w-0">
                 <div className="flex-shrink-0 flex items-center gap-3 relative">
-                  <div className="relative absolute -top-1 sm:-top-3 lg:-top-4 left-0">
+                  <div className="relative absolute -top-1 sm:-top-2 lg:-top-3 xl:-top-4 left-0">
                     <Image 
                       src="/logo-cool.png" 
                       alt="Cheverly Police Department" 
