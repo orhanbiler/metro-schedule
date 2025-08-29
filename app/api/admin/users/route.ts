@@ -1,8 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { requireAdmin } from '@/lib/api-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Validate authentication - only admins can view all users
+    await requireAdmin(request);
     // Fetching all users from database
 
     // Get all users from Firestore using Admin SDK

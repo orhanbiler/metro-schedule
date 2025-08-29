@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { validateApiAuth } from '@/lib/api-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +10,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
+      );
+    }
+
+    // Validate that the requesting user is authenticated
+    const requestingUser = await validateApiAuth(request);
+    
+    // Users can only sync their own data unless they're an admin
+    if (requestingUser && requestingUser.uid !== userId && requestingUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Cannot sync other users data' },
+        { status: 403 }
       );
     }
 

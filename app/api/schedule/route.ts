@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { validateApiAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    // Validate authentication
+    const user = await validateApiAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
     const year = searchParams.get('year');
@@ -33,6 +39,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate authentication - all authenticated users can modify schedules
+    // (Officers can sign up for shifts, admins can do everything)
+    const user = await validateApiAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { month, year, schedule } = await request.json();
 
     // Processing schedule save request

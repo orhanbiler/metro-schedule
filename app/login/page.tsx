@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -8,14 +8,30 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    // Check if user is already authenticated
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && !loading) {
+        // User is signed in and not currently logging in, redirect to dashboard
+        router.push('/dashboard');
+      } else if (!user) {
+        // User is not signed in, show login form
+        setCheckingAuth(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +55,14 @@ export default function LoginPage() {
 
       const userData = await response.json();
       localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Set auth cookie for middleware
+      const token = await firebaseUser.getIdToken();
+      document.cookie = `authToken=${token}; path=/; max-age=3600; SameSite=Lax`;
+      
+      toast.success('Login successful!');
+      
+      // Explicitly redirect to dashboard
       router.push('/dashboard');
     } catch (err: unknown) {
       const firebaseError = err as { code?: string };
@@ -55,6 +79,18 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking authentication
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

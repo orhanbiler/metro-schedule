@@ -2,87 +2,103 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, User as FirebaseUser } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 interface User {
   id: string;
   email: string;
   name: string;
   role: 'officer' | 'admin';
+  rank?: string;
+  idNumber?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  signup: (email: string, password: string, name: string) => Promise<void>;
+  firebaseUser: FirebaseUser | null;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    // Set persistence to LOCAL (survives browser restarts)
+    setPersistence(auth, browserLocalPersistence).catch(console.error);
+
+    // Listen to Firebase auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setFirebaseUser(firebaseUser);
+        
+        // Try to get user data from localStorage first for immediate UI update
+        const cachedUser = localStorage.getItem('user');
+        if (cachedUser) {
+          const userData = JSON.parse(cachedUser);
+          // Verify the cached user matches the Firebase user
+          if (userData.id === firebaseUser.uid) {
+            setUser(userData);
+          }
+        }
+
+        // Then sync with Firestore to get latest data
+        try {
+          const response = await fetch('/api/auth/sync-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: firebaseUser.uid }),
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
+            
+            // Set auth cookie for middleware
+            document.cookie = `authToken=${await firebaseUser.getIdToken()}; path=/; max-age=3600; SameSite=Lax`;
+          }
+        } catch (error) {
+          console.error('Failed to sync user data:', error);
+        }
+      } else {
+        // User is logged out
+        setFirebaseUser(null);
+        setUser(null);
+        localStorage.removeItem('user');
+        // Clear auth cookie
+        document.cookie = 'authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      }
+      
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const logout = async () => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Invalid credentials');
-      }
-
-      const userData = await response.json();
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      router.push('/dashboard');
+      // Sign out from Firebase
+      await signOut(auth);
+      // Clear local storage
+      localStorage.removeItem('user');
+      // Clear auth cookie
+      document.cookie = 'authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      // The onAuthStateChanged listener will handle the rest
+      router.push('/login');
     } catch (error) {
-      throw error;
+      console.error('Logout error:', error);
     }
-  };
-
-  const signup = async (email: string, password: string, name: string) => {
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Signup failed');
-      }
-
-      const userData = await response.json();
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      router.push('/dashboard');
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    router.push('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, signup }}>
+    <AuthContext.Provider value={{ user, loading, firebaseUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,23 @@ export default function SignupPage() {
   const [idNumber, setIdNumber] = useState('');
   const [rank, setRank] = useState('Officer');
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    // Check if user is already authenticated
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && !loading) {
+        // User is signed in and not currently signing up, redirect to dashboard
+        router.push('/dashboard');
+      } else if (!user) {
+        // User is not signed in, show signup form
+        setCheckingAuth(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router, loading]);
 
   const ranks = [
     'Trainee',
@@ -77,6 +93,14 @@ export default function SignupPage() {
 
       const userData = await response.json();
       localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Set auth cookie for middleware
+      const token = await firebaseUser.getIdToken();
+      document.cookie = `authToken=${token}; path=/; max-age=3600; SameSite=Lax`;
+      
+      toast.success('Account created successfully!');
+      
+      // Explicitly redirect to dashboard
       router.push('/dashboard');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Signup failed');
@@ -84,6 +108,18 @@ export default function SignupPage() {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking authentication
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

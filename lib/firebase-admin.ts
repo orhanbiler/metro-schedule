@@ -1,10 +1,12 @@
 import { initializeApp, getApps, cert, ServiceAccount } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getAuth, Auth } from 'firebase-admin/auth';
 
 let adminDb: Firestore | null = null;
+let adminAuth: Auth | null = null;
 
 // Initialize Firebase Admin SDK only when environment variables are available
-function initializeFirebaseAdmin() {
+function initializeFirebaseAdmin(): { db: Firestore; auth: Auth } | null {
   if (getApps().length === 0) {
     const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
@@ -23,10 +25,10 @@ function initializeFirebaseAdmin() {
         projectId,
       });
       
-      return getFirestore();
+      return { db: getFirestore(), auth: getAuth() };
     }
   } else {
-    return getFirestore();
+    return { db: getFirestore(), auth: getAuth() };
   }
   
   return null;
@@ -35,12 +37,26 @@ function initializeFirebaseAdmin() {
 // Lazy initialization - only initialize when actually needed
 function getAdminDb(): Firestore {
   if (!adminDb) {
-    adminDb = initializeFirebaseAdmin();
-    if (!adminDb) {
+    const result = initializeFirebaseAdmin();
+    if (!result) {
       throw new Error('Firebase Admin SDK not initialized. Please check your environment variables.');
     }
+    adminDb = result.db;
+    adminAuth = result.auth;
   }
   return adminDb;
 }
 
-export { getAdminDb as adminDb };
+function getAdminAuth(): Auth {
+  if (!adminAuth) {
+    const result = initializeFirebaseAdmin();
+    if (!result) {
+      throw new Error('Firebase Admin SDK not initialized. Please check your environment variables.');
+    }
+    adminDb = result.db;
+    adminAuth = result.auth;
+  }
+  return adminAuth;
+}
+
+export { getAdminDb as adminDb, getAdminAuth as adminAuth };
