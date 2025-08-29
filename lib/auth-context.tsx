@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
-interface User {
+export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'officer' | 'admin';
+  role: 'user' | 'admin';
   rank?: string;
   idNumber?: string;
 }

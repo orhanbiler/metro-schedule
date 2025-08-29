@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useAuth, type User } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -37,17 +38,8 @@ interface TimeSlot {
   };
 }
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'user';
-  rank?: string;
-  idNumber?: string;
-}
-
 export default function SchedulePage() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [schedule, setSchedule] = useState<TimeSlot[]>([]);
@@ -138,11 +130,6 @@ export default function SchedulePage() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-    
     // Load initial schedule
     loadSchedule();
     
