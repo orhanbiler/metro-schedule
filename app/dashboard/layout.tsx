@@ -30,7 +30,7 @@ export default function DashboardLayout({
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center flex-1 min-w-0">
                 <div className="flex-shrink-0 flex items-center gap-3 relative">
-                  <div className="relative absolute -top-2 sm:-top-3 lg:-top-4 left-0">
+                  <div className="relative absolute -top-1 sm:-top-3 lg:-top-4 left-0">
                     <Image 
                       src="/logo-cool.png" 
                       alt="Cheverly Police Department" 
@@ -38,10 +38,10 @@ export default function DashboardLayout({
                       height={120}
                       quality={100}
                       priority
-                      className="rounded w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 xl:w-24 xl:h-24"
+                      className="rounded w-16 h-16 sm:w-16 sm:h-16 lg:w-20 lg:h-20 xl:w-24 xl:h-24"
                     />
                   </div>
-                  <h1 className="text-navbar-foreground text-lg sm:text-xl font-bold truncate ml-16 sm:ml-20 lg:ml-24 xl:ml-28">
+                  <h1 className="text-navbar-foreground text-lg sm:text-xl font-bold truncate ml-20 sm:ml-20 lg:ml-24 xl:ml-28">
                     <span className="hidden lg:inline">Cheverly PD Metro</span>
                     <span className="lg:hidden">Cheverly PD</span>
                   </h1>
