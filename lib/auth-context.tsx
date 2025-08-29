@@ -33,8 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set persistence to LOCAL (survives browser restarts)
     setPersistence(auth, browserLocalPersistence).catch(console.error);
 
+    // Set a timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.warn('Auth check timeout - forcing loading to false');
+      setLoading(false);
+    }, 10000); // 10 second timeout for auth context
+
     // Listen to Firebase auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      clearTimeout(timeout);
       if (firebaseUser) {
         setFirebaseUser(firebaseUser);
         
@@ -77,9 +84,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       setLoading(false);
+    }, (error) => {
+      console.error('Auth state listener error:', error);
+      clearTimeout(timeout);
+      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const logout = async () => {

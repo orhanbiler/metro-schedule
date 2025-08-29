@@ -19,18 +19,30 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Set a timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      setCheckingAuth(false);
+    }, 5000); // 5 second timeout
+
     // Check if user is already authenticated
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      clearTimeout(timeout);
       if (user && !loading) {
         // User is signed in and not currently logging in, redirect to dashboard
         router.push('/dashboard');
-      } else if (!user) {
-        // User is not signed in, show login form
-        setCheckingAuth(false);
       }
+      // Always stop checking auth after we get a response
+      setCheckingAuth(false);
+    }, (error) => {
+      console.error('Auth state check error:', error);
+      clearTimeout(timeout);
+      setCheckingAuth(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [router, loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
