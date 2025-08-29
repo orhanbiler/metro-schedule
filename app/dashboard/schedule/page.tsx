@@ -923,8 +923,8 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          <div className="border rounded-md overflow-x-auto sm:overflow-hidden">
-            <table className="w-full sm:min-w-0 min-w-[600px]">
+          <div className="border rounded-md overflow-hidden">
+            <table className="w-full">
               <thead>
                 <tr className="bg-navy-900 text-white">
                   <th className="text-left p-2 sm:p-2 font-semibold text-xs sm:text-sm">Date/Time</th>
