@@ -53,9 +53,43 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(false);
 
 
-  const getCurrentOfficerFormatted = () => {
+  const abbreviateRank = (rank: string): string => {
+    // Map of long ranks to abbreviated versions
+    const rankAbbreviations: { [key: string]: string } = {
+      'Asst. Chief': 'A/C',
+      'Assistant Chief': 'A/C',
+      'Chief': 'Chief',
+      'Captain': 'Capt.',
+      'Capt.': 'Capt.',
+      'Lieutenant': 'Lt.',
+      'Lt.': 'Lt.',
+      'Sergeant': 'Sgt.',
+      'Sgt.': 'Sgt.',
+      'Corporal': 'Cpl.',
+      'Cpl.': 'Cpl.',
+      'PFC.': 'PFC',
+      'Officer': 'Ofc.',
+      'Trainee': 'Trn.'
+    };
+    
+    return rankAbbreviations[rank] || rank;
+  };
+
+  const formatOfficerNameForDisplay = (officerName: string): string => {
+    // Parse the officer name to extract rank, name, and ID
+    const match = officerName.match(/^(.*?)\s+(\S+)\s+#(\d+)$/);
+    if (match) {
+      const [, rank, lastName, idNumber] = match;
+      const abbreviatedRank = abbreviateRank(rank);
+      return `${abbreviatedRank} ${lastName} #${idNumber}`;
+    }
+    return officerName;
+  };
+
+  const getCurrentOfficerFormatted = (useAbbreviation: boolean = false) => {
     if (user?.rank && user?.idNumber) {
-      return `${user.rank} ${user.name} #${user.idNumber}`;
+      const rank = useAbbreviation ? abbreviateRank(user.rank) : user.rank;
+      return `${rank} ${user.name} #${user.idNumber}`;
     }
     return user?.name || 'Current Officer';
   };
@@ -889,8 +923,8 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          <div className="border rounded-md overflow-hidden">
-            <table className="w-full">
+          <div className="border rounded-md overflow-x-auto">
+            <table className="w-full min-w-[600px]">
               <thead>
                 <tr className="bg-navy-900 text-white">
                   <th className="text-left p-2 sm:p-2 font-semibold text-xs sm:text-sm">Date/Time</th>
@@ -926,8 +960,11 @@ export default function SchedulePage() {
                               {slot.morningSlot.officers.map((officer, index) => (
                                 <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-1.5 sm:p-1.5 rounded-md">
                                   <div className="flex-1 min-w-0">
-                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}>
-                                      {officer.name}
+                                    <span 
+                                      className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}
+                                      title={officer.name}
+                                    >
+                                      {formatOfficerNameForDisplay(officer.name)}
                                     </span>
                                     {officer.customHours && (
                                       <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
@@ -1045,8 +1082,11 @@ export default function SchedulePage() {
                               {slot.afternoonSlot.officers.map((officer, index) => (
                                 <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-2 bg-muted/30 p-1.5 sm:p-1.5 rounded-md">
                                   <div className="flex-1 min-w-0">
-                                    <span className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}>
-                                      {officer.name}
+                                    <span 
+                                      className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}
+                                      title={officer.name}
+                                    >
+                                      {formatOfficerNameForDisplay(officer.name)}
                                     </span>
                                     {officer.customHours && (
                                       <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
