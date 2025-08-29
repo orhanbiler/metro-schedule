@@ -34,14 +34,14 @@ export default function DashboardLayout({
                     <Image 
                       src="/logo-cool.png" 
                       alt="Cheverly Police Department" 
-                      width={96} 
-                      height={96}
+                      width={120} 
+                      height={120}
                       quality={100}
                       priority
-                      className="rounded w-12 h-12 sm:w-14 sm:h-14 lg:w-20 lg:h-20 xl:w-24 xl:h-24"
+                      className="rounded w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 xl:w-24 xl:h-24"
                     />
                   </div>
-                  <h1 className="text-navbar-foreground text-lg sm:text-xl font-bold truncate ml-14 sm:ml-16 lg:ml-24 xl:ml-28">
+                  <h1 className="text-navbar-foreground text-lg sm:text-xl font-bold truncate ml-16 sm:ml-20 lg:ml-24 xl:ml-28">
                     <span className="hidden lg:inline">Cheverly PD Metro</span>
                     <span className="lg:hidden">Cheverly PD</span>
                   </h1>
