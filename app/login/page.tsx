@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,8 +28,10 @@ export default function LoginPage() {
     // Check if user is already authenticated
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       clearTimeout(timeout);
-      if (user && !loading) {
+      // Only redirect if not currently logging in and not already redirecting
+      if (user && !loading && !isRedirecting) {
         // User is signed in and not currently logging in, redirect to dashboard
+        setIsRedirecting(true);
         router.push('/dashboard');
       }
       // Always stop checking auth after we get a response
@@ -43,11 +46,12 @@ export default function LoginPage() {
       unsubscribe();
       clearTimeout(timeout);
     };
-  }, [router, loading]);
+  }, [router, loading, isRedirecting]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setIsRedirecting(true); // Prevent auth listener from interfering
 
     try {
       // Authenticate with Firebase Auth
@@ -74,8 +78,10 @@ export default function LoginPage() {
       
       toast.success('Login successful!');
       
-      // Explicitly redirect to dashboard
-      router.push('/dashboard');
+      // Use window.location for more reliable redirect
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 100);
     } catch (err: unknown) {
       const firebaseError = err as { code?: string };
       if (firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/wrong-password') {
@@ -87,7 +93,8 @@ export default function LoginPage() {
       } else {
         toast.error(err instanceof Error ? err.message : 'Login failed');
       }
-    } finally {
+      // Reset flags on error
+      setIsRedirecting(false);
       setLoading(false);
     }
   };
