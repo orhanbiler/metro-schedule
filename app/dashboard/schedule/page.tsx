@@ -189,7 +189,7 @@ export default function SchedulePage() {
             maxOfficers: 2,
           },
           afternoonSlot: {
-            time: '1300-1900',
+            time: '1300-2200',
             available: true,
             officers: [],
             maxOfficers: 2,
@@ -241,7 +241,8 @@ export default function SchedulePage() {
     // Update old time values to new times
     const updateTime = (time: string) => {
       if (time === '0600-1200') return '0500-1300';
-      if (time === '1400-2000') return '1300-1900';
+      if (time === '1400-2000') return '1300-2200';
+      if (time === '1300-1900') return '1300-2200';
       return time;
     };
     

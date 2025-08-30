@@ -62,7 +62,7 @@ Friday 08/01/25
                     Officer Johnson #5678     [Actions]
                     1 slot(s) available
 
-and/or 13:00-19:00  Available (2 slots)       [Sign Up]
+and/or 13:00-22:00  Available (2 slots)       [Sign Up]
 ```
 
 ### User Display Format
@@ -162,7 +162,7 @@ Officers are displayed as: `[Rank] [LastName] #[IDNumber]`
         maxOfficers: 2
       },
       afternoonSlot: {
-        time: "1300-1900",
+        time: "1300-2200",
         available: true,
         officers: [],
         maxOfficers: 2
