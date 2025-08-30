@@ -71,13 +71,13 @@ export default function DashboardPage() {
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
           if (day === today) {
             // For today, only count shifts that haven't started yet
-            // Morning shift: 0600-1200 (6 AM - 12 PM)
-            if (currentHour < 6) {
+            // Morning shift: 0500-1300 (5 AM - 1 PM)
+            if (currentHour < 5) {
               remainingSlots += 4; // Both morning and afternoon shifts
-            } else if (currentHour < 14) {
-              remainingSlots += 2; // Only afternoon shifts (1400-2000)
+            } else if (currentHour < 13) {
+              remainingSlots += 2; // Only afternoon shifts (1300-1900)
             }
-            // If current hour >= 14 (2 PM), no shifts remain for today
+            // If current hour >= 13 (1 PM), no shifts remain for today
           } else {
             // Future days get all 4 slots
             remainingSlots += 4;
@@ -143,15 +143,15 @@ export default function DashboardPage() {
           // For today, only count shifts that haven't started yet
           if (dayOfMonth === today) {
             const currentHour = new Date().getHours();
-            // Morning shift: 0600-1200
-            if (currentHour < 6) {
+            // Morning shift: 0500-1300
+            if (currentHour < 5) {
               // Both shifts are in the future
               filledSlots += morningOfficers.length + afternoonOfficers.length;
-            } else if (currentHour < 14) {
-              // Only afternoon shift is in the future (1400-2000)
+            } else if (currentHour < 13) {
+              // Only afternoon shift is in the future (1300-1900)
               filledSlots += afternoonOfficers.length;
             }
-            // If current hour >= 14, don't count any slots for today
+            // If current hour >= 13, don't count any slots for today
           } else {
             // Future days - count all filled slots
             filledSlots += morningOfficers.length + afternoonOfficers.length;
@@ -193,9 +193,9 @@ export default function DashboardPage() {
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
           if (day === today) {
             // For today, only count shifts that haven't started yet
-            if (currentHour < 6) {
+            if (currentHour < 5) {
               remainingSlots += 4; // Both morning and afternoon shifts
-            } else if (currentHour < 14) {
+            } else if (currentHour < 13) {
               remainingSlots += 2; // Only afternoon shifts
             }
           } else {

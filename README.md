@@ -58,11 +58,11 @@ A modern, real-time schedule management application built for the Cheverly Polic
 ```
 Date/Time           Officer Name              Action
 Friday 08/01/25     
-06:00-12:00         Sgt. Smith #1234          [Actions]
+05:00-13:00         Sgt. Smith #1234          [Actions]
                     Officer Johnson #5678     [Actions]
                     1 slot(s) available
 
-and/or 14:00-20:00  Available (2 slots)       [Sign Up]
+and/or 13:00-19:00  Available (2 slots)       [Sign Up]
 ```
 
 ### User Display Format
@@ -148,7 +148,7 @@ Officers are displayed as: `[Rank] [LastName] #[IDNumber]`
       date: "2024-08-01T00:00:00.000Z",
       dayName: "Friday",
       morningSlot: {
-        time: "0600-1200",
+        time: "0500-1300",
         available: false,
         officers: [
           {
@@ -162,7 +162,7 @@ Officers are displayed as: `[Rank] [LastName] #[IDNumber]`
         maxOfficers: 2
       },
       afternoonSlot: {
-        time: "1400-2000",
+        time: "1300-1900",
         available: true,
         officers: [],
         maxOfficers: 2

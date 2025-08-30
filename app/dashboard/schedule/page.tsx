@@ -25,13 +25,13 @@ interface TimeSlot {
   date: Date;
   dayName: string;
   morningSlot: {
-    time: '0600-1200';
+    time: string;
     available: boolean;
     officers: Officer[];
     maxOfficers: 2;
   };
   afternoonSlot: {
-    time: '1400-2000';
+    time: string;
     available: boolean;
     officers: Officer[];
     maxOfficers: 2;
@@ -183,13 +183,13 @@ export default function SchedulePage() {
           date: date,
           dayName: dayName,
           morningSlot: {
-            time: '0600-1200',
+            time: '0500-1300',
             available: true,
             officers: [],
             maxOfficers: 2,
           },
           afternoonSlot: {
-            time: '1400-2000',
+            time: '1300-1900',
             available: true,
             officers: [],
             maxOfficers: 2,
@@ -238,8 +238,17 @@ export default function SchedulePage() {
     // Migrate old data structure to new structure
     const migratedSlot = { ...slot };
     
+    // Update old time values to new times
+    const updateTime = (time: string) => {
+      if (time === '0600-1200') return '0500-1300';
+      if (time === '1400-2000') return '1300-1900';
+      return time;
+    };
+    
     // Handle morning slot migration
     if (slot.morningSlot) {
+      const updatedTime = updateTime(slot.morningSlot.time);
+      
       if (slot.morningSlot.officer && !slot.morningSlot.officers) {
         // Old structure: has officer field, migrate to officers array
         const officers = slot.morningSlot.officer ? [{
@@ -247,7 +256,7 @@ export default function SchedulePage() {
           customHours: slot.morningSlot.customHours
         }] : [];
         migratedSlot.morningSlot = {
-          time: slot.morningSlot.time,
+          time: updatedTime,
           available: officers.length < 2,
           officers: officers,
           maxOfficers: 2
@@ -256,6 +265,7 @@ export default function SchedulePage() {
         // No officers array, create empty one
         migratedSlot.morningSlot = {
           ...slot.morningSlot,
+          time: updatedTime,
           officers: [],
           maxOfficers: 2,
           available: true
@@ -264,6 +274,7 @@ export default function SchedulePage() {
         // Already has officers array, fix availability if inconsistent
         migratedSlot.morningSlot = {
           ...slot.morningSlot,
+          time: updatedTime,
           available: slot.morningSlot.officers.length < 2,
           maxOfficers: slot.morningSlot.maxOfficers || 2
         };
@@ -272,6 +283,8 @@ export default function SchedulePage() {
     
     // Handle afternoon slot migration
     if (slot.afternoonSlot) {
+      const updatedTime = updateTime(slot.afternoonSlot.time);
+      
       if (slot.afternoonSlot.officer && !slot.afternoonSlot.officers) {
         // Old structure: has officer field, migrate to officers array
         const officers = slot.afternoonSlot.officer ? [{
@@ -279,7 +292,7 @@ export default function SchedulePage() {
           customHours: slot.afternoonSlot.customHours
         }] : [];
         migratedSlot.afternoonSlot = {
-          time: slot.afternoonSlot.time,
+          time: updatedTime,
           available: officers.length < 2,
           officers: officers,
           maxOfficers: 2
@@ -288,6 +301,7 @@ export default function SchedulePage() {
         // No officers array, create empty one
         migratedSlot.afternoonSlot = {
           ...slot.afternoonSlot,
+          time: updatedTime,
           officers: [],
           maxOfficers: 2,
           available: true
@@ -296,6 +310,7 @@ export default function SchedulePage() {
         // Already has officers array, fix availability if inconsistent
         migratedSlot.afternoonSlot = {
           ...slot.afternoonSlot,
+          time: updatedTime,
           available: slot.afternoonSlot.officers.length < 2,
           maxOfficers: slot.afternoonSlot.maxOfficers || 2
         };
@@ -655,7 +670,7 @@ export default function SchedulePage() {
             if (slot.morningSlot.officers.length > 0) {
               slot.morningSlot.officers.forEach((officer, index) => {
                 const displayTime = officer.customHours || 
-                  `${slot.morningSlot.time.slice(0, 4)}-${slot.morningSlot.time.slice(4)}`;
+                  `${slot.morningSlot.time.slice(0, 2)}:${slot.morningSlot.time.slice(2, 4)}-${slot.morningSlot.time.slice(5, 7)}:${slot.morningSlot.time.slice(7, 9)}`;
                 tableData.push([
                   index === 0 ? `${slot.dayName} ${formatDate(slot.date)}` : '',
                   displayTime,
@@ -668,7 +683,7 @@ export default function SchedulePage() {
               for (let i = 0; i < remainingSlots; i++) {
                 tableData.push([
                   slot.morningSlot.officers.length === 0 && i === 0 ? `${slot.dayName} ${formatDate(slot.date)}` : '',
-                  `${slot.morningSlot.time.slice(0, 4)}-${slot.morningSlot.time.slice(4)}`,
+                  `${slot.morningSlot.time.slice(0, 2)}:${slot.morningSlot.time.slice(2, 4)}-${slot.morningSlot.time.slice(5, 7)}:${slot.morningSlot.time.slice(7, 9)}`,
                   ''  // Leave blank instead of 'Available'
                 ]);
               }
@@ -677,7 +692,7 @@ export default function SchedulePage() {
               for (let i = 0; i < slot.morningSlot.maxOfficers; i++) {
                 tableData.push([
                   i === 0 ? `${slot.dayName} ${formatDate(slot.date)}` : '',
-                  `${slot.morningSlot.time.slice(0, 4)}-${slot.morningSlot.time.slice(4)}`,
+                  `${slot.morningSlot.time.slice(0, 2)}:${slot.morningSlot.time.slice(2, 4)}-${slot.morningSlot.time.slice(5, 7)}:${slot.morningSlot.time.slice(7, 9)}`,
                   ''  // Leave blank instead of 'Available'
                 ]);
               }
@@ -687,7 +702,7 @@ export default function SchedulePage() {
             if (slot.afternoonSlot.officers.length > 0) {
               slot.afternoonSlot.officers.forEach((officer) => {
                 const displayTime = officer.customHours || 
-                  `${slot.afternoonSlot.time.slice(0, 4)}-${slot.afternoonSlot.time.slice(4)}`;
+                  `${slot.afternoonSlot.time.slice(0, 2)}:${slot.afternoonSlot.time.slice(2, 4)}-${slot.afternoonSlot.time.slice(5, 7)}:${slot.afternoonSlot.time.slice(7, 9)}`;
                 tableData.push([
                   '',
                   `and/or ${displayTime}`,
@@ -700,7 +715,7 @@ export default function SchedulePage() {
               for (let i = 0; i < remainingSlots; i++) {
                 tableData.push([
                   '',
-                  `and/or ${slot.afternoonSlot.time.slice(0, 4)}-${slot.afternoonSlot.time.slice(4)}`,
+                  `and/or ${slot.afternoonSlot.time.slice(0, 2)}:${slot.afternoonSlot.time.slice(2, 4)}-${slot.afternoonSlot.time.slice(5, 7)}:${slot.afternoonSlot.time.slice(7, 9)}`,
                   ''  // Leave blank instead of 'Available'
                 ]);
               }
@@ -709,7 +724,7 @@ export default function SchedulePage() {
               for (let i = 0; i < slot.afternoonSlot.maxOfficers; i++) {
                 tableData.push([
                   '',
-                  `and/or ${slot.afternoonSlot.time.slice(0, 4)}-${slot.afternoonSlot.time.slice(4)}`,
+                  `and/or ${slot.afternoonSlot.time.slice(0, 2)}:${slot.afternoonSlot.time.slice(2, 4)}-${slot.afternoonSlot.time.slice(5, 7)}:${slot.afternoonSlot.time.slice(7, 9)}`,
                   ''  // Leave blank instead of 'Available'
                 ]);
               }
@@ -813,7 +828,7 @@ export default function SchedulePage() {
     if (time.includes('-') && time.includes(':')) {
       return time; // Already formatted (custom hours)
     }
-    return `${time.slice(0, 2)}:${time.slice(2, 4)}-${time.slice(5, 7)}:${time.slice(7)}`;
+    return `${time.slice(0, 2)}:${time.slice(2, 4)}-${time.slice(5, 7)}:${time.slice(7, 9)}`;
   };
 
   return (
