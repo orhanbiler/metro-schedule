@@ -84,19 +84,32 @@ export default function AdminPage() {
       
       // Calculate remaining WEEKDAYS in the current month (from today onwards, excluding weekends)
       const today = currentDate.getDate();
+      const currentHour = currentDate.getHours();
       const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate(); // currentMonth + 1 because Date constructor expects 1-indexed month for this calculation
       
-      let remainingWeekdays = 0;
+      let remainingSlots = 0;
       for (let day = today; day <= daysInMonth; day++) {
         const date = new Date(currentYear, currentMonth, day); // currentMonth is 0-indexed here, which is correct for Date constructor
         const dayOfWeek = date.getDay();
         // Skip weekends (0 = Sunday, 6 = Saturday)
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          remainingWeekdays++;
+          if (day === today) {
+            // For today, only count shifts that haven't started yet
+            // Morning shift: 0600-1200 (6 AM - 12 PM)
+            if (currentHour < 6) {
+              remainingSlots += 4; // Both morning and afternoon shifts
+            } else if (currentHour < 14) {
+              remainingSlots += 2; // Only afternoon shifts (1400-2000)
+            }
+            // If current hour >= 14 (2 PM), no shifts remain for today
+          } else {
+            // Future days get all 4 slots
+            remainingSlots += 4;
+          }
         }
       }
       
-      const maxPossibleSlots = remainingWeekdays * 4; // 2 morning + 2 afternoon slots per weekday
+      const maxPossibleSlots = remainingSlots; // 2 morning + 2 afternoon slots per weekday
       
       // Calculating schedule statistics for current month
       
@@ -169,10 +182,24 @@ export default function AdminPage() {
           
           // Counting filled slots for this day
           
-          // Count filled slots
-          filledSlots += morningOfficers.length + afternoonOfficers.length;
+          // For today, only count shifts that haven't started yet
+          if (dayOfMonth === today) {
+            const currentHour = new Date().getHours();
+            // Morning shift: 0600-1200
+            if (currentHour < 6) {
+              // Both shifts are in the future
+              filledSlots += morningOfficers.length + afternoonOfficers.length;
+            } else if (currentHour < 14) {
+              // Only afternoon shift is in the future (1400-2000)
+              filledSlots += afternoonOfficers.length;
+            }
+            // If current hour >= 14, don't count any slots for today
+          } else {
+            // Future days - count all filled slots
+            filledSlots += morningOfficers.length + afternoonOfficers.length;
+          }
           
-          // Track unique officers
+          // Track unique officers (for all slots, regardless of time)
           [...morningOfficers, ...afternoonOfficers].forEach((officer: { name: string } | string) => {
             if (officer && typeof officer === 'object' && officer.name) {
               uniqueOfficers.add(officer.name);
@@ -201,18 +228,28 @@ export default function AdminPage() {
       const currentMonth = currentDate.getMonth(); // 0-indexed
       const currentYear = currentDate.getFullYear();
       const today = currentDate.getDate();
+      const currentHour = currentDate.getHours();
       const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
       
-      let remainingWeekdays = 0;
+      let remainingSlots = 0;
       for (let day = today; day <= daysInMonth; day++) {
         const date = new Date(currentYear, currentMonth, day);
         const dayOfWeek = date.getDay();
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          remainingWeekdays++;
+          if (day === today) {
+            // For today, only count shifts that haven't started yet
+            if (currentHour < 6) {
+              remainingSlots += 4; // Both morning and afternoon shifts
+            } else if (currentHour < 14) {
+              remainingSlots += 2; // Only afternoon shifts
+            }
+          } else {
+            remainingSlots += 4;
+          }
         }
       }
       
-      const maxPossibleSlots = remainingWeekdays * 4;
+      const maxPossibleSlots = remainingSlots;
       
       setScheduleStats({
         totalSlots: maxPossibleSlots,
