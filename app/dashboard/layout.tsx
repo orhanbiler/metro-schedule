@@ -6,6 +6,7 @@ import Image from 'next/image';
 import ProtectedRoute from '@/components/auth/protected-route';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { ChangelogDialog } from '@/components/ui/changelog-dialog';
 import { useAuth } from '@/lib/auth-context';
 import { formatOfficerName } from '@/lib/utils';
 
@@ -97,6 +98,7 @@ export default function DashboardLayout({
                     {user?.idNumber ? `#${user.idNumber}` : user?.role}
                   </span>
                 </div>
+                <ChangelogDialog />
                 <ThemeToggle />
                 <Button
                   onClick={handleLogout}
@@ -108,6 +110,7 @@ export default function DashboardLayout({
                 </Button>
               </div>
               <div className="flex items-center md:hidden space-x-2">
+                <ChangelogDialog />
                 <ThemeToggle />
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}
