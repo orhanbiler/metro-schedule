@@ -11,10 +11,11 @@ export interface ChangelogEntry {
   };
 }
 
-export const CHANGELOG: ChangelogEntry[] = [];
+// This will be populated from the API/database
+export let CHANGELOG: ChangelogEntry[] = [];
 
 // Get the latest entry ID
-export const CURRENT_ENTRY_ID = CHANGELOG.length > 0 ? CHANGELOG[0].id : '';
+export const getCurrentEntryId = () => CHANGELOG.length > 0 ? CHANGELOG[0].id : '';
 
 // Helper to get changelog entries after a specific ID
 export function getChangesSinceEntry(lastSeenEntryId: string | null): ChangelogEntry[] {
@@ -43,4 +44,26 @@ export function formatCreatorName(createdBy?: { name: string; rank?: string; idN
   if (createdBy.idNumber) parts.push(`#${createdBy.idNumber}`);
   
   return parts.join(' ');
+}
+
+// Fetch changelogs from the API
+export async function fetchChangelogs(): Promise<ChangelogEntry[]> {
+  try {
+    const response = await fetch('/api/changelog/public');
+    if (!response.ok) {
+      console.error('Failed to fetch changelogs:', response.statusText);
+      return [];
+    }
+    const data = await response.json();
+    CHANGELOG = data;
+    return data;
+  } catch (error) {
+    console.error('Error fetching changelogs:', error);
+    return [];
+  }
+}
+
+// Initialize changelogs on client side
+if (typeof window !== 'undefined') {
+  fetchChangelogs().catch(console.error);
 }
