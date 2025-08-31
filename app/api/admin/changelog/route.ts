@@ -1,81 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiAuth } from '@/lib/api-auth';
-import { readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { adminDb } from '@/lib/firebase-admin';
 import type { ChangelogEntry } from '@/lib/changelog';
 
-const CHANGELOG_FILE_PATH = join(process.cwd(), 'lib', 'changelog.ts');
+// Collection name for changelogs in Firestore
+const CHANGELOG_COLLECTION = 'changelogs';
 
-function readChangelogFile(): ChangelogEntry[] {
+async function getChangelogsFromFirestore(): Promise<ChangelogEntry[]> {
   try {
-    const content = readFileSync(CHANGELOG_FILE_PATH, 'utf-8');
-    // Extract the CHANGELOG array from the file content
-    const match = content.match(/export const CHANGELOG: ChangelogEntry\[\] = (\[[\s\S]*?\]);/);
-    if (match) {
-      // Use Function constructor to safely evaluate the array
-      return new Function('return ' + match[1])();
-    }
-    return [];
+    const db = adminDb();
+    const snapshot = await db.collection(CHANGELOG_COLLECTION)
+      .orderBy('date', 'desc')
+      .get();
+    
+    const changelogs: ChangelogEntry[] = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      changelogs.push({
+        id: data.id,
+        date: data.date,
+        title: data.title,
+        type: data.type,
+        changes: data.changes,
+        createdBy: data.createdBy,
+      });
+    });
+    
+    return changelogs;
   } catch (error) {
-    console.error('Error reading changelog file:', error);
+    console.error('Error fetching changelogs from Firestore:', error);
     return [];
   }
 }
 
-function writeChangelogFile(changelogs: ChangelogEntry[]) {
-  try {
-    const content = `export interface ChangelogEntry {
-  id: string;
-  date: string;
-  title: string;
-  type: 'feature' | 'fix' | 'improvement' | 'security' | 'update' | 'maintenance' | 'performance' | 'ui' | 'breaking';
-  changes: string[];
-  createdBy: {
-    name: string;
-    rank?: string;
-    idNumber?: string;
-  };
+async function saveChangelogToFirestore(entry: ChangelogEntry): Promise<void> {
+  const db = adminDb();
+  await db.collection(CHANGELOG_COLLECTION).doc(entry.id).set(entry);
 }
 
-export const CHANGELOG: ChangelogEntry[] = ${JSON.stringify(changelogs, null, 2)};
-
-// Get the latest entry ID
-export const CURRENT_ENTRY_ID = CHANGELOG.length > 0 ? CHANGELOG[0].id : '';
-
-// Helper to get changelog entries after a specific ID
-export function getChangesSinceEntry(lastSeenEntryId: string | null): ChangelogEntry[] {
-  if (!lastSeenEntryId) {
-    // If no entry seen, show last 3 entries
-    return CHANGELOG.slice(0, 3);
+async function updateChangelogInFirestore(id: string, entry: ChangelogEntry): Promise<void> {
+  const db = adminDb();
+  // Delete old document if ID changed
+  if (id !== entry.id) {
+    await db.collection(CHANGELOG_COLLECTION).doc(id).delete();
   }
-  
-  const lastSeenIndex = CHANGELOG.findIndex(entry => entry.id === lastSeenEntryId);
-  if (lastSeenIndex === -1) {
-    // Entry not found, show last 3 entries
-    return CHANGELOG.slice(0, 3);
-  }
-  
-  // Return all entries newer than the last seen entry
-  return CHANGELOG.slice(0, lastSeenIndex);
+  await db.collection(CHANGELOG_COLLECTION).doc(entry.id).set(entry);
 }
 
-// Helper to format creator name
-export function formatCreatorName(createdBy?: { name: string; rank?: string; idNumber?: string }): string {
-  if (!createdBy) return 'Unknown';
-  
-  const parts = [];
-  if (createdBy.rank) parts.push(createdBy.rank);
-  parts.push(createdBy.name);
-  if (createdBy.idNumber) parts.push(\`#\${createdBy.idNumber}\`);
-  
-  return parts.join(' ');
-}`;
+async function deleteChangelogFromFirestore(id: string): Promise<void> {
+  const db = adminDb();
+  await db.collection(CHANGELOG_COLLECTION).doc(id).delete();
+}
 
-    writeFileSync(CHANGELOG_FILE_PATH, content, 'utf-8');
-  } catch (error) {
-    console.error('Error writing changelog file:', error);
-    throw error;
-  }
+async function checkChangelogExists(id: string): Promise<boolean> {
+  const db = adminDb();
+  const doc = await db.collection(CHANGELOG_COLLECTION).doc(id).get();
+  return doc.exists;
 }
 
 export async function GET(request: NextRequest) {
@@ -86,7 +66,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
 
-    const changelogs = readChangelogFile();
+    const changelogs = await getChangelogsFromFirestore();
     return NextResponse.json(changelogs);
   } catch (error) {
     console.error('Error fetching changelogs:', error);
@@ -108,16 +88,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const changelogs = readChangelogFile();
-    
     // Check if ID already exists
-    if (changelogs.some(changelog => changelog.id === entry.id)) {
+    const exists = await checkChangelogExists(entry.id);
+    if (exists) {
       return NextResponse.json({ error: 'Entry ID already exists' }, { status: 400 });
     }
 
-    // Add new entry at the beginning (latest first)
-    const updatedChangelogs = [entry, ...changelogs];
-    writeChangelogFile(updatedChangelogs);
+    // Save new entry to Firestore
+    await saveChangelogToFirestore(entry);
 
     return NextResponse.json({ success: true, entry });
   } catch (error) {
@@ -140,21 +118,22 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const changelogs = readChangelogFile();
-    const index = changelogs.findIndex(changelog => changelog.id === originalId);
-    
-    if (index === -1) {
+    // Check if original entry exists
+    const originalExists = await checkChangelogExists(originalId);
+    if (!originalExists) {
       return NextResponse.json({ error: 'Changelog not found' }, { status: 404 });
     }
 
     // Check if new ID conflicts with existing one (unless it's the same entry)
-    if (entry.id !== originalId && changelogs.some(changelog => changelog.id === entry.id)) {
-      return NextResponse.json({ error: 'Entry ID already exists' }, { status: 400 });
+    if (entry.id !== originalId) {
+      const newIdExists = await checkChangelogExists(entry.id);
+      if (newIdExists) {
+        return NextResponse.json({ error: 'Entry ID already exists' }, { status: 400 });
+      }
     }
 
-    // Update the entry
-    changelogs[index] = entry;
-    writeChangelogFile(changelogs);
+    // Update the entry in Firestore
+    await updateChangelogInFirestore(originalId, entry);
 
     return NextResponse.json({ success: true, entry });
   } catch (error) {
@@ -177,14 +156,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Entry ID is required' }, { status: 400 });
     }
 
-    const changelogs = readChangelogFile();
-    const updatedChangelogs = changelogs.filter(changelog => changelog.id !== id);
-    
-    if (updatedChangelogs.length === changelogs.length) {
+    // Check if entry exists
+    const exists = await checkChangelogExists(id);
+    if (!exists) {
       return NextResponse.json({ error: 'Changelog not found' }, { status: 404 });
     }
 
-    writeChangelogFile(updatedChangelogs);
+    // Delete from Firestore
+    await deleteChangelogFromFirestore(id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

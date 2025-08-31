@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,12 +11,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit2, Trash2, Calendar, Sparkles, Wrench, Shield, Bug } from 'lucide-react';
 import { toast } from 'sonner';
-import { CHANGELOG, type ChangelogEntry, formatCreatorName } from '@/lib/changelog';
+import { type ChangelogEntry, formatCreatorName } from '@/lib/changelog';
 import { useAuth } from '@/lib/auth-context';
 
 export default function ChangelogManagementPage() {
   const { user } = useAuth();
-  const [changelogs, setChangelogs] = useState<ChangelogEntry[]>(CHANGELOG);
+  const [changelogs, setChangelogs] = useState<ChangelogEntry[]>([]);
   const [editingEntry, setEditingEntry] = useState<ChangelogEntry | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -33,6 +33,25 @@ export default function ChangelogManagementPage() {
     type: 'feature' as ChangelogEntry['type'],
     changes: ['']
   });
+
+  // Fetch changelogs on mount
+  useEffect(() => {
+    const fetchChangelogs = async () => {
+      try {
+        const response = await fetch('/api/admin/changelog');
+        if (response.ok) {
+          const data = await response.json();
+          setChangelogs(data);
+        } else {
+          toast.error('Failed to fetch changelogs');
+        }
+      } catch (error) {
+        console.error('Error fetching changelogs:', error);
+        toast.error('Failed to fetch changelogs');
+      }
+    };
+    fetchChangelogs();
+  }, []);
 
   const resetForm = () => {
     setFormData({
@@ -93,13 +112,11 @@ export default function ChangelogManagementPage() {
         throw new Error('Failed to save changelog');
       }
 
-      // Update local state
-      if (isCreating) {
-        setChangelogs([newEntry, ...changelogs]);
-      } else if (editingEntry) {
-        setChangelogs(changelogs.map(entry => 
-          entry.id === editingEntry.id ? newEntry : entry
-        ));
+      // Refetch changelogs to ensure consistency with database
+      const refreshResponse = await fetch('/api/admin/changelog');
+      if (refreshResponse.ok) {
+        const updatedData = await refreshResponse.json();
+        setChangelogs(updatedData);
       }
 
       toast.success(`Changelog ${isCreating ? 'created' : 'updated'} successfully`);
@@ -130,7 +147,13 @@ export default function ChangelogManagementPage() {
         throw new Error('Failed to delete changelog');
       }
 
-      setChangelogs(changelogs.filter(entry => entry.id !== id));
+      // Refetch changelogs to ensure consistency with database
+      const refreshResponse = await fetch('/api/admin/changelog');
+      if (refreshResponse.ok) {
+        const updatedData = await refreshResponse.json();
+        setChangelogs(updatedData);
+      }
+      
       toast.success('Changelog deleted successfully');
       
       // Trigger a custom event to notify other components about the changelog update

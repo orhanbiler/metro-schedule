@@ -25,7 +25,7 @@ export function ChangelogDialog() {
 
   const fetchChangelog = async () => {
     try {
-      const response = await fetch('/api/admin/changelog');
+      const response = await fetch('/api/changelog/public');
       if (response.ok) {
         const data = await response.json();
         setChangelog(data);
