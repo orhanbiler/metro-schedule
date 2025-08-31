@@ -972,7 +972,6 @@ export default function SchedulePage() {
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
                                           <AlertDialogAction 
                                             onClick={() => handleRemoveOfficer(slot.id, 'morning', officer.name)}
                                             disabled={loading}
@@ -980,6 +979,7 @@ export default function SchedulePage() {
                                           >
                                             {user?.role === 'admin' ? 'Remove Officer' : 'Remove Me'}
                                           </AlertDialogAction>
+                                          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
                                     </AlertDialog>
@@ -1094,7 +1094,6 @@ export default function SchedulePage() {
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
                                           <AlertDialogAction 
                                             onClick={() => handleRemoveOfficer(slot.id, 'afternoon', officer.name)}
                                             disabled={loading}
@@ -1102,6 +1101,7 @@ export default function SchedulePage() {
                                           >
                                             {user?.role === 'admin' ? 'Remove Officer' : 'Remove Me'}
                                           </AlertDialogAction>
+                                          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
                                     </AlertDialog>

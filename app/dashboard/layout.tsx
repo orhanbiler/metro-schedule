@@ -81,15 +81,6 @@ export default function DashboardLayout({
                 </div>
               </div>
               <div className="hidden md:ml-4 md:flex md:items-center space-x-2 lg:space-x-4 flex-shrink-0">
-                <div className="w-8 h-8 bg-navbar-foreground/10 rounded-full flex items-center justify-center overflow-hidden">
-                  <Image
-                    src="/media/avatar/police-avatar-no-bg.png"
-                    alt="User Avatar"
-                    width={24}
-                    height={24}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
                 <div className="flex flex-col items-end max-w-[120px] lg:max-w-[160px] xl:max-w-none">
                   <span className="text-navbar-foreground text-sm font-medium truncate w-full text-right">
                     {user?.rank && user?.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user?.name}
@@ -170,23 +161,12 @@ export default function DashboardLayout({
                   </Link>
                 )}
                 <div className="border-t border-navbar-hover/50 pt-4 mt-4">
-                  <div className="px-3 py-2 mb-3 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-navbar-foreground/10 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-                      <Image
-                        src="/media/avatar/police-avatar-no-bg.png"
-                        alt="User Avatar"
-                        width={32}
-                        height={32}
-                        className="w-full h-full object-contain"
-                      />
+                  <div className="px-3 py-2 mb-3">
+                    <div className="text-navbar-foreground font-medium">
+                      {user?.rank && user?.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user?.name}
                     </div>
-                    <div className="flex-1">
-                      <div className="text-navbar-foreground font-medium">
-                        {user?.rank && user?.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user?.name}
-                      </div>
-                      <div className="text-navbar-foreground opacity-70 text-sm">
-                        {user?.idNumber ? `#${user.idNumber} • ${user?.role}` : user?.role}
-                      </div>
+                    <div className="text-navbar-foreground opacity-70 text-sm">
+                      {user?.idNumber ? `#${user.idNumber} • ${user?.role}` : user?.role}
                     </div>
                   </div>
                   <button

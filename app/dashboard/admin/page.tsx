@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Calendar, CheckCircle, Clock } from 'lucide-react';
+import { Users, Calendar, CheckCircle, Clock, Bell, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { formatOfficerName } from '@/lib/utils';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 interface User {
   id: string;
@@ -341,6 +343,34 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Admin Tools */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Admin Tools</CardTitle>
+          <CardDescription>System administration and management tools</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Link href="/dashboard/admin/changelog">
+              <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:bg-accent">
+                <Bell className="h-6 w-6" />
+                <div className="text-center">
+                  <div className="font-semibold">Changelog Management</div>
+                  <div className="text-sm text-muted-foreground">Create and manage app updates</div>
+                </div>
+              </Button>
+            </Link>
+            <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:bg-accent" disabled>
+              <Settings className="h-6 w-6" />
+              <div className="text-center">
+                <div className="font-semibold">System Settings</div>
+                <div className="text-sm text-muted-foreground">Coming soon</div>
+              </div>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Users Management */}
       <Card>
