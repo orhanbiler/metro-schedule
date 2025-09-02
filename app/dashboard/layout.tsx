@@ -81,14 +81,9 @@ export default function DashboardLayout({
                 </div>
               </div>
               <div className="hidden md:ml-4 md:flex md:items-center space-x-2 lg:space-x-4 flex-shrink-0">
-                <div className="flex flex-col items-end max-w-[120px] lg:max-w-[160px] xl:max-w-none">
-                  <span className="text-navbar-foreground text-sm font-medium truncate w-full text-right">
-                    {user?.rank && user?.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user?.name}
-                  </span>
-                  <span className="text-navbar-foreground opacity-70 text-xs truncate w-full text-right">
-                    {user?.idNumber ? `#${user.idNumber}` : user?.role}
-                  </span>
-                </div>
+                <span className="text-navbar-foreground text-sm font-medium truncate max-w-[120px] lg:max-w-[160px] xl:max-w-none">
+                  {user?.rank && user?.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user?.name}
+                </span>
                 <ChangelogDialog />
                 <ThemeToggle />
                 <Button
@@ -164,9 +159,6 @@ export default function DashboardLayout({
                   <div className="px-3 py-2 mb-3">
                     <div className="text-navbar-foreground font-medium">
                       {user?.rank && user?.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user?.name}
-                    </div>
-                    <div className="text-navbar-foreground opacity-70 text-sm">
-                      {user?.idNumber ? `#${user.idNumber} • ${user?.role}` : user?.role}
                     </div>
                   </div>
                   <button
