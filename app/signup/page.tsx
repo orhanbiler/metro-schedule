@@ -125,8 +125,9 @@ export default function SignupPage() {
       const userData = await response.json();
       localStorage.setItem('user', JSON.stringify(userData));
       
-      // Small delay to ensure cookies and token are fully propagated
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Force auth state update by triggering a small delay
+      // This ensures the auth context picks up the new user
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       toast.success('Account created successfully!');
       

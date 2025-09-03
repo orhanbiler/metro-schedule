@@ -56,7 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cachedUser) {
           const userData = JSON.parse(cachedUser);
           // Verify the cached user matches the Firebase user
-          if (userData.id === firebaseUser.uid) {
+          // Check both id and firebaseAuthUID for compatibility
+          if (userData.id === firebaseUser.uid || userData.firebaseAuthUID === firebaseUser.uid) {
             setUser(userData);
           }
         }
@@ -83,9 +84,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userData = await response.json();
             setUser(userData);
             localStorage.setItem('user', JSON.stringify(userData));
+          } else if (response.status === 404) {
+            console.error('Sync-user endpoint not found. Using cached user data.');
+            // Try to use cached user data if available
+            const cachedUserStr = localStorage.getItem('user');
+            if (cachedUserStr) {
+              try {
+                const cachedUser = JSON.parse(cachedUserStr);
+                if (cachedUser.id === firebaseUser.uid) {
+                  setUser(cachedUser);
+                  return; // Exit early if we have valid cached data
+                }
+              } catch (e) {
+                console.error('Failed to parse cached user data:', e);
+              }
+            }
+            // Fallback to basic user info from Firebase
+            const basicUser = {
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
+              role: 'user' as const,
+            };
+            setUser(basicUser);
+            localStorage.setItem('user', JSON.stringify(basicUser));
           }
         } catch (error) {
           console.error('Failed to sync user data:', error);
+          // Try to use cached user data if available
+          const cachedUserStr = localStorage.getItem('user');
+          if (cachedUserStr) {
+            try {
+              const cachedUser = JSON.parse(cachedUserStr);
+              if (cachedUser.id === firebaseUser.uid) {
+                setUser(cachedUser);
+                return; // Exit early if we have valid cached data
+              }
+            } catch (e) {
+              console.error('Failed to parse cached user data:', e);
+            }
+          }
+          // Fallback to basic user info from Firebase
+          const basicUser = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
+            role: 'user' as const,
+          };
+          setUser(basicUser);
+          localStorage.setItem('user', JSON.stringify(basicUser));
         }
       } else {
         // User is logged out

@@ -13,16 +13,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate that the requesting user is authenticated
+    // Try to validate the requesting user
+    // During initial signup, the user might not be fully authenticated yet
     const requestingUser = await validateApiAuth(request);
     
-    // Users can only sync their own data unless they're an admin
-    if (requestingUser && requestingUser.uid !== userId && requestingUser.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden - Cannot sync other users data' },
-        { status: 403 }
-      );
+    // If we have a requesting user, verify they can sync this data
+    if (requestingUser) {
+      // Users can only sync their own data unless they're an admin
+      if (requestingUser.uid !== userId && requestingUser.role !== 'admin') {
+        return NextResponse.json(
+          { error: 'Forbidden - Cannot sync other users data' },
+          { status: 403 }
+        );
+      }
     }
+    // If no requestingUser (during initial sync), we'll allow syncing if the user exists in DB
 
     // Sync user data from Firestore
 
