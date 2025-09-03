@@ -91,10 +91,20 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
 
+      // Force token refresh to ensure it's ready
+      const token = await firebaseUser.getIdToken(true);
+      
+      // Set auth cookies explicitly before any API calls
+      document.cookie = `authToken=${token}; path=/; max-age=3600; SameSite=Lax`;
+      document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+
       // Then create user document in Firestore via API
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // Include token in header
+        },
         body: JSON.stringify({ 
           email, 
           password, 
@@ -115,9 +125,8 @@ export default function SignupPage() {
       const userData = await response.json();
       localStorage.setItem('user', JSON.stringify(userData));
       
-      // Set auth cookie for middleware
-      const token = await firebaseUser.getIdToken();
-      document.cookie = `authToken=${token}; path=/; max-age=3600; SameSite=Lax`;
+      // Small delay to ensure cookies and token are fully propagated
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       toast.success('Account created successfully!');
       

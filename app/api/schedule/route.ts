@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     // Validate authentication
     const user = await validateApiAuth(request);
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'User authentication failed. Please log in again.' }, { status: 401 });
     }
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     // (Officers can sign up for shifts, admins can do everything)
     const user = await validateApiAuth(request);
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'User authentication failed. Please log in again.' }, { status: 401 });
     }
     const { month, year, schedule } = await request.json();
 

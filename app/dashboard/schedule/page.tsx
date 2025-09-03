@@ -42,7 +42,7 @@ interface TimeSlot {
 }
 
 export default function SchedulePage() {
-  const { user } = useAuth();
+  const { user, firebaseUser } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [schedule, setSchedule] = useState<TimeSlot[]>([]);
@@ -220,7 +220,16 @@ export default function SchedulePage() {
 
   const loadSchedule = async () => {
     try {
-      const response = await fetch(`/api/schedule?month=${selectedMonth}&year=${selectedYear}`);
+      // Get fresh token if available
+      const token = firebaseUser ? await firebaseUser.getIdToken() : null;
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`/api/schedule?month=${selectedMonth}&year=${selectedYear}`, {
+        headers
+      });
       if (response.ok) {
         const data = await response.json();
         if (data.schedule && data.schedule.length > 0) {
@@ -376,10 +385,17 @@ export default function SchedulePage() {
 
   const saveSchedule = async (updatedSchedule: TimeSlot[]) => {
     try {
+      // Get fresh token if available
+      const token = firebaseUser ? await firebaseUser.getIdToken() : null;
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       // Saving schedule to API
       const response = await fetch('/api/schedule', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           month: selectedMonth,
           year: selectedYear,

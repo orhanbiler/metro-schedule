@@ -61,11 +61,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        // Get fresh token immediately
+        const token = await firebaseUser.getIdToken();
+        
+        // Set auth cookies immediately to ensure they're available for any API calls
+        document.cookie = `authToken=${token}; path=/; max-age=3600; SameSite=Lax`;
+        document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+
         // Then sync with Firestore to get latest data
         try {
           const response = await fetch('/api/auth/sync-user', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}` // Include token in header
+            },
             body: JSON.stringify({ userId: firebaseUser.uid }),
           });
 
@@ -73,9 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userData = await response.json();
             setUser(userData);
             localStorage.setItem('user', JSON.stringify(userData));
-            
-            // Set auth cookie for middleware
-            document.cookie = `authToken=${await firebaseUser.getIdToken()}; path=/; max-age=3600; SameSite=Lax`;
           }
         } catch (error) {
           console.error('Failed to sync user data:', error);
