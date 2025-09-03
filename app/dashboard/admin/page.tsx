@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Calendar, CheckCircle, Clock, Bell, Settings } from 'lucide-react';
+import { Users, Calendar, CheckCircle, Clock, Bell, Settings, Timer, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -32,6 +32,8 @@ export default function AdminPage() {
     filledSlots: 0,
     availableSlots: 0,
     thisMonthUsers: 0,
+    totalHoursWorked: 0,
+    totalHoursUncovered: 0,
   });
 
   useEffect(() => {
@@ -69,6 +71,7 @@ export default function AdminPage() {
     } else {
       console.warn('Firebase/Firestore not properly initialized. Real-time updates disabled.');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -89,7 +92,35 @@ export default function AdminPage() {
     }
   };
 
-  const calculateScheduleStats = async () => {
+  // Helper function to calculate hours from time string (e.g., "6am-2pm" = 8 hours)
+  const calculateHoursFromTimeString = (timeStr: string): number => {
+    if (!timeStr) return 0;
+    
+    // Parse time strings like "6am-2pm", "10pm-6am", "12am-8am"
+    const match = timeStr.match(/(\d+)(am|pm)-(\d+)(am|pm)/i);
+    if (!match) return 0;
+    
+    const [, startHour, startPeriod, endHour, endPeriod] = match;
+    
+    // Convert to 24-hour format
+    let start = parseInt(startHour);
+    let end = parseInt(endHour);
+    
+    // Handle 12am/12pm special cases
+    if (start === 12 && startPeriod.toLowerCase() === 'am') start = 0;
+    else if (start !== 12 && startPeriod.toLowerCase() === 'pm') start += 12;
+    
+    if (end === 12 && endPeriod.toLowerCase() === 'am') end = 0;
+    else if (end !== 12 && endPeriod.toLowerCase() === 'pm') end += 12;
+    
+    // Calculate hours, handling overnight shifts
+    let hours = end - start;
+    if (hours < 0) hours += 24; // Overnight shift
+    
+    return hours;
+  };
+
+  const calculateScheduleStats = useCallback(async () => {
     try {
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth(); // Keep 0-indexed for API consistency
@@ -137,6 +168,8 @@ export default function AdminPage() {
           filledSlots: 0,
           availableSlots: maxPossibleSlots,
           thisMonthUsers: 0,
+          totalHoursWorked: 0,
+          totalHoursUncovered: maxPossibleSlots * 8, // Assuming 8 hours per slot
         };
         // Using fallback statistics due to API error
         setScheduleStats(fallbackStats);
@@ -156,6 +189,8 @@ export default function AdminPage() {
           filledSlots: 0,
           availableSlots: maxPossibleSlots,
           thisMonthUsers: 0,
+          totalHoursWorked: 0,
+          totalHoursUncovered: maxPossibleSlots * 8, // Assuming 8 hours per slot
         };
         // No schedule data found, using empty schedule statistics
         setScheduleStats(emptyScheduleStats);
@@ -164,13 +199,23 @@ export default function AdminPage() {
       
       // Calculate actual statistics from existing schedule (only from today onwards)
       let filledSlots = 0;
+      let totalHoursWorked = 0;
+      let totalHoursUncovered = 0;
       const uniqueOfficers = new Set<string>();
       
       schedule.forEach((day: { 
         id: string; 
         date: Date | string; 
-        morningSlot?: { officers?: { name: string }[]; maxOfficers?: number }; 
-        afternoonSlot?: { officers?: { name: string }[]; maxOfficers?: number } 
+        morningSlot?: { 
+          officers?: Array<{ name: string; customHours?: string }>; 
+          maxOfficers?: number;
+          time?: string;
+        }; 
+        afternoonSlot?: { 
+          officers?: Array<{ name: string; customHours?: string }>; 
+          maxOfficers?: number;
+          time?: string;
+        } 
       }) => {
         // Only count days from today onwards
         let dayDate;
@@ -192,8 +237,12 @@ export default function AdminPage() {
         if (dayOfMonth >= today) {
           const morningOfficers = day.morningSlot?.officers || [];
           const afternoonOfficers = day.afternoonSlot?.officers || [];
+          const morningTime = day.morningSlot?.time || '6am-2pm';
+          const afternoonTime = day.afternoonSlot?.time || '2pm-10pm';
+          const maxMorning = day.morningSlot?.maxOfficers || 2;
+          const maxAfternoon = day.afternoonSlot?.maxOfficers || 2;
           
-          // Counting filled slots for this day
+          // Counting filled slots and hours for this day
           
           // For today, only count shifts that haven't started yet
           if (dayOfMonth === today) {
@@ -202,14 +251,74 @@ export default function AdminPage() {
             if (currentHour < 5) {
               // Both shifts are in the future
               filledSlots += morningOfficers.length + afternoonOfficers.length;
+              
+              // Calculate hours for morning shift
+              morningOfficers.forEach(officer => {
+                const hours = calculateHoursFromTimeString(officer.customHours || morningTime);
+                totalHoursWorked += hours;
+              });
+              
+              // Calculate uncovered hours for morning
+              const uncoveredMorning = maxMorning - morningOfficers.length;
+              if (uncoveredMorning > 0) {
+                totalHoursUncovered += uncoveredMorning * calculateHoursFromTimeString(morningTime);
+              }
+              
+              // Calculate hours for afternoon shift
+              afternoonOfficers.forEach(officer => {
+                const hours = calculateHoursFromTimeString(officer.customHours || afternoonTime);
+                totalHoursWorked += hours;
+              });
+              
+              // Calculate uncovered hours for afternoon
+              const uncoveredAfternoon = maxAfternoon - afternoonOfficers.length;
+              if (uncoveredAfternoon > 0) {
+                totalHoursUncovered += uncoveredAfternoon * calculateHoursFromTimeString(afternoonTime);
+              }
             } else if (currentHour < 13) {
               // Only afternoon shift is in the future (1300-2200)
               filledSlots += afternoonOfficers.length;
+              
+              // Calculate hours for afternoon shift only
+              afternoonOfficers.forEach(officer => {
+                const hours = calculateHoursFromTimeString(officer.customHours || afternoonTime);
+                totalHoursWorked += hours;
+              });
+              
+              // Calculate uncovered hours for afternoon
+              const uncoveredAfternoon = maxAfternoon - afternoonOfficers.length;
+              if (uncoveredAfternoon > 0) {
+                totalHoursUncovered += uncoveredAfternoon * calculateHoursFromTimeString(afternoonTime);
+              }
             }
             // If current hour >= 13, don't count any slots for today
           } else {
-            // Future days - count all filled slots
+            // Future days - count all filled slots and hours
             filledSlots += morningOfficers.length + afternoonOfficers.length;
+            
+            // Calculate hours for morning shift
+            morningOfficers.forEach(officer => {
+              const hours = calculateHoursFromTimeString(officer.customHours || morningTime);
+              totalHoursWorked += hours;
+            });
+            
+            // Calculate uncovered hours for morning
+            const uncoveredMorning = maxMorning - morningOfficers.length;
+            if (uncoveredMorning > 0) {
+              totalHoursUncovered += uncoveredMorning * calculateHoursFromTimeString(morningTime);
+            }
+            
+            // Calculate hours for afternoon shift
+            afternoonOfficers.forEach(officer => {
+              const hours = calculateHoursFromTimeString(officer.customHours || afternoonTime);
+              totalHoursWorked += hours;
+            });
+            
+            // Calculate uncovered hours for afternoon
+            const uncoveredAfternoon = maxAfternoon - afternoonOfficers.length;
+            if (uncoveredAfternoon > 0) {
+              totalHoursUncovered += uncoveredAfternoon * calculateHoursFromTimeString(afternoonTime);
+            }
           }
           
           // Track unique officers (for all slots, regardless of time)
@@ -230,6 +339,8 @@ export default function AdminPage() {
         filledSlots,
         availableSlots,
         thisMonthUsers: uniqueOfficers.size,
+        totalHoursWorked,
+        totalHoursUncovered,
       };
       
       // Schedule statistics calculated successfully
@@ -269,9 +380,11 @@ export default function AdminPage() {
         filledSlots: 0,
         availableSlots: maxPossibleSlots,
         thisMonthUsers: 0,
+        totalHoursWorked: 0,
+        totalHoursUncovered: maxPossibleSlots * 8, // Assuming 8 hours per slot
       });
     }
-  };
+  }, []);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -359,6 +472,32 @@ export default function AdminPage() {
                 <div className="text-2xl font-bold">{scheduleStats.thisMonthUsers}</div>
                 <p className="text-xs text-muted-foreground">
                   Working this month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Hours Covered</CardTitle>
+                <Timer className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{scheduleStats.totalHoursWorked}</div>
+                <p className="text-xs text-muted-foreground">
+                  Total hours scheduled
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Hours Uncovered</CardTitle>
+                <AlertCircle className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">{scheduleStats.totalHoursUncovered}</div>
+                <p className="text-xs text-muted-foreground">
+                  Hours without coverage
                 </p>
               </CardContent>
             </Card>

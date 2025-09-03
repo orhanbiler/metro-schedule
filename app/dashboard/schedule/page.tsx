@@ -670,6 +670,34 @@ export default function SchedulePage() {
     }
   };
 
+  // Helper function to calculate hours from time string (e.g., "6am-2pm" = 8 hours)
+  const calculateHoursFromTimeString = (timeStr: string): number => {
+    if (!timeStr) return 0;
+    
+    // Parse time strings like "6am-2pm", "10pm-6am", "12am-8am"
+    const match = timeStr.match(/(\d+)(am|pm)-(\d+)(am|pm)/i);
+    if (!match) return 0;
+    
+    const [, startHour, startPeriod, endHour, endPeriod] = match;
+    
+    // Convert to 24-hour format
+    let start = parseInt(startHour);
+    let end = parseInt(endHour);
+    
+    // Handle 12am/12pm special cases
+    if (start === 12 && startPeriod.toLowerCase() === 'am') start = 0;
+    else if (start !== 12 && startPeriod.toLowerCase() === 'pm') start += 12;
+    
+    if (end === 12 && endPeriod.toLowerCase() === 'am') end = 0;
+    else if (end !== 12 && endPeriod.toLowerCase() === 'pm') end += 12;
+    
+    // Calculate hours, handling overnight shifts
+    let hours = end - start;
+    if (hours < 0) hours += 24; // Overnight shift
+    
+    return hours;
+  };
+
   const generatePDF = async () => {
     if (!schedule || schedule.length === 0) {
       toast.error('No schedule data available to export. Please wait for the schedule to load.');
@@ -708,8 +736,10 @@ export default function SchedulePage() {
           doc.setFont('helvetica', 'bold');
           doc.text(`${monthNames[selectedMonth]} ${selectedYear}`, 60, 45);
           
-          // Prepare table data
+          // Prepare table data and calculate total hours
           const tableData: Array<[string, string, string]> = [];
+          let totalHoursWorked = 0;
+          const officerHours: Record<string, number> = {};
           
           schedule.forEach(slot => {
             // Morning slot
@@ -717,6 +747,12 @@ export default function SchedulePage() {
               slot.morningSlot.officers.forEach((officer, index) => {
                 const displayTime = officer.customHours || 
                   `${slot.morningSlot.time.slice(0, 2)}:${slot.morningSlot.time.slice(2, 4)}-${slot.morningSlot.time.slice(5, 7)}:${slot.morningSlot.time.slice(7, 9)}`;
+                
+                // Calculate hours for this shift
+                const hours = calculateHoursFromTimeString(officer.customHours || slot.morningSlot.time);
+                totalHoursWorked += hours;
+                officerHours[officer.name] = (officerHours[officer.name] || 0) + hours;
+                
                 tableData.push([
                   index === 0 ? `${slot.dayName} ${formatDate(slot.date)}` : '',
                   displayTime,
@@ -749,6 +785,12 @@ export default function SchedulePage() {
               slot.afternoonSlot.officers.forEach((officer) => {
                 const displayTime = officer.customHours || 
                   `${slot.afternoonSlot.time.slice(0, 2)}:${slot.afternoonSlot.time.slice(2, 4)}-${slot.afternoonSlot.time.slice(5, 7)}:${slot.afternoonSlot.time.slice(7, 9)}`;
+                
+                // Calculate hours for this shift
+                const hours = calculateHoursFromTimeString(officer.customHours || slot.afternoonSlot.time);
+                totalHoursWorked += hours;
+                officerHours[officer.name] = (officerHours[officer.name] || 0) + hours;
+                
                 tableData.push([
                   '',
                   `and/or ${displayTime}`,
@@ -818,6 +860,47 @@ export default function SchedulePage() {
             tableLineWidth: 0.15,
             rowPageBreak: 'avoid',
           });
+          
+          // Add Hours Summary section
+          // @ts-expect-error jspdf-autotable adds lastAutoTable property
+          const finalY = doc.lastAutoTable?.finalY || 180;
+          const summaryY = finalY + 15;
+          
+          // Check if we need a new page for the summary
+          if (summaryY > 250) {
+            doc.addPage();
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Hours Summary', 20, 20);
+          } else {
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Hours Summary', 20, summaryY);
+          }
+          
+          // Total hours
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'normal');
+          const currentY = summaryY > 250 ? 30 : summaryY + 10;
+          doc.text(`Total Hours Scheduled: ${totalHoursWorked} hours`, 20, currentY);
+          
+          // Individual officer hours
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Hours by Officer:', 20, currentY + 10);
+          
+          doc.setFont('helvetica', 'normal');
+          let yPos = currentY + 20;
+          Object.entries(officerHours)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .forEach(([officer, hours]) => {
+              if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+              }
+              doc.text(`${officer}: ${hours} hours`, 25, yPos);
+              yPos += 6;
+            });
           
         doc.save(`metro-schedule-${monthNames[selectedMonth].toLowerCase()}-${selectedYear}.pdf`);
         toast.dismiss(toastId);
