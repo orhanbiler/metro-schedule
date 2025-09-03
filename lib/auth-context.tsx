@@ -139,8 +139,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setFirebaseUser(null);
         setUser(null);
         localStorage.removeItem('user');
-        // Clear auth cookie
+        // Clear all auth cookies
         document.cookie = 'authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       }
       
       setLoading(false);
@@ -154,22 +155,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unsubscribe();
       clearTimeout(timeout);
     };
-  }, []);
+  }, [router]);
 
   const logout = async () => {
     try {
+      // Clear local storage first
+      localStorage.removeItem('user');
+      
+      // Clear all auth cookies
+      document.cookie = 'authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      
       // Sign out from Firebase if available
       if (auth) {
         await signOut(auth);
       }
-      // Clear local storage
-      localStorage.removeItem('user');
-      // Clear auth cookie
-      document.cookie = 'authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      // The onAuthStateChanged listener will handle the rest
+      
+      // Force redirect to login immediately
       router.push('/login');
     } catch (error) {
       console.error('Logout error:', error);
+      // Even if there's an error, still try to redirect
+      router.push('/login');
     }
   };
 

@@ -8,15 +8,10 @@ import Link from 'next/link';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { isFirestoreInitialized } from '@/lib/firebase-utils';
-
-interface User {
-  name: string;
-  email: string;
-  role: string;
-}
+import { useAuth } from '@/lib/auth-context';
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const [scheduleStats, setScheduleStats] = useState({
     totalSlots: 0,
     filledSlots: 0,
@@ -25,11 +20,6 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-    
     calculateScheduleStats();
     
     // Set up real-time listener for schedule changes only if Firestore is initialized
