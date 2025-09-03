@@ -30,6 +30,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    // Check if auth is available
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+    
     // Set persistence to LOCAL (survives browser restarts)
     setPersistence(auth, browserLocalPersistence).catch(console.error);
 
@@ -98,8 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      // Sign out from Firebase
-      await signOut(auth);
+      // Sign out from Firebase if available
+      if (auth) {
+        await signOut(auth);
+      }
       // Clear local storage
       localStorage.removeItem('user');
       // Clear auth cookie

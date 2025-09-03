@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import type { ChangelogEntry } from '@/lib/changelog';
 
 // Collection name for changelogs in Firestore
 const CHANGELOG_COLLECTION = 'changelogs';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const db = adminDb();
     const snapshot = await db.collection(CHANGELOG_COLLECTION)

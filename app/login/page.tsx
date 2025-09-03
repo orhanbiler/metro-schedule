@@ -25,7 +25,12 @@ export default function LoginPage() {
       setCheckingAuth(false);
     }, 5000); // 5 second timeout
 
-    // Check if user is already authenticated
+    // Check if user is already authenticated only if auth is available
+    if (!auth) {
+      setCheckingAuth(false);
+      return;
+    }
+    
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       clearTimeout(timeout);
       // Only redirect if not currently logging in and not already redirecting
@@ -54,6 +59,10 @@ export default function LoginPage() {
     setIsRedirecting(true); // Prevent auth listener from interfering
 
     try {
+      if (!auth) {
+        throw new Error('Authentication not available');
+      }
+      
       // Authenticate with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;

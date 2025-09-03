@@ -13,26 +13,36 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || 'G-DEMO'
 };
 
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
 let analytics: Promise<Analytics | null> | null = null;
 
-// Only initialize Firebase if we're in a browser environment or have valid config
-if (typeof window !== 'undefined' || process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-  auth = getAuth(app);
-  db = getFirestore(app);
-  
-  if (typeof window !== 'undefined') {
-    analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
+// Check if we have valid Firebase configuration
+const hasValidConfig = process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
+                      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
+                      !process.env.NEXT_PUBLIC_FIREBASE_API_KEY.startsWith('demo-');
+
+// Only initialize Firebase if we have valid config
+if (hasValidConfig && (typeof window !== 'undefined' || process.env.NEXT_PUBLIC_FIREBASE_API_KEY)) {
+  try {
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    auth = getAuth(app);
+    db = getFirestore(app);
+    
+    if (typeof window !== 'undefined' && app) {
+      analytics = isSupported().then(yes => yes && app ? getAnalytics(app) : null);
+    }
+    
+    console.log('Firebase initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Firebase:', error);
+    app = null;
+    auth = null;
+    db = null;
   }
 } else {
-  // During build time without environment variables, create placeholder objects
-  // These won't be used in production but allow the build to complete
-  app = {} as FirebaseApp;
-  auth = {} as Auth;
-  db = {} as Firestore;
+  console.warn('Firebase not initialized - missing or invalid configuration');
 }
 
 export { app as default, auth, db, analytics };

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { isFirestoreInitialized } from '@/lib/firebase-utils';
 import { useAuth, type User } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +15,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Download, Trash2, Plus, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatOfficerName, formatOfficerNameForDisplay } from '@/lib/utils';
+import { ScheduleSkeleton } from '@/components/schedule/schedule-skeleton';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 
 interface Officer {
   name: string;
@@ -44,6 +47,20 @@ export default function SchedulePage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [schedule, setSchedule] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  
+  // Native-style pull-to-refresh functionality
+  const { isRefreshing, pullDistance, isPulling, pullProgress } = usePullToRefresh({
+    onRefresh: async () => {
+      await loadSchedule();
+      // Use native haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+      toast.success('Schedule refreshed');
+    },
+    threshold: 60, // Reduced for more native feel
+  });
 
 
 
@@ -228,6 +245,8 @@ export default function SchedulePage() {
       // Fallback to generated schedule
       const newSchedule = generateSchedule();
       setSchedule(newSchedule);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -322,10 +341,16 @@ export default function SchedulePage() {
   };
 
   const setupRealtimeListener = () => {
-    const scheduleId = `${selectedYear}-${selectedMonth}`;
-    const scheduleRef = doc(db, 'schedules', scheduleId);
+    if (!isFirestoreInitialized(db)) {
+      console.warn('Firebase/Firestore not properly initialized. Real-time updates disabled.');
+      return null;
+    }
     
-    const unsubscribe = onSnapshot(scheduleRef, (doc) => {
+    try {
+      const scheduleId = `${selectedYear}-${selectedMonth}`;
+      const scheduleRef = doc(db, 'schedules', scheduleId);
+      
+      const unsubscribe = onSnapshot(scheduleRef, (doc) => {
       if (doc.exists()) {
         const data = doc.data();
         if (data.schedule && data.schedule.length > 0) {
@@ -338,11 +363,15 @@ export default function SchedulePage() {
           setSchedule(scheduleWithDates);
         }
       }
-    }, (error) => {
-      console.error('Error listening to schedule changes:', error);
-    });
+      }, (error) => {
+        console.error('Error listening to schedule changes:', error);
+      });
 
-    return unsubscribe;
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error setting up real-time listener:', error);
+      return null;
+    }
   };
 
   const saveSchedule = async (updatedSchedule: TimeSlot[]) => {
@@ -833,7 +862,39 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative" style={{ overscrollBehavior: 'contain' }}>
+      {/* iOS-style pull-to-refresh indicator */}
+      {(isPulling || isRefreshing) && (
+        <div 
+          className="fixed top-0 left-0 right-0 z-50 flex items-end justify-center transition-all duration-200 ease-out"
+          style={{ 
+            height: isPulling ? `${Math.min(pullDistance, 60)}px` : isRefreshing ? '60px' : '0px',
+            paddingTop: 'env(safe-area-inset-top)',
+          }}
+        >
+          <div 
+            className="flex items-center justify-center pb-2"
+            style={{
+              opacity: Math.min(pullProgress / 80, 1),
+              transform: `scale(${Math.min(pullProgress / 100 + 0.3, 1)})`,
+            }}
+          >
+            {isRefreshing ? (
+              <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-300 rounded-full animate-spin"></div>
+            ) : (
+              <div 
+                className="text-gray-600 dark:text-gray-400 text-xs font-medium"
+                style={{
+                  transform: `translateY(${pullProgress >= 100 ? '0px' : '10px'})`,
+                  opacity: pullProgress / 100
+                }}
+              >
+                {pullProgress >= 100 ? '↓' : '⬇'}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <Card className="sm:mx-0 -mx-2">
         <CardHeader className="px-3 py-3 sm:p-6">
@@ -899,23 +960,26 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          <div className="border rounded-md overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-navy-900 text-white">
-                  <th className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Date/Time</th>
-                  <th className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Officer Name</th>
-                  <th className="text-center p-2 sm:p-2 font-semibold text-xs sm:text-sm">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {schedule.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="text-center p-4 sm:p-8 text-xs sm:text-sm text-muted-foreground">
-                      No shifts available for this month
-                    </td>
+          {initialLoading ? (
+            <ScheduleSkeleton />
+          ) : (
+            <div className="border rounded-md overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-navy-900 text-white">
+                    <th className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Date/Time</th>
+                    <th className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Officer Name</th>
+                    <th className="text-center p-2 sm:p-2 font-semibold text-xs sm:text-sm">Action</th>
                   </tr>
-                ) : (
+                </thead>
+                <tbody>
+                  {schedule.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="text-center p-4 sm:p-8 text-xs sm:text-sm text-muted-foreground">
+                        No shifts available for this month
+                      </td>
+                    </tr>
+                  ) : (
                   schedule.map((slot) => (
                     <React.Fragment key={slot.id}>
                       <tr key={`${slot.id}-morning`} className="border-t hover:bg-muted/50">
@@ -1168,10 +1232,11 @@ export default function SchedulePage() {
                       </tr>
                     </React.Fragment>
                   ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

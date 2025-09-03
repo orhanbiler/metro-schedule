@@ -7,8 +7,17 @@ import ProtectedRoute from '@/components/auth/protected-route';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { ChangelogDialog } from '@/components/ui/changelog-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth-context';
 import { formatOfficerName } from '@/lib/utils';
+import { User, Shield, LogOut } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -64,36 +73,44 @@ export default function DashboardLayout({
                   >
                     Schedule
                   </Link>
-                  <Link
-                    href="/dashboard/profile"
-                    className="text-navbar-foreground hover:bg-navbar-hover px-1 md:px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                  >
-                    Profile
-                  </Link>
-                  {user?.role === 'admin' && (
-                    <Link
-                      href="/dashboard/admin"
-                      className="text-navbar-foreground hover:bg-navbar-hover px-1 md:px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                    >
-                      Admin
-                    </Link>
-                  )}
                 </div>
               </div>
               <div className="hidden md:ml-4 md:flex md:items-center space-x-2 lg:space-x-4 flex-shrink-0">
-                <span className="text-navbar-foreground text-sm font-medium truncate max-w-[120px] lg:max-w-[160px] xl:max-w-none">
-                  {user?.rank && user?.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user?.name}
-                </span>
                 <ChangelogDialog />
                 <ThemeToggle />
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                  className="text-navy-800 bg-white hover:bg-gray-100"
-                >
-                  Logout
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="text-navbar-foreground hover:bg-navbar-hover px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                    >
+                      {user?.rank && user?.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user?.name}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard/profile" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    {user?.role === 'admin' && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard/admin" className="cursor-pointer">
+                          <Shield className="mr-2 h-4 w-4" />
+                          Admin
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <div className="flex items-center md:hidden space-x-2">
                 <ChangelogDialog />

@@ -1,16 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-
+import { authRateLimit } from '@/lib/rate-limit';
+import { sanitizeEmail, sanitizePassword } from '@/lib/sanitize';
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting
+  const rateLimitResult = await authRateLimit(request);
+  
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Too many login attempts. Please try again later.' },
+      { 
+        status: 429,
+        headers: {
+          'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
+          'X-RateLimit-Limit': '5',
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
+        },
+      }
+    );
+  }
+  
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    
+    // Sanitize inputs
+    const email = sanitizeEmail(body.email);
+    const password = sanitizePassword(body.password);
 
     // Processing login request
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Valid email and password are required' },
         { status: 400 }
       );
     }

@@ -7,6 +7,7 @@ import { CheckCircle, Users } from 'lucide-react';
 import Link from 'next/link';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { isFirestoreInitialized } from '@/lib/firebase-utils';
 
 interface User {
   name: string;
@@ -31,25 +32,33 @@ export default function DashboardPage() {
     
     calculateScheduleStats();
     
-    // Set up real-time listener for schedule changes
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth(); // 0-indexed for schedule ID
-    const currentYear = currentDate.getFullYear();
-    const scheduleId = `${currentYear}-${currentMonth}`;
-    const scheduleRef = doc(db, 'schedules', scheduleId);
-    
-    const unsubscribe = onSnapshot(scheduleRef, () => {
-      // Recalculate stats when schedule changes
-      calculateScheduleStats();
-    }, (error) => {
-      console.error('Error listening to schedule changes:', error);
-    });
+    // Set up real-time listener for schedule changes only if Firestore is initialized
+    if (isFirestoreInitialized(db)) {
+      try {
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth(); // 0-indexed for schedule ID
+        const currentYear = currentDate.getFullYear();
+        const scheduleId = `${currentYear}-${currentMonth}`;
+        const scheduleRef = doc(db, 'schedules', scheduleId);
+        
+        const unsubscribe = onSnapshot(scheduleRef, () => {
+          // Recalculate stats when schedule changes
+          calculateScheduleStats();
+        }, (error) => {
+          console.error('Error listening to schedule changes:', error);
+        });
 
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
+        return () => {
+          if (unsubscribe) {
+            unsubscribe();
+          }
+        };
+      } catch (error) {
+        console.error('Error setting up real-time listener:', error);
       }
-    };
+    } else {
+      console.warn('Firebase/Firestore not properly initialized. Real-time updates disabled.');
+    }
   }, []);
 
   const calculateScheduleStats = async () => {

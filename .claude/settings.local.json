@@ -4,7 +4,10 @@
       "Bash(npm run build:*)",
       "Bash(git add:*)",
       "Bash(pnpm build:*)",
-      "Bash(pnpm dlx:*)"
+      "Bash(pnpm dlx:*)",
+      "Bash(git commit:*)",
+      "Bash(npm install:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []

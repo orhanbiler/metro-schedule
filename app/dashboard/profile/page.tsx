@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { User as UserIcon, Mail, Calendar, Clock, Shield } from 'lucide-react';
 import Image from 'next/image';
 import { formatOfficerName } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface User {
   id: string;
@@ -63,8 +64,34 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading profile...</div>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="pb-6">
+            <div className="flex items-center space-x-4">
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-4">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

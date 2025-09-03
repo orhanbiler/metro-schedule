@@ -7,9 +7,11 @@ import { Users, Calendar, CheckCircle, Clock, Bell, Settings } from 'lucide-reac
 import { toast } from 'sonner';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { isFirestoreInitialized } from '@/lib/firebase-utils';
 import { formatOfficerName } from '@/lib/utils';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { UserListSkeleton, StatsCardSkeleton } from '@/components/schedule/schedule-skeleton';
 
 interface User {
   id: string;
@@ -36,28 +38,37 @@ export default function AdminPage() {
     fetchUsers();
     calculateScheduleStats();
     
-    // Set up real-time listener for schedule changes
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth(); // 0-indexed for schedule ID
-    const currentYear = currentDate.getFullYear();
-    const scheduleId = `${currentYear}-${currentMonth}`;
-    const scheduleRef = doc(db, 'schedules', scheduleId);
-    
-    // Setting up real-time listener for schedule changes
-    
-    const unsubscribe = onSnapshot(scheduleRef, () => {
-      // Schedule document changed, recalculating statistics
-      // Recalculate stats when schedule changes
-      calculateScheduleStats();
-    }, (error) => {
-      console.error('Error listening to schedule changes in admin:', error);
-    });
+    // Set up real-time listener for schedule changes only if db is properly initialized
+    if (isFirestoreInitialized(db)) {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth(); // 0-indexed for schedule ID
+      const currentYear = currentDate.getFullYear();
+      const scheduleId = `${currentYear}-${currentMonth}`;
+      
+      try {
+        const scheduleRef = doc(db, 'schedules', scheduleId);
+        
+        // Setting up real-time listener for schedule changes
+        
+        const unsubscribe = onSnapshot(scheduleRef, () => {
+          // Schedule document changed, recalculating statistics
+          // Recalculate stats when schedule changes
+          calculateScheduleStats();
+        }, (error) => {
+          console.error('Error listening to schedule changes in admin:', error);
+        });
 
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
+        return () => {
+          if (unsubscribe) {
+            unsubscribe();
+          }
+        };
+      } catch (error) {
+        console.error('Error setting up schedule listener:', error);
       }
-    };
+    } else {
+      console.warn('Firebase/Firestore not properly initialized. Real-time updates disabled.');
+    }
   }, []);
 
 
@@ -286,62 +297,73 @@ export default function AdminPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {users.filter(u => u.role === 'admin').length} admin, {users.filter(u => u.role === 'user').length} officers
-            </p>
-          </CardContent>
-        </Card>
+        {loading ? (
+          <>
+            <StatsCardSkeleton />
+            <StatsCardSkeleton />
+            <StatsCardSkeleton />
+            <StatsCardSkeleton />
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{users.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {users.filter(u => u.role === 'admin').length} admin, {users.filter(u => u.role === 'user').length} officers
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Schedule Coverage</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {scheduleStats.totalSlots > 0 
-                ? Math.round((scheduleStats.filledSlots / scheduleStats.totalSlots) * 100) + '%'
-                : '0%'
-              }
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {scheduleStats.filledSlots}/{scheduleStats.totalSlots} slots filled
-            </p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Schedule Coverage</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {scheduleStats.totalSlots > 0 
+                    ? Math.round((scheduleStats.filledSlots / scheduleStats.totalSlots) * 100) + '%'
+                    : '0%'
+                  }
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {scheduleStats.filledSlots}/{scheduleStats.totalSlots} slots filled
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available Slots</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{scheduleStats.availableSlots}</div>
-            <p className="text-xs text-muted-foreground">
-              Shifts remaining for the rest of this month
-            </p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Available Slots</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{scheduleStats.availableSlots}</div>
+                <p className="text-xs text-muted-foreground">
+                  Shifts remaining for the rest of this month
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Officers</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{scheduleStats.thisMonthUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              Working this month
-            </p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Officers</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{scheduleStats.thisMonthUsers}</div>
+                <p className="text-xs text-muted-foreground">
+                  Working this month
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Admin Tools */}
@@ -382,9 +404,7 @@ export default function AdminPage() {
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
           {loading ? (
-            <div className="flex justify-center p-8">
-              <div className="text-muted-foreground">Loading users...</div>
-            </div>
+            <UserListSkeleton />
           ) : (
             <div className="overflow-x-auto">
               <div className="min-w-[640px] rounded-lg border">

@@ -237,15 +237,17 @@ export default function ChangelogManagementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Changelog Management</h1>
-          <p className="text-muted-foreground">Create and manage application updates and release notes</p>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold truncate">Changelog Management</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Create and manage application updates and release notes</p>
         </div>
-        <Button onClick={handleCreate} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          New Changelog
-        </Button>
+        <div className="flex-shrink-0">
+          <Button onClick={handleCreate} className="w-full sm:w-auto flex items-center justify-center gap-2">
+            <Plus className="h-4 w-4" />
+            <span className="sm:inline">New Changelog</span>
+          </Button>
+        </div>
       </div>
 
       {/* Create/Edit Form */}

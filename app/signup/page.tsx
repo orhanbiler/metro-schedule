@@ -29,7 +29,12 @@ export default function SignupPage() {
       setCheckingAuth(false);
     }, 5000); // 5 second timeout
 
-    // Check if user is already authenticated
+    // Check if user is already authenticated only if auth is available
+    if (!auth) {
+      setCheckingAuth(false);
+      return;
+    }
+    
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       clearTimeout(timeout);
       if (user && !loading) {
@@ -78,6 +83,10 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
+      if (!auth) {
+        throw new Error('Authentication not available');
+      }
+      
       // Create user in Firebase Authentication first
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
