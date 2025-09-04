@@ -84,6 +84,17 @@ export default function SchedulePage() {
     return diffDays <= days;
   };
 
+  const isShiftPastRemovalWindow = (shiftDate: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset to start of day
+    const shift = new Date(shiftDate);
+    shift.setHours(0, 0, 0, 0); // Reset to start of day
+    const diffTime = today.getTime() - shift.getTime(); // Note: reversed to check past dates
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    // If shift was more than 2 days ago, it's past the removal window
+    return diffDays > 2;
+  };
+
   const isPastMonth = (): boolean => {
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
@@ -119,8 +130,11 @@ export default function SchedulePage() {
     const isOwnShift = officer.name === getCurrentOfficerFormatted() || officer.name === user?.name;
     if (!isOwnShift) return false;
     
-    // Cannot remove if shift is within 2 days
+    // Cannot remove if shift is within 2 days (upcoming)
     if (isShiftWithinDays(shiftDate, 2)) return false;
+    
+    // Cannot remove if shift was more than 2 days ago (past)
+    if (isShiftPastRemovalWindow(shiftDate)) return false;
     
     return true;
   };
@@ -533,10 +547,16 @@ export default function SchedulePage() {
       return;
     }
 
-    // Check 2-day restriction for non-admins
-    if (!isAdmin && isShiftWithinDays(slot.date, 2)) {
-      toast.error('Cannot remove yourself from shifts within 2 days of the scheduled date.');
-      return;
+    // Check 2-day restriction for non-admins (both future and past)
+    if (!isAdmin) {
+      if (isShiftWithinDays(slot.date, 2)) {
+        toast.error('Cannot remove yourself from shifts within 2 days of the scheduled date.');
+        return;
+      }
+      if (isShiftPastRemovalWindow(slot.date)) {
+        toast.error('Cannot remove yourself from shifts more than 2 days after the scheduled date.');
+        return;
+      }
     }
 
     const targetSlot = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
@@ -781,9 +801,20 @@ export default function SchedulePage() {
           const officerHours: Record<string, number> = {};
           
           schedule.forEach(slot => {
-            // Morning slot
-            if (slot.morningSlot.officers.length > 0) {
-              slot.morningSlot.officers.forEach((officer, index) => {
+            // Only process days that have at least one officer assigned
+            const hasMorningOfficers = slot.morningSlot.officers.length > 0;
+            const hasAfternoonOfficers = slot.afternoonSlot.officers.length > 0;
+            
+            // Skip this day entirely if no officers are assigned
+            if (!hasMorningOfficers && !hasAfternoonOfficers) {
+              return;
+            }
+            
+            let dayShown = false;
+            
+            // Morning slot - only show if officers are assigned
+            if (hasMorningOfficers) {
+              slot.morningSlot.officers.forEach((officer) => {
                 const displayTime = officer.customHours || 
                   `${slot.morningSlot.time.slice(0, 2)}:${slot.morningSlot.time.slice(2, 4)}-${slot.morningSlot.time.slice(5, 7)}:${slot.morningSlot.time.slice(7, 9)}`;
                 
@@ -793,34 +824,16 @@ export default function SchedulePage() {
                 officerHours[officer.name] = (officerHours[officer.name] || 0) + hours;
                 
                 tableData.push([
-                  index === 0 ? `${slot.dayName} ${formatDate(slot.date)}` : '',
+                  !dayShown ? `${slot.dayName} ${formatDate(slot.date)}` : '',
                   displayTime,
                   officer.name
                 ]);
+                dayShown = true;
               });
-              
-              // Show remaining slots if any
-              const remainingSlots = slot.morningSlot.maxOfficers - slot.morningSlot.officers.length;
-              for (let i = 0; i < remainingSlots; i++) {
-                tableData.push([
-                  slot.morningSlot.officers.length === 0 && i === 0 ? `${slot.dayName} ${formatDate(slot.date)}` : '',
-                  `${slot.morningSlot.time.slice(0, 2)}:${slot.morningSlot.time.slice(2, 4)}-${slot.morningSlot.time.slice(5, 7)}:${slot.morningSlot.time.slice(7, 9)}`,
-                  ''  // Leave blank instead of 'Available'
-                ]);
-              }
-            } else {
-              // No officers, show empty slots
-              for (let i = 0; i < slot.morningSlot.maxOfficers; i++) {
-                tableData.push([
-                  i === 0 ? `${slot.dayName} ${formatDate(slot.date)}` : '',
-                  `${slot.morningSlot.time.slice(0, 2)}:${slot.morningSlot.time.slice(2, 4)}-${slot.morningSlot.time.slice(5, 7)}:${slot.morningSlot.time.slice(7, 9)}`,
-                  ''  // Leave blank instead of 'Available'
-                ]);
-              }
             }
             
-            // Afternoon slot
-            if (slot.afternoonSlot.officers.length > 0) {
+            // Afternoon slot - only show if officers are assigned
+            if (hasAfternoonOfficers) {
               slot.afternoonSlot.officers.forEach((officer) => {
                 const displayTime = officer.customHours || 
                   `${slot.afternoonSlot.time.slice(0, 2)}:${slot.afternoonSlot.time.slice(2, 4)}-${slot.afternoonSlot.time.slice(5, 7)}:${slot.afternoonSlot.time.slice(7, 9)}`;
@@ -831,30 +844,12 @@ export default function SchedulePage() {
                 officerHours[officer.name] = (officerHours[officer.name] || 0) + hours;
                 
                 tableData.push([
-                  '',
-                  `and/or ${displayTime}`,
+                  !dayShown ? `${slot.dayName} ${formatDate(slot.date)}` : '',
+                  hasAfternoonOfficers && hasMorningOfficers ? `and/or ${displayTime}` : displayTime,
                   officer.name
                 ]);
+                dayShown = true;
               });
-              
-              // Show remaining slots if any
-              const remainingSlots = slot.afternoonSlot.maxOfficers - slot.afternoonSlot.officers.length;
-              for (let i = 0; i < remainingSlots; i++) {
-                tableData.push([
-                  '',
-                  `and/or ${slot.afternoonSlot.time.slice(0, 2)}:${slot.afternoonSlot.time.slice(2, 4)}-${slot.afternoonSlot.time.slice(5, 7)}:${slot.afternoonSlot.time.slice(7, 9)}`,
-                  ''  // Leave blank instead of 'Available'
-                ]);
-              }
-            } else {
-              // No officers, show empty slots
-              for (let i = 0; i < slot.afternoonSlot.maxOfficers; i++) {
-                tableData.push([
-                  '',
-                  `and/or ${slot.afternoonSlot.time.slice(0, 2)}:${slot.afternoonSlot.time.slice(2, 4)}-${slot.afternoonSlot.time.slice(5, 7)}:${slot.afternoonSlot.time.slice(7, 9)}`,
-                  ''  // Leave blank instead of 'Available'
-                ]);
-              }
             }
           });
 
@@ -1156,7 +1151,13 @@ export default function SchedulePage() {
                                           variant="destructive"
                                           className="h-6 w-6 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
                                           disabled={loading}
-                                          title={isShiftWithinDays(slot.date, 2) ? 'Cannot remove - shift is within 2 days' : `Remove ${officer.name}`}
+                                          title={
+                                            isShiftWithinDays(slot.date, 2) 
+                                              ? 'Cannot remove - shift is within 2 days' 
+                                              : isShiftPastRemovalWindow(slot.date)
+                                              ? 'Cannot remove - more than 2 days have passed since shift'
+                                              : `Remove ${officer.name}`
+                                          }
                                         >
                                           <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                         </Button>
@@ -1168,7 +1169,7 @@ export default function SchedulePage() {
                                             Are you sure you want to remove <strong>{officer.name}</strong> from this shift on {slot.dayName} {formatDate(slot.date)}?
                                             <br /><br />
                                             {user?.role !== 'admin' && (
-                                              <>Note: You cannot remove yourself from shifts within 2 days of the scheduled date.<br /><br /></>
+                                              <>Note: You cannot remove yourself from shifts within 2 days before or after the scheduled date.<br /><br /></>
                                             )}
                                             This action cannot be undone and will make the slot available for other officers to sign up.
                                           </AlertDialogDescription>
@@ -1278,7 +1279,13 @@ export default function SchedulePage() {
                                           variant="destructive"
                                           className="h-6 w-6 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
                                           disabled={loading}
-                                          title={isShiftWithinDays(slot.date, 2) ? 'Cannot remove - shift is within 2 days' : `Remove ${officer.name}`}
+                                          title={
+                                            isShiftWithinDays(slot.date, 2) 
+                                              ? 'Cannot remove - shift is within 2 days' 
+                                              : isShiftPastRemovalWindow(slot.date)
+                                              ? 'Cannot remove - more than 2 days have passed since shift'
+                                              : `Remove ${officer.name}`
+                                          }
                                         >
                                           <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                         </Button>
@@ -1290,7 +1297,7 @@ export default function SchedulePage() {
                                             Are you sure you want to remove <strong>{officer.name}</strong> from this afternoon shift on {slot.dayName} {formatDate(slot.date)}?
                                             <br /><br />
                                             {user?.role !== 'admin' && (
-                                              <>Note: You cannot remove yourself from shifts within 2 days of the scheduled date.<br /><br /></>
+                                              <>Note: You cannot remove yourself from shifts within 2 days before or after the scheduled date.<br /><br /></>
                                             )}
                                             This action cannot be undone and will make the slot available for other officers to sign up.
                                           </AlertDialogDescription>
