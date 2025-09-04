@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Calendar, CheckCircle, Clock, Bell, Settings, Timer, AlertCircle } from 'lucide-react';
+import { Users, Calendar, CheckCircle, Clock, Bell, Settings, Timer } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -165,34 +165,21 @@ export default function AdminPage() {
       const currentMonth = currentDate.getMonth(); // Keep 0-indexed for API consistency
       const currentYear = currentDate.getFullYear();
       
-      // Calculate remaining WEEKDAYS in the current month (from today onwards, excluding weekends)
-      const today = currentDate.getDate();
-      const currentHour = currentDate.getHours();
-      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate(); // currentMonth + 1 because Date constructor expects 1-indexed month for this calculation
+      // Calculate total WEEKDAYS in the entire month (excluding weekends)
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
       
-      let remainingSlots = 0;
-      for (let day = today; day <= daysInMonth; day++) {
-        const date = new Date(currentYear, currentMonth, day); // currentMonth is 0-indexed here, which is correct for Date constructor
+      let totalMonthSlots = 0;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, currentMonth, day);
         const dayOfWeek = date.getDay();
         // Skip weekends (0 = Sunday, 6 = Saturday)
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          if (day === today) {
-            // For today, only count shifts that haven't started yet
-            // Morning shift: 0500-1300 (5 AM - 1 PM)
-            if (currentHour < 5) {
-              remainingSlots += 4; // Both morning and afternoon shifts
-            } else if (currentHour < 13) {
-              remainingSlots += 2; // Only afternoon shifts (1300-2200)
-            }
-            // If current hour >= 13 (1 PM), no shifts remain for today
-          } else {
-            // Future days get all 4 slots
-            remainingSlots += 4;
-          }
+          // Each weekday has 4 slots (2 morning + 2 afternoon)
+          totalMonthSlots += 4;
         }
       }
       
-      const maxPossibleSlots = remainingSlots; // 2 morning + 2 afternoon slots per weekday
+      const maxPossibleSlots = totalMonthSlots; // Total slots for the entire month
       
       // Calculating schedule statistics for current month
       
@@ -256,24 +243,26 @@ export default function AdminPage() {
           time?: string;
         } 
       }) => {
-        // Only count days from today onwards
+        // Count ALL days in the month for statistics
         let dayDate;
-        let dayOfMonth;
         
         if (day.date instanceof Date) {
           dayDate = day.date;
-          dayOfMonth = dayDate.getDate();
         } else if (typeof day.date === 'string') {
           dayDate = new Date(day.date);
-          dayOfMonth = dayDate.getDate();
         } else {
-          // Fallback: assume it's a day number or use day ID
-          dayOfMonth = parseInt(day.id) || 1;
+          // Skip invalid dates
+          return;
+        }
+        
+        // Skip weekends
+        const dayOfWeek = dayDate.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          return;
         }
         
         // Processing schedule day for statistics calculation
-        
-        if (dayOfMonth >= today) {
+        {
           const morningOfficers = day.morningSlot?.officers || [];
           const afternoonOfficers = day.afternoonSlot?.officers || [];
           const morningTime = day.morningSlot?.time || '0500-1300';
@@ -281,83 +270,31 @@ export default function AdminPage() {
           const maxMorning = day.morningSlot?.maxOfficers || 2;
           const maxAfternoon = day.afternoonSlot?.maxOfficers || 2;
           
-          // Counting filled slots and hours for this day
+          // Count all filled slots for the entire month
+          filledSlots += morningOfficers.length + afternoonOfficers.length;
+            
+          // Calculate hours for morning shift
+          morningOfficers.forEach(officer => {
+            const hours = calculateHoursFromTimeString(officer.customHours || morningTime);
+            totalHoursWorked += hours;
+          });
           
-          // For today, only count shifts that haven't started yet
-          if (dayOfMonth === today) {
-            const currentHour = new Date().getHours();
-            // Morning shift: 0500-1300
-            if (currentHour < 5) {
-              // Both shifts are in the future
-              filledSlots += morningOfficers.length + afternoonOfficers.length;
-              
-              // Calculate hours for morning shift
-              morningOfficers.forEach(officer => {
-                const hours = calculateHoursFromTimeString(officer.customHours || morningTime);
-                totalHoursWorked += hours;
-              });
-              
-              // Calculate uncovered hours for morning
-              const uncoveredMorning = maxMorning - morningOfficers.length;
-              if (uncoveredMorning > 0) {
-                totalHoursUncovered += uncoveredMorning * calculateHoursFromTimeString(morningTime);
-              }
-              
-              // Calculate hours for afternoon shift
-              afternoonOfficers.forEach(officer => {
-                const hours = calculateHoursFromTimeString(officer.customHours || afternoonTime);
-                totalHoursWorked += hours;
-              });
-              
-              // Calculate uncovered hours for afternoon
-              const uncoveredAfternoon = maxAfternoon - afternoonOfficers.length;
-              if (uncoveredAfternoon > 0) {
-                totalHoursUncovered += uncoveredAfternoon * calculateHoursFromTimeString(afternoonTime);
-              }
-            } else if (currentHour < 13) {
-              // Only afternoon shift is in the future (1300-2200)
-              filledSlots += afternoonOfficers.length;
-              
-              // Calculate hours for afternoon shift only
-              afternoonOfficers.forEach(officer => {
-                const hours = calculateHoursFromTimeString(officer.customHours || afternoonTime);
-                totalHoursWorked += hours;
-              });
-              
-              // Calculate uncovered hours for afternoon
-              const uncoveredAfternoon = maxAfternoon - afternoonOfficers.length;
-              if (uncoveredAfternoon > 0) {
-                totalHoursUncovered += uncoveredAfternoon * calculateHoursFromTimeString(afternoonTime);
-              }
-            }
-            // If current hour >= 13, don't count any slots for today
-          } else {
-            // Future days - count all filled slots and hours
-            filledSlots += morningOfficers.length + afternoonOfficers.length;
-            
-            // Calculate hours for morning shift
-            morningOfficers.forEach(officer => {
-              const hours = calculateHoursFromTimeString(officer.customHours || morningTime);
-              totalHoursWorked += hours;
-            });
-            
-            // Calculate uncovered hours for morning
-            const uncoveredMorning = maxMorning - morningOfficers.length;
-            if (uncoveredMorning > 0) {
-              totalHoursUncovered += uncoveredMorning * calculateHoursFromTimeString(morningTime);
-            }
-            
-            // Calculate hours for afternoon shift
-            afternoonOfficers.forEach(officer => {
-              const hours = calculateHoursFromTimeString(officer.customHours || afternoonTime);
-              totalHoursWorked += hours;
-            });
-            
-            // Calculate uncovered hours for afternoon
-            const uncoveredAfternoon = maxAfternoon - afternoonOfficers.length;
-            if (uncoveredAfternoon > 0) {
-              totalHoursUncovered += uncoveredAfternoon * calculateHoursFromTimeString(afternoonTime);
-            }
+          // Calculate uncovered hours for morning
+          const uncoveredMorning = maxMorning - morningOfficers.length;
+          if (uncoveredMorning > 0) {
+            totalHoursUncovered += uncoveredMorning * calculateHoursFromTimeString(morningTime);
+          }
+          
+          // Calculate hours for afternoon shift
+          afternoonOfficers.forEach(officer => {
+            const hours = calculateHoursFromTimeString(officer.customHours || afternoonTime);
+            totalHoursWorked += hours;
+          });
+          
+          // Calculate uncovered hours for afternoon
+          const uncoveredAfternoon = maxAfternoon - afternoonOfficers.length;
+          if (uncoveredAfternoon > 0) {
+            totalHoursUncovered += uncoveredAfternoon * calculateHoursFromTimeString(afternoonTime);
           }
           
           // Track unique officers (for all slots, regardless of time)
@@ -386,33 +323,23 @@ export default function AdminPage() {
       setScheduleStats(stats);
     } catch (error) {
       console.error('Error calculating schedule stats:', error);
-      // Fallback: calculate based on remaining weekdays in current month
+      // Fallback: calculate based on total weekdays in current month
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth(); // 0-indexed
       const currentYear = currentDate.getFullYear();
-      const today = currentDate.getDate();
-      const currentHour = currentDate.getHours();
       const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
       
-      let remainingSlots = 0;
-      for (let day = today; day <= daysInMonth; day++) {
+      let totalMonthSlots = 0;
+      for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(currentYear, currentMonth, day);
         const dayOfWeek = date.getDay();
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          if (day === today) {
-            // For today, only count shifts that haven't started yet
-            if (currentHour < 5) {
-              remainingSlots += 4; // Both morning and afternoon shifts
-            } else if (currentHour < 13) {
-              remainingSlots += 2; // Only afternoon shifts
-            }
-          } else {
-            remainingSlots += 4;
-          }
+          // Each weekday has 4 slots
+          totalMonthSlots += 4;
         }
       }
       
-      const maxPossibleSlots = remainingSlots;
+      const maxPossibleSlots = totalMonthSlots;
       
       setScheduleStats({
         totalSlots: maxPossibleSlots,
@@ -420,7 +347,7 @@ export default function AdminPage() {
         availableSlots: maxPossibleSlots,
         thisMonthUsers: 0,
         totalHoursWorked: 0,
-        totalHoursUncovered: maxPossibleSlots * 8, // Assuming 8 hours per slot
+        totalHoursUncovered: maxPossibleSlots * 8.5, // Average of 8 and 9 hours per slot
       });
     }
   }, []);
@@ -528,18 +455,6 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Hours Uncovered</CardTitle>
-                <AlertCircle className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{scheduleStats.totalHoursUncovered}</div>
-                <p className="text-xs text-muted-foreground">
-                  Hours without coverage
-                </p>
-              </CardContent>
-            </Card>
           </>
         )}
       </div>
