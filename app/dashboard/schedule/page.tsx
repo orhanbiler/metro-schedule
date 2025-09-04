@@ -670,32 +670,71 @@ export default function SchedulePage() {
     }
   };
 
-  // Helper function to calculate hours from time string (e.g., "6am-2pm" = 8 hours)
+  // Helper function to calculate hours from time string (e.g., "6am-2pm" = 8 hours or "0500-1300" = 8 hours)
   const calculateHoursFromTimeString = (timeStr: string): number => {
     if (!timeStr) return 0;
     
-    // Parse time strings like "6am-2pm", "10pm-6am", "12am-8am"
-    const match = timeStr.match(/(\d+)(am|pm)-(\d+)(am|pm)/i);
-    if (!match) return 0;
+    // Handle 24-hour format like "0500-1300" or "1300-2200"
+    const militaryMatch = timeStr.match(/(\d{4})-(\d{4})/);
+    if (militaryMatch) {
+      const [, startStr, endStr] = militaryMatch;
+      const startHour = parseInt(startStr.slice(0, 2));
+      const startMin = parseInt(startStr.slice(2, 4));
+      const endHour = parseInt(endStr.slice(0, 2));
+      const endMin = parseInt(endStr.slice(2, 4));
+      
+      // Convert to total minutes
+      const startMinutes = startHour * 60 + startMin;
+      let endMinutes = endHour * 60 + endMin;
+      
+      // Handle overnight shifts
+      if (endMinutes < startMinutes) {
+        endMinutes += 24 * 60; // Add 24 hours
+      }
+      
+      // Calculate hours (with decimal for partial hours)
+      return (endMinutes - startMinutes) / 60;
+    }
     
-    const [, startHour, startPeriod, endHour, endPeriod] = match;
+    // Handle 12-hour format like "6am-2pm", "10pm-6am", "12am-8am"
+    const ampmMatch = timeStr.match(/(\d+)(am|pm)-(\d+)(am|pm)/i);
+    if (ampmMatch) {
+      const [, startHour, startPeriod, endHour, endPeriod] = ampmMatch;
+      
+      // Convert to 24-hour format
+      let start = parseInt(startHour);
+      let end = parseInt(endHour);
+      
+      // Handle 12am/12pm special cases
+      if (start === 12 && startPeriod.toLowerCase() === 'am') start = 0;
+      else if (start !== 12 && startPeriod.toLowerCase() === 'pm') start += 12;
+      
+      if (end === 12 && endPeriod.toLowerCase() === 'am') end = 0;
+      else if (end !== 12 && endPeriod.toLowerCase() === 'pm') end += 12;
+      
+      // Calculate hours, handling overnight shifts
+      let hours = end - start;
+      if (hours < 0) hours += 24; // Overnight shift
+      
+      return hours;
+    }
     
-    // Convert to 24-hour format
-    let start = parseInt(startHour);
-    let end = parseInt(endHour);
+    // Handle time format like "05:00-13:00"
+    const colonMatch = timeStr.match(/(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/);
+    if (colonMatch) {
+      const [, startHour, startMin, endHour, endMin] = colonMatch;
+      const startMinutes = parseInt(startHour) * 60 + parseInt(startMin);
+      let endMinutes = parseInt(endHour) * 60 + parseInt(endMin);
+      
+      // Handle overnight shifts
+      if (endMinutes < startMinutes) {
+        endMinutes += 24 * 60; // Add 24 hours
+      }
+      
+      return (endMinutes - startMinutes) / 60;
+    }
     
-    // Handle 12am/12pm special cases
-    if (start === 12 && startPeriod.toLowerCase() === 'am') start = 0;
-    else if (start !== 12 && startPeriod.toLowerCase() === 'pm') start += 12;
-    
-    if (end === 12 && endPeriod.toLowerCase() === 'am') end = 0;
-    else if (end !== 12 && endPeriod.toLowerCase() === 'pm') end += 12;
-    
-    // Calculate hours, handling overnight shifts
-    let hours = end - start;
-    if (hours < 0) hours += 24; // Overnight shift
-    
-    return hours;
+    return 0; // Couldn't parse the time format
   };
 
   const generatePDF = async () => {
@@ -882,7 +921,7 @@ export default function SchedulePage() {
           doc.setFontSize(12);
           doc.setFont('helvetica', 'normal');
           const currentY = summaryY > 250 ? 30 : summaryY + 10;
-          doc.text(`Total Hours Scheduled: ${totalHoursWorked} hours`, 20, currentY);
+          doc.text(`Total Worked Hours: ${totalHoursWorked} hours`, 20, currentY);
           
           // Individual officer hours
           doc.setFontSize(11);
