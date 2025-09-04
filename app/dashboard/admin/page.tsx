@@ -31,6 +31,7 @@ export default function AdminPage() {
     totalSlots: 0,
     filledSlots: 0,
     availableSlots: 0,
+    remainingSlots: 0, // Slots remaining from current time
     thisMonthUsers: 0,
     totalHoursWorked: 0,
     totalHoursUncovered: 0,
@@ -166,9 +167,13 @@ export default function AdminPage() {
       const currentYear = currentDate.getFullYear();
       
       // Calculate total WEEKDAYS in the entire month (excluding weekends)
+      const today = currentDate.getDate();
+      const currentHour = currentDate.getHours();
       const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
       
       let totalMonthSlots = 0;
+      let remainingPossibleSlots = 0;
+      
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(currentYear, currentMonth, day);
         const dayOfWeek = date.getDay();
@@ -176,6 +181,21 @@ export default function AdminPage() {
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
           // Each weekday has 4 slots (2 morning + 2 afternoon)
           totalMonthSlots += 4;
+          
+          // Calculate remaining slots from current time
+          if (day > today) {
+            // Future days get all 4 slots
+            remainingPossibleSlots += 4;
+          } else if (day === today) {
+            // For today, only count shifts that haven't started yet
+            // Morning shift: 0500-1300 (5 AM - 1 PM)
+            if (currentHour < 5) {
+              remainingPossibleSlots += 4; // Both morning and afternoon shifts
+            } else if (currentHour < 13) {
+              remainingPossibleSlots += 2; // Only afternoon shifts (1300-2200)
+            }
+            // If current hour >= 13 (1 PM), no shifts remain for today
+          }
         }
       }
       
@@ -193,6 +213,7 @@ export default function AdminPage() {
           totalSlots: maxPossibleSlots,
           filledSlots: 0,
           availableSlots: maxPossibleSlots,
+          remainingSlots: remainingPossibleSlots,
           thisMonthUsers: 0,
           totalHoursWorked: 0,
           totalHoursUncovered: maxPossibleSlots * 8, // Assuming 8 hours per slot
@@ -214,6 +235,7 @@ export default function AdminPage() {
           totalSlots: maxPossibleSlots,
           filledSlots: 0,
           availableSlots: maxPossibleSlots,
+          remainingSlots: remainingPossibleSlots,
           thisMonthUsers: 0,
           totalHoursWorked: 0,
           totalHoursUncovered: maxPossibleSlots * 8, // Assuming 8 hours per slot
@@ -223,8 +245,9 @@ export default function AdminPage() {
         return;
       }
       
-      // Calculate actual statistics from existing schedule (only from today onwards)
+      // Calculate actual statistics from existing schedule
       let filledSlots = 0;
+      let remainingFilledSlots = 0;
       let totalHoursWorked = 0;
       let totalHoursUncovered = 0;
       const uniqueOfficers = new Set<string>();
@@ -272,6 +295,23 @@ export default function AdminPage() {
           
           // Count all filled slots for the entire month
           filledSlots += morningOfficers.length + afternoonOfficers.length;
+          
+          // Count remaining filled slots (from current time onwards)
+          const dayOfMonth = dayDate.getDate();
+          if (dayOfMonth > today) {
+            // Future days - count all filled slots
+            remainingFilledSlots += morningOfficers.length + afternoonOfficers.length;
+          } else if (dayOfMonth === today) {
+            // Today - only count shifts that haven't started yet
+            if (currentHour < 5) {
+              // Both shifts are in the future
+              remainingFilledSlots += morningOfficers.length + afternoonOfficers.length;
+            } else if (currentHour < 13) {
+              // Only afternoon shift is in the future
+              remainingFilledSlots += afternoonOfficers.length;
+            }
+            // If current hour >= 13, no shifts remain for today
+          }
             
           // Calculate hours for morning shift
           morningOfficers.forEach(officer => {
@@ -309,11 +349,13 @@ export default function AdminPage() {
       });
       
       const availableSlots = maxPossibleSlots - filledSlots;
+      const remainingAvailableSlots = remainingPossibleSlots - remainingFilledSlots;
       
       const stats = {
         totalSlots: maxPossibleSlots,
         filledSlots,
         availableSlots,
+        remainingSlots: remainingAvailableSlots, // Slots remaining from current time
         thisMonthUsers: uniqueOfficers.size,
         totalHoursWorked,
         totalHoursUncovered,
@@ -327,15 +369,30 @@ export default function AdminPage() {
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth(); // 0-indexed
       const currentYear = currentDate.getFullYear();
+      const today = currentDate.getDate();
+      const currentHour = currentDate.getHours();
       const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
       
       let totalMonthSlots = 0;
+      let remainingPossibleSlots = 0;
+      
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(currentYear, currentMonth, day);
         const dayOfWeek = date.getDay();
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
           // Each weekday has 4 slots
           totalMonthSlots += 4;
+          
+          // Calculate remaining slots
+          if (day > today) {
+            remainingPossibleSlots += 4;
+          } else if (day === today) {
+            if (currentHour < 5) {
+              remainingPossibleSlots += 4;
+            } else if (currentHour < 13) {
+              remainingPossibleSlots += 2;
+            }
+          }
         }
       }
       
@@ -345,6 +402,7 @@ export default function AdminPage() {
         totalSlots: maxPossibleSlots,
         filledSlots: 0,
         availableSlots: maxPossibleSlots,
+        remainingSlots: remainingPossibleSlots,
         thisMonthUsers: 0,
         totalHoursWorked: 0,
         totalHoursUncovered: maxPossibleSlots * 8.5, // Average of 8 and 9 hours per slot
@@ -422,7 +480,7 @@ export default function AdminPage() {
                 <CheckCircle className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{scheduleStats.availableSlots}</div>
+                <div className="text-2xl font-bold text-green-600">{scheduleStats.remainingSlots}</div>
                 <p className="text-xs text-muted-foreground">
                   Shifts remaining for the rest of this month
                 </p>
