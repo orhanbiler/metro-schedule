@@ -406,17 +406,17 @@ export default function OTSlipsPage() {
   // Month Selection View
   if (!selectedMonth) {
     return (
-      <div className="container max-w-4xl mx-auto p-4 space-y-6">
+      <div className="container max-w-4xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl">Compensation Request Forms</CardTitle>
-                <CardDescription>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <CardTitle className="text-xl sm:text-2xl">Compensation Request Forms</CardTitle>
+                <CardDescription className="text-sm">
                   Select a month to view your worked shifts and generate OT slips
                 </CardDescription>
               </div>
-              <Calendar className="h-8 w-8 text-muted-foreground" />
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground flex-shrink-0" />
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -433,17 +433,17 @@ export default function OTSlipsPage() {
                     className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
                     onClick={() => setSelectedMonth(month.key)}
                   >
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="text-lg font-medium">{month.label}</h4>
-                          <p className="text-sm text-muted-foreground">
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1">
+                          <h4 className="text-base sm:text-lg font-medium">{month.label}</h4>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             View worked shifts and generate OT slips
                           </p>
                         </div>
-                        <div className="flex items-center gap-2 text-primary">
-                          <Calendar className="h-5 w-5" />
-                          <span className="text-sm font-medium">Select</span>
+                        <div className="flex items-center gap-1 sm:gap-2 text-primary">
+                          <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
+                          <span className="text-xs sm:text-sm font-medium hidden sm:inline">Select</span>
                         </div>
                       </div>
                     </CardContent>
@@ -452,9 +452,9 @@ export default function OTSlipsPage() {
               </div>
             </div>
             
-            <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
-              <h4 className="text-sm font-medium text-blue-900 mb-2">How it works:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 sm:p-4">
+              <h4 className="text-xs sm:text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">How it works:</h4>
+              <ul className="text-xs sm:text-sm text-blue-800 dark:text-blue-200 space-y-1">
                 <li>• Select a month to view your scheduled shifts</li>
                 <li>• Only months with potential overtime shifts are shown</li>
                 <li>• Generate official compensation forms for any worked shifts</li>
@@ -471,61 +471,63 @@ export default function OTSlipsPage() {
   const selectedMonthData = availableMonths.find(m => m.key === selectedMonth);
   
   return (
-    <div className="container max-w-4xl mx-auto p-4 space-y-6">
+    <div className="container max-w-4xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSelectedMonth('');
-                  setWorkedShifts([]);
-                  setSelectedShift(null);
-                }}
-                className="flex items-center gap-2"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Back to Months
-              </Button>
-              <div>
-                <CardTitle className="text-2xl">
-                  {selectedMonthData?.label} - Worked Shifts
+          <div className="space-y-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelectedMonth('');
+                setWorkedShifts([]);
+                setSelectedShift(null);
+              }}
+              className="flex items-center gap-2 -ml-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="text-sm">Back to Months</span>
+            </Button>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <CardTitle className="text-lg sm:text-2xl">
+                  {selectedMonthData?.label}
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-sm">
                   Generate compensation request forms for your worked shifts
                 </CardDescription>
               </div>
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground flex-shrink-0" />
             </div>
-            <Calendar className="h-8 w-8 text-muted-foreground" />
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Worked Shifts for Selected Month */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Clock className="h-5 w-5" />
+            <div className="space-y-2">
+              <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                 Your Worked Shifts
               </h3>
               {!scheduleLoading && workedShifts.length > 0 && (
-                <div className="text-sm text-muted-foreground">
-                  {workedShifts.length} shift{workedShifts.length !== 1 ? 's' : ''} • {workedShifts.reduce((total, shift) => total + parseFloat(shift.hours || '0'), 0).toFixed(1)} total hours
+                <div className="text-xs sm:text-sm text-muted-foreground">
+                  <span className="block sm:inline">{workedShifts.length} shift{workedShifts.length !== 1 ? 's' : ''}</span>
+                  <span className="hidden sm:inline"> • </span>
+                  <span className="block sm:inline">{workedShifts.reduce((total, shift) => total + parseFloat(shift.hours || '0'), 0).toFixed(1)} total hours</span>
                 </div>
               )}
             </div>
             
             {scheduleLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="text-sm text-muted-foreground mt-2">Loading your worked shifts for {selectedMonthData?.label}...</p>
+              <div className="text-center py-6 sm:py-8">
+                <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-2">Loading your worked shifts...</p>
               </div>
             ) : workedShifts.length === 0 ? (
-              <div className="text-center py-8 border rounded-lg bg-muted/20">
-                <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground">No worked shifts found for {selectedMonthData?.label}.</p>
-                <p className="text-sm text-muted-foreground mt-1">
+              <div className="text-center py-6 sm:py-8 border rounded-lg bg-muted/20">
+                <AlertCircle className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm sm:text-base text-muted-foreground">No worked shifts found for {selectedMonthData?.label}.</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                   Make sure you were assigned to shifts in this month&apos;s schedule.
                 </p>
                 <Button
@@ -544,7 +546,7 @@ export default function OTSlipsPage() {
                 {workedShifts.map((shift, index) => (
                   <div
                     key={`${shift.date}-${shift.timeSlot}-${index}`}
-                    className="p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                    className="p-3 sm:p-4 border rounded-lg bg-card hover:bg-muted/50 active:bg-muted/70 transition-colors cursor-pointer touch-manipulation"
                     onClick={() => {
                       if (!loading) {
                         setSelectedShift(shift);
@@ -552,31 +554,28 @@ export default function OTSlipsPage() {
                       }
                     }}
                   >
-                    <div className="flex justify-between items-center">
-                      <div className="space-y-1">
-                        <div className="font-medium">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                      <div className="space-y-1 flex-1">
+                        <div className="font-medium text-sm sm:text-base">
                           {new Date(shift.date).toLocaleDateString('en-US', {
-                            weekday: 'long',
+                            weekday: 'short',
                             month: 'short',
                             day: 'numeric'
                           })}
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {shift.timeSlot === 'morning' ? 'Morning Shift' : 'Afternoon Shift'}
+                        <div className="text-xs sm:text-sm text-muted-foreground">
+                          {shift.timeSlot === 'morning' ? 'Morning' : 'Afternoon'} • {formatTime12Hour(shift.startTime)} - {formatTime12Hour(shift.endTime)}
                         </div>
                         {shift.customHours && (
-                          <div className="text-sm text-blue-600">
-                            Custom Hours: {shift.customHours}
+                          <div className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">
+                            Custom: {shift.customHours}
                           </div>
                         )}
-                        <div className="text-sm text-muted-foreground">
-                          {formatTime12Hour(shift.startTime)} - {formatTime12Hour(shift.endTime)}
-                        </div>
                       </div>
                       
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <div className="font-medium text-lg">{shift.hours} hours</div>
+                      <div className="flex items-center justify-between sm:justify-end gap-3">
+                        <div className="text-left sm:text-right">
+                          <div className="font-medium text-base sm:text-lg">{shift.hours} hrs</div>
                         </div>
                         <Button
                           onClick={(e) => {
@@ -586,13 +585,20 @@ export default function OTSlipsPage() {
                           }}
                           variant="outline"
                           size="sm"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-3 sm:px-4"
                           disabled={loading}
                         >
-                          <Download className="h-4 w-4" />
-                          {loading && selectedShift?.date === shift.date && selectedShift?.timeSlot === shift.timeSlot 
-                            ? 'Generating...' 
-                            : 'Generate OT Slip'}
+                          <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">
+                            {loading && selectedShift?.date === shift.date && selectedShift?.timeSlot === shift.timeSlot 
+                              ? 'Generating...' 
+                              : 'Generate OT Slip'}
+                          </span>
+                          <span className="sm:hidden">
+                            {loading && selectedShift?.date === shift.date && selectedShift?.timeSlot === shift.timeSlot 
+                              ? '...' 
+                              : 'Generate'}
+                          </span>
                         </Button>
                       </div>
                     </div>
@@ -604,12 +610,12 @@ export default function OTSlipsPage() {
           
           {/* Duty Status Selection */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Form Settings</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h3 className="text-base sm:text-lg font-semibold">Form Settings</h3>
               <div className="flex items-center gap-2">
-                <Label htmlFor="on-duty-off-duty" className="text-sm">Duty Status:</Label>
+                <Label htmlFor="on-duty-off-duty" className="text-xs sm:text-sm whitespace-nowrap">Duty Status:</Label>
                 <Select value={onDutyOffDuty} onValueChange={setOnDutyOffDuty}>
-                  <SelectTrigger id="on-duty-off-duty" className="w-32">
+                  <SelectTrigger id="on-duty-off-duty" className="w-28 sm:w-32 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -622,22 +628,24 @@ export default function OTSlipsPage() {
           </div>
           
           {/* Officer Information Display */}
-          <div className="rounded-lg bg-muted p-4 space-y-2">
-            <h3 className="text-sm font-semibold text-muted-foreground">Officer Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-              <div>
+          <div className="rounded-lg bg-muted p-3 sm:p-4 space-y-2">
+            <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground">Officer Information</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
+              <div className="truncate">
                 <span className="font-medium">Name: </span>
-                {user?.rank && user?.idNumber 
-                  ? formatOfficerName(user.name, user.rank, user.idNumber)
-                  : user?.name}
+                <span className="text-muted-foreground">
+                  {user?.rank && user?.idNumber 
+                    ? formatOfficerName(user.name, user.rank, user.idNumber)
+                    : user?.name}
+                </span>
               </div>
               <div>
                 <span className="font-medium">Badge #: </span>
-                {user?.idNumber || 'N/A'}
+                <span className="text-muted-foreground">{user?.idNumber || 'N/A'}</span>
               </div>
               <div>
                 <span className="font-medium">Rank: </span>
-                {user?.rank || 'N/A'}
+                <span className="text-muted-foreground">{user?.rank || 'N/A'}</span>
               </div>
             </div>
           </div>
@@ -648,9 +656,9 @@ export default function OTSlipsPage() {
       {/* Instructions Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Instructions</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Instructions</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
+        <CardContent className="space-y-2 text-xs sm:text-sm text-muted-foreground">
           <p>• Select a month to view your worked shifts from that period</p>
           <p>• Hours and times are automatically pulled from your actual scheduled shifts</p>
           <p>• Click &quot;Generate OT Slip&quot; for any shift to create a compensation form</p>
