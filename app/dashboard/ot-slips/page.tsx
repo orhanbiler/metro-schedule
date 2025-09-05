@@ -283,6 +283,16 @@ export default function OTSlipsPage() {
       doc.setFont('helvetica', 'bold');
       doc.text('DATE WORKED:', margin, yPos);
       
+      // Add the actual date
+      doc.setFont('helvetica', 'normal');
+      const dateWorked = new Date(targetShift.date).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      doc.text(dateWorked, margin + 65, yPos);
+      
       // Draw line under DATE WORKED
       doc.setLineWidth(1);
       doc.line(margin, yPos + 2, pageWidth - margin, yPos + 2);
