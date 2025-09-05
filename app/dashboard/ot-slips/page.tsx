@@ -4,8 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, Calendar, Clock, AlertCircle, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatOfficerName } from '@/lib/utils';
@@ -56,7 +54,6 @@ export default function OTSlipsPage() {
   const [selectedShift, setSelectedShift] = useState<WorkedShift | null>(null);
   
   // Form state
-  const [onDutyOffDuty, setOnDutyOffDuty] = useState('On-Duty');
   const [email] = useState(user?.email || '');
 
   // Metro station details
@@ -307,7 +304,7 @@ export default function OTSlipsPage() {
       const metroData = [
         [
           METRO_LOCATION,
-          onDutyOffDuty,
+          'Off-Duty',  // Officers can only work metro shifts when off-duty
           targetShift.hours,
           `${formatTime12Hour(targetShift.startTime)} -- ${formatTime12Hour(targetShift.endTime)}`
         ]
@@ -608,24 +605,6 @@ export default function OTSlipsPage() {
             )}
           </div>
           
-          {/* Duty Status Selection */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h3 className="text-base sm:text-lg font-semibold">Form Settings</h3>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="on-duty-off-duty" className="text-xs sm:text-sm whitespace-nowrap">Duty Status:</Label>
-                <Select value={onDutyOffDuty} onValueChange={setOnDutyOffDuty}>
-                  <SelectTrigger id="on-duty-off-duty" className="w-28 sm:w-32 text-xs sm:text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="On-Duty">On-Duty</SelectItem>
-                    <SelectItem value="Off-Duty">Off-Duty</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
           
           {/* Officer Information Display */}
           <div className="rounded-lg bg-muted p-3 sm:p-4 space-y-2">
@@ -662,7 +641,7 @@ export default function OTSlipsPage() {
           <p>• Select a month to view your worked shifts from that period</p>
           <p>• Hours and times are automatically pulled from your actual scheduled shifts</p>
           <p>• Click &quot;Generate OT Slip&quot; for any shift to create a compensation form</p>
-          <p>• Select duty status (On-Duty/Off-Duty) before generating if needed</p>
+          <p>• All metro shifts are automatically marked as Off-Duty work</p>
           <p>• The system generates official Compensation/Overtime Request Forms</p>
           <p>• Generated PDF matches the department&apos;s official form template (Rev. 07/06/2023)</p>
           <p>• Print and sign the form, then submit to your supervisor</p>
