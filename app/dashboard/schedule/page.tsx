@@ -12,9 +12,9 @@ import { HoursDialog } from '@/components/schedule/hours-dialog';
 import { AdminAssignDialog } from '@/components/schedule/admin-assign-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Download, Trash2, Plus, Calendar } from 'lucide-react';
+import { Download, Trash2, Plus, Calendar, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatOfficerName, formatOfficerNameForDisplay } from '@/lib/utils';
+import { formatOfficerName, formatOfficerNameForDisplay, extractRankFromOfficerName, calculateOfficerPayRate } from '@/lib/utils';
 import { ScheduleSkeleton } from '@/components/schedule/schedule-skeleton';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 
@@ -795,10 +795,11 @@ export default function SchedulePage() {
           doc.setFont('helvetica', 'bold');
           doc.text(`${monthNames[selectedMonth]} ${selectedYear}`, 60, 45);
           
-          // Prepare table data and calculate total hours
+          // Prepare table data and calculate total hours and payments
           const tableData: Array<[string, string, string]> = [];
           let totalHoursWorked = 0;
           const officerHours: Record<string, number> = {};
+          const officerPayments: Record<string, { hours: number; rate: number; payment: number }> = {};
           
           schedule.forEach(slot => {
             // Only process days that have at least one officer assigned
@@ -823,6 +824,15 @@ export default function SchedulePage() {
                 totalHoursWorked += hours;
                 officerHours[officer.name] = (officerHours[officer.name] || 0) + hours;
                 
+                // Calculate payment
+                const rank = extractRankFromOfficerName(officer.name);
+                const rate = calculateOfficerPayRate(rank);
+                if (!officerPayments[officer.name]) {
+                  officerPayments[officer.name] = { hours: 0, rate, payment: 0 };
+                }
+                officerPayments[officer.name].hours += hours;
+                officerPayments[officer.name].payment += hours * rate;
+                
                 tableData.push([
                   !dayShown ? `${slot.dayName} ${formatDate(slot.date)}` : '',
                   displayTime,
@@ -842,6 +852,15 @@ export default function SchedulePage() {
                 const hours = calculateHoursFromTimeString(officer.customHours || slot.afternoonSlot.time);
                 totalHoursWorked += hours;
                 officerHours[officer.name] = (officerHours[officer.name] || 0) + hours;
+                
+                // Calculate payment
+                const rank = extractRankFromOfficerName(officer.name);
+                const rate = calculateOfficerPayRate(rank);
+                if (!officerPayments[officer.name]) {
+                  officerPayments[officer.name] = { hours: 0, rate, payment: 0 };
+                }
+                officerPayments[officer.name].hours += hours;
+                officerPayments[officer.name].payment += hours * rate;
                 
                 tableData.push([
                   !dayShown ? `${slot.dayName} ${formatDate(slot.date)}` : '',
@@ -895,46 +914,90 @@ export default function SchedulePage() {
             rowPageBreak: 'avoid',
           });
           
-          // Add Hours Summary section
+          // Add Payment Summary section
           // @ts-expect-error jspdf-autotable adds lastAutoTable property
           const finalY = doc.lastAutoTable?.finalY || 180;
           const summaryY = finalY + 15;
           
           // Check if we need a new page for the summary
-          if (summaryY > 250) {
+          let currentY: number;
+          if (summaryY > 220) {
             doc.addPage();
-            doc.setFontSize(14);
+            doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.text('Hours Summary', 20, 20);
+            doc.text('Payment Summary', 20, 20);
+            currentY = 35;
           } else {
-            doc.setFontSize(14);
+            doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.text('Hours Summary', 20, summaryY);
+            doc.text('Payment Summary', 20, summaryY);
+            currentY = summaryY + 15;
           }
           
-          // Total hours
-          doc.setFontSize(12);
-          doc.setFont('helvetica', 'normal');
-          const currentY = summaryY > 250 ? 30 : summaryY + 10;
-          doc.text(`Total Worked Hours: ${totalHoursWorked} hours`, 20, currentY);
+          // Create payment summary table
+          const paymentTableData: Array<[string, string, string, string, string]> = [];
+          let grandTotal = 0;
           
-          // Individual officer hours
-          doc.setFontSize(11);
-          doc.setFont('helvetica', 'bold');
-          doc.text('Hours by Officer:', 20, currentY + 10);
-          
-          doc.setFont('helvetica', 'normal');
-          let yPos = currentY + 20;
-          Object.entries(officerHours)
+          Object.entries(officerPayments)
             .sort(([a], [b]) => a.localeCompare(b))
-            .forEach(([officer, hours]) => {
-              if (yPos > 270) {
-                doc.addPage();
-                yPos = 20;
-              }
-              doc.text(`${officer}: ${hours} hours`, 25, yPos);
-              yPos += 6;
+            .forEach(([officer, data]) => {
+              paymentTableData.push([
+                officer,
+                `${data.hours}`,
+                `$${data.rate.toFixed(2)}`,
+                `$${data.payment.toFixed(2)}`,
+                extractRankFromOfficerName(officer) || 'Unknown'
+              ]);
+              grandTotal += data.payment;
             });
+          
+          // Add payment details table
+          autoTable(doc, {
+            head: [['OFFICER', 'HOURS', 'RATE/HR', 'TOTAL PAY', 'RANK']],
+            body: paymentTableData,
+            startY: currentY,
+            margin: { left: 15, right: 15 },
+            styles: {
+              fontSize: 8,
+              cellPadding: 2,
+              minCellHeight: 7,
+              lineWidth: 0.1,
+              lineColor: [200, 200, 200],
+              font: 'helvetica',
+            },
+            headStyles: {
+              fillColor: [25, 35, 120],
+              textColor: 255,
+              fontStyle: 'bold',
+              fontSize: 9,
+              halign: 'center',
+            },
+            columnStyles: {
+              0: { cellWidth: 65, halign: 'left' }, // Officer name
+              1: { cellWidth: 25, halign: 'center' }, // Hours
+              2: { cellWidth: 25, halign: 'center' }, // Rate
+              3: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }, // Total Pay
+              4: { cellWidth: 35, halign: 'center' }, // Rank
+            },
+            footStyles: {
+              fillColor: [240, 240, 240],
+              textColor: [0, 0, 0],
+              fontStyle: 'bold',
+              fontSize: 10,
+            },
+            foot: [['GRAND TOTAL', `${totalHoursWorked}`, '', `$${grandTotal.toFixed(2)}`, '']],
+          });
+          
+          // Add payment notes
+          // @ts-expect-error jspdf-autotable adds lastAutoTable property
+          const paymentTableY = doc.lastAutoTable?.finalY || 100;
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'italic');
+          doc.setTextColor(100, 100, 100);
+          doc.text('Pay Rates: Sgt. and above = $65/hr | Below Sgt. = $60/hr', 20, paymentTableY + 10);
+          
+          // Reset text color
+          doc.setTextColor(0, 0, 0);
           
         doc.save(`metro-schedule-${monthNames[selectedMonth].toLowerCase()}-${selectedYear}.pdf`);
         toast.dismiss(toastId);
@@ -943,6 +1006,301 @@ export default function SchedulePage() {
       console.error('PDF generation error:', error);
       toast.dismiss(toastId);
       toast.error('Failed to generate PDF. Please try again.');
+    }
+  };
+
+  const generateBillablePDF = async () => {
+    if (!schedule || schedule.length === 0) {
+      toast.error('No schedule data available to export. Please wait for the schedule to load.');
+      return;
+    }
+
+    const toastId = toast.loading('Generating billable PDF...');
+
+    try {
+      const jsPDF = (await import('jspdf')).default;
+      const autoTable = (await import('jspdf-autotable')).default;
+      
+      const doc = new jsPDF();
+      
+      // Add logo
+      const logoImg = new Image();
+      logoImg.src = '/logo-cool.png';
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+      });
+      
+      // Add logo to PDF (positioned at top left)
+      const logoWidth = 30;
+      const logoHeight = 30;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      doc.addImage(logoImg, 'PNG', 20, 15, logoWidth, logoHeight);
+          
+          // Header (positioned to the right of logo)
+          doc.setFontSize(18);
+          doc.setFont('helvetica', 'bold');
+          doc.text('CHEVERLY POLICE DEPARTMENT', 60, 25);
+          doc.setFontSize(14);
+          doc.setFont('helvetica', 'normal');
+          doc.text('Metro Overtime Schedule - Billable', 60, 35);
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`${monthNames[selectedMonth]} ${selectedYear}`, 60, 45);
+          
+          // Prepare table data and calculate total hours and payments with service charge
+          const tableData: Array<[string, string, string]> = [];
+          let totalHoursWorked = 0;
+          const officerHours: Record<string, number> = {};
+          const officerPayments: Record<string, { hours: number; rate: number; payment: number; billableRate: number; billableAmount: number }> = {};
+          
+          schedule.forEach(slot => {
+            // Only process days that have at least one officer assigned
+            const hasMorningOfficers = slot.morningSlot.officers.length > 0;
+            const hasAfternoonOfficers = slot.afternoonSlot.officers.length > 0;
+            
+            // Skip this day entirely if no officers are assigned
+            if (!hasMorningOfficers && !hasAfternoonOfficers) {
+              return;
+            }
+            
+            let dayShown = false;
+            
+            // Morning slot - only show if officers are assigned
+            if (hasMorningOfficers) {
+              slot.morningSlot.officers.forEach((officer) => {
+                const displayTime = officer.customHours || 
+                  `${slot.morningSlot.time.slice(0, 2)}:${slot.morningSlot.time.slice(2, 4)}-${slot.morningSlot.time.slice(5, 7)}:${slot.morningSlot.time.slice(7, 9)}`;
+                
+                // Calculate hours for this shift
+                const hours = calculateHoursFromTimeString(officer.customHours || slot.morningSlot.time);
+                totalHoursWorked += hours;
+                officerHours[officer.name] = (officerHours[officer.name] || 0) + hours;
+                
+                // Calculate payment with service charge
+                const rank = extractRankFromOfficerName(officer.name);
+                const baseRate = calculateOfficerPayRate(rank);
+                const billableRate = baseRate + 10; // Add $10/hour service charge
+                
+                if (!officerPayments[officer.name]) {
+                  officerPayments[officer.name] = { 
+                    hours: 0, 
+                    rate: baseRate, 
+                    payment: 0,
+                    billableRate: billableRate,
+                    billableAmount: 0 
+                  };
+                }
+                officerPayments[officer.name].hours += hours;
+                officerPayments[officer.name].payment += hours * baseRate;
+                officerPayments[officer.name].billableAmount += hours * billableRate;
+                
+                tableData.push([
+                  !dayShown ? `${slot.dayName} ${formatDate(slot.date)}` : '',
+                  displayTime,
+                  officer.name
+                ]);
+                dayShown = true;
+              });
+            }
+            
+            // Afternoon slot - only show if officers are assigned
+            if (hasAfternoonOfficers) {
+              slot.afternoonSlot.officers.forEach((officer) => {
+                const displayTime = officer.customHours || 
+                  `${slot.afternoonSlot.time.slice(0, 2)}:${slot.afternoonSlot.time.slice(2, 4)}-${slot.afternoonSlot.time.slice(5, 7)}:${slot.afternoonSlot.time.slice(7, 9)}`;
+                
+                // Calculate hours for this shift
+                const hours = calculateHoursFromTimeString(officer.customHours || slot.afternoonSlot.time);
+                totalHoursWorked += hours;
+                officerHours[officer.name] = (officerHours[officer.name] || 0) + hours;
+                
+                // Calculate payment with service charge
+                const rank = extractRankFromOfficerName(officer.name);
+                const baseRate = calculateOfficerPayRate(rank);
+                const billableRate = baseRate + 10; // Add $10/hour service charge
+                
+                if (!officerPayments[officer.name]) {
+                  officerPayments[officer.name] = { 
+                    hours: 0, 
+                    rate: baseRate, 
+                    payment: 0,
+                    billableRate: billableRate,
+                    billableAmount: 0 
+                  };
+                }
+                officerPayments[officer.name].hours += hours;
+                officerPayments[officer.name].payment += hours * baseRate;
+                officerPayments[officer.name].billableAmount += hours * billableRate;
+                
+                tableData.push([
+                  !dayShown ? `${slot.dayName} ${formatDate(slot.date)}` : '',
+                  hasAfternoonOfficers && hasMorningOfficers ? `and/or ${displayTime}` : displayTime,
+                  officer.name
+                ]);
+                dayShown = true;
+              });
+            }
+          });
+
+          // Add a line separator
+          doc.setLineWidth(0.5);
+          doc.line(20, 55, pageWidth - 20, 55);
+          
+          // Add table with more compact settings
+          autoTable(doc, {
+            head: [['DATE', 'TIME', 'OFFICER ASSIGNMENT']],
+            body: tableData,
+            startY: 60,
+            margin: { left: 15, right: 15 },
+            styles: {
+              fontSize: 7,
+              cellPadding: 1.5,
+              minCellHeight: 6,
+              lineWidth: 0.1,
+              lineColor: [200, 200, 200],
+              font: 'helvetica',
+              fillColor: [255, 255, 255],
+              textColor: [0, 0, 0],
+            },
+            headStyles: {
+              fillColor: [25, 35, 120],
+              textColor: 255,
+              fontStyle: 'bold',
+              fontSize: 8,
+              halign: 'center',
+              minCellHeight: 8,
+              cellPadding: 2,
+            },
+            bodyStyles: {
+              fillColor: [255, 255, 255],
+            },
+            columnStyles: {
+              0: { cellWidth: 45, halign: 'left', fontStyle: 'bold' },
+              1: { cellWidth: 35, halign: 'center' },
+              2: { cellWidth: 'auto', halign: 'left' },
+            },
+            tableLineColor: [180, 180, 180],
+            tableLineWidth: 0.15,
+            rowPageBreak: 'avoid',
+          });
+          
+          // Add Billable Payment Summary section
+          // @ts-expect-error jspdf-autotable adds lastAutoTable property
+          const finalY = doc.lastAutoTable?.finalY || 180;
+          const summaryY = finalY + 15;
+          
+          // Check if we need a new page for the summary
+          let currentY: number;
+          if (summaryY > 220) {
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Billable Payment Summary', 20, 20);
+            currentY = 35;
+          } else {
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Billable Payment Summary', 20, summaryY);
+            currentY = summaryY + 15;
+          }
+          
+          // Create billable payment summary table
+          const paymentTableData: Array<[string, string, string, string, string]> = [];
+          let grandTotal = 0;
+          let billableGrandTotal = 0;
+          
+          Object.entries(officerPayments)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .forEach(([officer, data]) => {
+              paymentTableData.push([
+                officer,
+                `${data.hours}`,
+                `$${data.billableRate.toFixed(2)}`,
+                `$${data.billableAmount.toFixed(2)}`,
+                extractRankFromOfficerName(officer) || 'Unknown'
+              ]);
+              grandTotal += data.payment;
+              billableGrandTotal += data.billableAmount;
+            });
+          
+          // Calculate service charge total
+          const serviceChargeTotal = totalHoursWorked * 10;
+          
+          // Add payment details table
+          autoTable(doc, {
+            head: [['OFFICER', 'HOURS', 'BILLABLE RATE', 'BILLABLE AMOUNT', 'RANK']],
+            body: paymentTableData,
+            startY: currentY,
+            margin: { left: 15, right: 15 },
+            styles: {
+              fontSize: 8,
+              cellPadding: 2,
+              minCellHeight: 7,
+              lineWidth: 0.1,
+              lineColor: [200, 200, 200],
+              font: 'helvetica',
+            },
+            headStyles: {
+              fillColor: [25, 35, 120],
+              textColor: 255,
+              fontStyle: 'bold',
+              fontSize: 9,
+              halign: 'center',
+            },
+            columnStyles: {
+              0: { cellWidth: 60, halign: 'left' },
+              1: { cellWidth: 25, halign: 'center' },
+              2: { cellWidth: 30, halign: 'center' },
+              3: { cellWidth: 35, halign: 'right', fontStyle: 'bold' },
+              4: { cellWidth: 30, halign: 'center' },
+            },
+            footStyles: {
+              fillColor: [240, 240, 240],
+              textColor: [0, 0, 0],
+              fontStyle: 'bold',
+              fontSize: 10,
+            },
+            foot: [['BILLABLE TOTAL', `${totalHoursWorked}`, '', `$${billableGrandTotal.toFixed(2)}`, '']],
+          });
+          
+          // Add billing breakdown
+          // @ts-expect-error jspdf-autotable adds lastAutoTable property
+          const paymentTableY = doc.lastAutoTable?.finalY || 100;
+          
+          // Billing Breakdown Box
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Billing Breakdown:', 20, paymentTableY + 15);
+          
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`Base Payment (Officer Wages): $${grandTotal.toFixed(2)}`, 25, paymentTableY + 25);
+          doc.text(`Service Charge (${totalHoursWorked} hrs × $10.00): $${serviceChargeTotal.toFixed(2)}`, 25, paymentTableY + 32);
+          
+          // Draw a line above total
+          doc.setLineWidth(0.5);
+          doc.line(25, paymentTableY + 35, 120, paymentTableY + 35);
+          
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`TOTAL BILLABLE AMOUNT: $${billableGrandTotal.toFixed(2)}`, 25, paymentTableY + 42);
+          
+          // Add payment notes
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'italic');
+          doc.setTextColor(100, 100, 100);
+          doc.text('Billable Rates: Sgt. and above = $75/hr | Below Sgt. = $70/hr (includes $10/hr service charge)', 20, paymentTableY + 52);
+          
+          // Reset text color
+          doc.setTextColor(0, 0, 0);
+          
+        doc.save(`metro-schedule-billable-${monthNames[selectedMonth].toLowerCase()}-${selectedYear}.pdf`);
+        toast.dismiss(toastId);
+        toast.success('Billable PDF exported successfully!');
+    } catch (error) {
+      console.error('Billable PDF generation error:', error);
+      toast.dismiss(toastId);
+      toast.error('Failed to generate billable PDF. Please try again.');
     }
   };
 
@@ -1048,15 +1406,26 @@ export default function SchedulePage() {
               </CardDescription>
             </div>
             {user?.role === 'admin' && (
-              <Button
-                onClick={generatePDF}
-                variant="outline"
-                className="flex items-center gap-2"
-                disabled={loading}
-              >
-                <Download className="h-4 w-4" />
-                Export PDF
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={generatePDF}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={loading}
+                >
+                  <Download className="h-4 w-4" />
+                  Export PDF
+                </Button>
+                <Button
+                  onClick={generateBillablePDF}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={loading}
+                >
+                  <DollarSign className="h-4 w-4" />
+                  Billable PDF
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>

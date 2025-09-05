@@ -7,7 +7,9 @@
       "Bash(pnpm dlx:*)",
       "Bash(git commit:*)",
       "Bash(npm install:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(echo $SHELL)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

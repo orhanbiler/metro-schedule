@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth-context';
 import { formatOfficerName } from '@/lib/utils';
-import { User, Shield, LogOut } from 'lucide-react';
+import { User, Shield, LogOut, FileText } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -96,6 +96,12 @@ export default function DashboardLayout({
                         Profile
                       </Link>
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard/ot-slips" className="cursor-pointer">
+                        <FileText className="mr-2 h-4 w-4" />
+                        OT Slips
+                      </Link>
+                    </DropdownMenuItem>
                     {user?.role === 'admin' && (
                       <DropdownMenuItem asChild>
                         <Link href="/dashboard/admin" className="cursor-pointer">
@@ -162,6 +168,13 @@ export default function DashboardLayout({
                   onClick={() => setMenuOpen(false)}
                 >
                   Profile
+                </Link>
+                <Link
+                  href="/dashboard/ot-slips"
+                  className="text-navbar-foreground block px-3 py-3 rounded-md text-base font-medium hover:bg-navbar-hover transition-colors"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  OT Slips
                 </Link>
                 {user?.role === 'admin' && (
                   <Link
