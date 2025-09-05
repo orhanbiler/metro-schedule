@@ -1389,9 +1389,9 @@ export default function SchedulePage() {
 
       <Card className="sm:mx-0 -mx-2">
         <CardHeader className="px-3 py-3 sm:p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-2xl font-bold">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+            <div className="flex-1">
+              <CardTitle className="text-xl sm:text-2xl font-bold">
                 Metro Sign Up Schedule - {monthNames[selectedMonth]} {selectedYear}
                 {isPastMonth() && user?.role !== 'admin' && (
                   <span className="ml-3 text-sm font-normal text-orange-600">(Read-only - Past Month)</span>
@@ -1406,24 +1406,26 @@ export default function SchedulePage() {
               </CardDescription>
             </div>
             {user?.role === 'admin' && (
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-0">
                 <Button
                   onClick={generatePDF}
                   variant="outline"
-                  className="flex items-center gap-2"
+                  size="sm"
+                  className="flex items-center justify-center gap-2 text-xs sm:text-sm"
                   disabled={loading}
                 >
-                  <Download className="h-4 w-4" />
-                  Export PDF
+                  <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span>Export PDF</span>
                 </Button>
                 <Button
                   onClick={generateBillablePDF}
                   variant="outline"
-                  className="flex items-center gap-2"
+                  size="sm"
+                  className="flex items-center justify-center gap-2 text-xs sm:text-sm"
                   disabled={loading}
                 >
-                  <DollarSign className="h-4 w-4" />
-                  Billable PDF
+                  <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span>Billable PDF</span>
                 </Button>
               </div>
             )}
