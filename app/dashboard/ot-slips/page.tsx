@@ -5,7 +5,6 @@ import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, Calendar, Clock, AlertCircle, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -58,10 +57,7 @@ export default function OTSlipsPage() {
   
   // Form state
   const [onDutyOffDuty, setOnDutyOffDuty] = useState('On-Duty');
-  const [payPeriodEnding, setPayPeriodEnding] = useState('');
   const [email] = useState(user?.email || '');
-  const [assignedUnit, setAssignedUnit] = useState('');
-  const [shift, setShift] = useState('');
 
   // Metro station details
   const METRO_LOCATION = '5501 Columbia Park Road, Cheverly MD 20785';
@@ -199,9 +195,11 @@ export default function OTSlipsPage() {
   };
 
 
-  const generateOTSlipPDF = async () => {
+  const generateOTSlipPDF = async (shiftToGenerate?: WorkedShift) => {
+    const targetShift = shiftToGenerate || selectedShift;
+    
     // Validation
-    if (!selectedShift) {
+    if (!targetShift) {
       toast.error('Please select a worked shift from the list');
       return;
     }
@@ -252,38 +250,26 @@ export default function OTSlipsPage() {
       doc.setFont('helvetica', 'bold');
       doc.text('Requestor Information', margin, yPos);
       
-      // Create requestor info table
-      const requestorData = [
-        [
-          user?.rank && user?.idNumber 
-            ? `${user.rank} ${user.name}` 
-            : user?.name || '', 
-          payPeriodEnding || ''
-        ],
-        [user?.rank || '', email || ''],
-        [user?.idNumber || '', assignedUnit || ''],
-        ['', shift || '']
-      ];
-      
+      // Create requestor info table with better alignment
       autoTable(doc, {
         startY: yPos + 5,
-        head: [['First and Last Name:', 'Pay Period Ending:'], ['Rank:', 'Email:'], ['Signature/ID number:', 'Assigned Unit:'], ['', 'Shift:']],
-        body: requestorData,
+        body: [
+          ['First and Last Name:', user?.rank && user?.idNumber ? `${user.rank} ${user.name}` : user?.name || ''],
+          ['Rank:', user?.rank || ''],
+          ['Signature/ID number:', user?.idNumber || ''],
+          ['Email:', email || '']
+        ],
         theme: 'grid',
         styles: {
-          fontSize: 9,
-          cellPadding: 2,
+          fontSize: 10,
+          cellPadding: 4,
           lineWidth: 0.1,
           lineColor: [0, 0, 0],
-        },
-        headStyles: {
-          fillColor: [255, 255, 255],
-          textColor: [0, 0, 0],
-          fontStyle: 'bold',
+          valign: 'middle',
         },
         columnStyles: {
-          0: { cellWidth: (pageWidth - 2 * margin) / 2 },
-          1: { cellWidth: (pageWidth - 2 * margin) / 2 },
+          0: { cellWidth: 60, fontStyle: 'bold', halign: 'left' },
+          1: { cellWidth: (pageWidth - 2 * margin - 60), halign: 'left' },
         },
         margin: { left: margin, right: margin },
       });
@@ -312,8 +298,8 @@ export default function OTSlipsPage() {
         [
           METRO_LOCATION,
           onDutyOffDuty,
-          selectedShift.hours,
-          `${formatTime12Hour(selectedShift.startTime)} -- ${formatTime12Hour(selectedShift.endTime)}`
+          targetShift.hours,
+          `${formatTime12Hour(targetShift.startTime)} -- ${formatTime12Hour(targetShift.endTime)}`
         ]
       ];
       
@@ -384,7 +370,7 @@ export default function OTSlipsPage() {
       doc.text('DO NOT MODIFY THIS FORM', pageWidth / 2, 270, { align: 'center' });
       
       // Save the PDF
-      const fileName = `Compensation-Request-${user?.name}-${selectedShift.date}.pdf`;
+      const fileName = `Compensation-Request-${user?.name}-${targetShift.date}.pdf`;
       doc.save(fileName);
       
       toast.dismiss(toastId);
@@ -548,7 +534,13 @@ export default function OTSlipsPage() {
                 {workedShifts.map((shift, index) => (
                   <div
                     key={`${shift.date}-${shift.timeSlot}-${index}`}
-                    className="p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors"
+                    className="p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => {
+                      if (!loading) {
+                        setSelectedShift(shift);
+                        generateOTSlipPDF(shift);
+                      }
+                    }}
                   >
                     <div className="flex justify-between items-center">
                       <div className="space-y-1">
@@ -577,10 +569,10 @@ export default function OTSlipsPage() {
                           <div className="font-medium text-lg">{shift.hours} hours</div>
                         </div>
                         <Button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedShift(shift);
-                            // Auto-generate PDF after setting shift
-                            setTimeout(() => generateOTSlipPDF(), 100);
+                            generateOTSlipPDF(shift);
                           }}
                           variant="outline"
                           size="sm"
@@ -600,15 +592,14 @@ export default function OTSlipsPage() {
             )}
           </div>
           
-          {/* Additional Form Fields */}
+          {/* Duty Status Selection */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Additional Information</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="on-duty-off-duty">Duty Status</Label>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Form Settings</h3>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="on-duty-off-duty" className="text-sm">Duty Status:</Label>
                 <Select value={onDutyOffDuty} onValueChange={setOnDutyOffDuty}>
-                  <SelectTrigger id="on-duty-off-duty">
+                  <SelectTrigger id="on-duty-off-duty" className="w-32">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -617,51 +608,6 @@ export default function OTSlipsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="pay-period">Pay Period Ending (Optional)</Label>
-                <Input
-                  id="pay-period"
-                  type="date"
-                  value={payPeriodEnding}
-                  onChange={(e) => setPayPeriodEnding(e.target.value)}
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="assigned-unit">Assigned Unit (Optional)</Label>
-                <Input
-                  id="assigned-unit"
-                  type="text"
-                  value={assignedUnit}
-                  onChange={(e) => setAssignedUnit(e.target.value)}
-                  placeholder="e.g., Patrol, Traffic, etc."
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="shift">Shift (Optional)</Label>
-                <Input
-                  id="shift"
-                  type="text"
-                  value={shift}
-                  onChange={(e) => setShift(e.target.value)}
-                  placeholder="e.g., Day, Evening, Night"
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="location">Location (Pre-filled)</Label>
-              <Input
-                id="location"
-                type="text"
-                value={METRO_LOCATION}
-                readOnly
-                className="bg-muted"
-              />
             </div>
           </div>
           
@@ -698,11 +644,11 @@ export default function OTSlipsPage() {
           <p>• Select a month to view your worked shifts from that period</p>
           <p>• Hours and times are automatically pulled from your actual scheduled shifts</p>
           <p>• Click &quot;Generate OT Slip&quot; for any shift to create a compensation form</p>
-          <p>• Fill in optional information like pay period, unit, and shift before generating</p>
+          <p>• Select duty status (On-Duty/Off-Duty) before generating if needed</p>
           <p>• The system generates official Compensation/Overtime Request Forms</p>
           <p>• Generated PDF matches the department&apos;s official form template (Rev. 07/06/2023)</p>
           <p>• Print and sign the form, then submit to your supervisor</p>
-          <p>• Location is pre-filled with Metro station address: {METRO_LOCATION}</p>
+          <p>• Location is automatically filled with Metro station address</p>
         </CardContent>
       </Card>
     </div>
