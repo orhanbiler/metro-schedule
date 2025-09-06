@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Calendar, CheckCircle, Clock, Bell, Settings, Timer } from 'lucide-react';
+import { Users, Calendar, CheckCircle, Clock, Bell, Settings, Timer, Mail, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -11,6 +11,8 @@ import { isFirestoreInitialized } from '@/lib/firebase-utils';
 import { formatOfficerName } from '@/lib/utils';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { UserListSkeleton, StatsCardSkeleton } from '@/components/schedule/schedule-skeleton';
 
 interface User {
@@ -27,6 +29,8 @@ interface User {
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [testEmail, setTestEmail] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [scheduleStats, setScheduleStats] = useState({
     totalSlots: 0,
     filledSlots: 0,
@@ -420,6 +424,38 @@ export default function AdminPage() {
     });
   };
 
+  const sendTestEmail = async () => {
+    if (!testEmail.trim()) {
+      toast.error('Please enter an email address');
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      const response = await fetch('/api/test-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: testEmail }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(`Test email sent successfully to ${testEmail}`);
+        setTestEmail('');
+      } else {
+        toast.error(data.error || 'Failed to send test email');
+      }
+    } catch (error) {
+      console.error('Error sending test email:', error);
+      toast.error('Failed to send test email');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -524,7 +560,7 @@ export default function AdminPage() {
           <CardDescription>System administration and management tools</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <Link href="/dashboard/admin/changelog">
               <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:bg-accent">
                 <Bell className="h-6 w-6" />
@@ -541,6 +577,47 @@ export default function AdminPage() {
                 <div className="text-sm text-muted-foreground">Coming soon</div>
               </div>
             </Button>
+          </div>
+
+          {/* Email Test Section */}
+          <div className="border-t pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Mail className="h-5 w-5" />
+              <h3 className="text-lg font-semibold">Test Email Notifications</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Send a test changelog email to verify the email notification system is working correctly.
+            </p>
+            <div className="flex gap-2 max-w-md">
+              <div className="flex-1">
+                <Label htmlFor="testEmail" className="sr-only">Test Email Address</Label>
+                <Input
+                  id="testEmail"
+                  type="email"
+                  placeholder="Enter email address..."
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  disabled={sendingEmail}
+                />
+              </div>
+              <Button
+                onClick={sendTestEmail}
+                disabled={sendingEmail || !testEmail.trim()}
+                className="flex items-center gap-2"
+              >
+                {sendingEmail ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    Send Test
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

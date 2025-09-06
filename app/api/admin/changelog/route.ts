@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateApiAuth } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import type { ChangelogEntry } from '@/lib/changelog';
+import { sendChangelogNotification } from '@/lib/email';
 
 // Collection name for changelogs in Firestore
 const CHANGELOG_COLLECTION = 'changelogs';
@@ -58,6 +59,63 @@ async function checkChangelogExists(id: string): Promise<boolean> {
   return doc.exists;
 }
 
+async function getAllUserEmails(): Promise<string[]> {
+  try {
+    const db = adminDb();
+    const snapshot = await db.collection('users').get();
+    
+    const emails: string[] = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.email && data.email.trim()) {
+        emails.push(data.email.trim());
+      }
+    });
+    
+    return emails;
+  } catch (error) {
+    console.error('Error fetching user emails:', error);
+    return [];
+  }
+}
+
+async function sendNotificationToAllUsers(entry: ChangelogEntry): Promise<void> {
+  try {
+    const emails = await getAllUserEmails();
+    
+    if (emails.length === 0) {
+      console.log('No user emails found for changelog notification');
+      return;
+    }
+
+    console.log(`Sending changelog notifications to ${emails.length} users`);
+    
+    // Send emails in parallel but with some throttling to avoid rate limits
+    const emailPromises = emails.map(email => 
+      sendChangelogNotification(email, {
+        title: entry.title,
+        changes: entry.changes,
+        type: entry.type,
+        date: entry.date,
+      })
+    );
+
+    const results = await Promise.allSettled(emailPromises);
+    
+    const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    const failed = results.length - successful;
+    
+    console.log(`Changelog notifications sent: ${successful} successful, ${failed} failed`);
+    
+    if (failed > 0) {
+      console.warn(`Some email notifications failed to send (${failed}/${emails.length})`);
+    }
+  } catch (error) {
+    console.error('Error sending changelog notifications:', error);
+    // Don't throw error here - we don't want email failures to prevent changelog creation
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Validate authentication
@@ -96,6 +154,11 @@ export async function POST(request: NextRequest) {
 
     // Save new entry to Firestore
     await saveChangelogToFirestore(entry);
+
+    // Send email notifications to all users (don't await to avoid blocking the response)
+    sendNotificationToAllUsers(entry).catch(error => {
+      console.error('Failed to send changelog notifications:', error);
+    });
 
     return NextResponse.json({ success: true, entry });
   } catch (error) {

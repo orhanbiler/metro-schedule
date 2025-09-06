@@ -252,7 +252,6 @@ export default function OTSlipsPage() {
         startY: yPos + 5,
         body: [
           ['First and Last Name:', user?.rank && user?.idNumber ? `${user.rank} ${user.name}` : user?.name || ''],
-          ['Rank:', user?.rank || ''],
           ['Signature/ID number:', user?.idNumber || ''],
           ['Email:', email || '']
         ],

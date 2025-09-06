@@ -178,17 +178,17 @@ export function ChangelogDialog() {
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh]">
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] max-w-[95vw]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            What&apos;s New
+            <Bell className="h-5 w-5 flex-shrink-0" />
+            <span className="break-words">What&apos;s New</span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="break-words">
             Stay updated with the latest features and improvements
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="h-[400px] pr-4">
+        <ScrollArea className="h-[400px] pr-4 w-full">
           <div className="space-y-6">
             {changelog.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
@@ -210,7 +210,7 @@ export function ChangelogDialog() {
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className="text-lg font-semibold truncate">{entry.title}</span>
+                          <span className="text-lg font-semibold break-words">{entry.title}</span>
                           {isNew && (
                             <Badge className="bg-green-600 text-white flex-shrink-0">Latest</Badge>
                           )}

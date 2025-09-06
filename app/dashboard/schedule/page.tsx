@@ -1205,7 +1205,7 @@ export default function SchedulePage() {
           }
           
           // Create billable payment summary table
-          const paymentTableData: Array<[string, string, string, string, string]> = [];
+          const paymentTableData: Array<[string, string, string]> = [];
           let grandTotal = 0;
           let billableGrandTotal = 0;
           
@@ -1215,9 +1215,7 @@ export default function SchedulePage() {
               paymentTableData.push([
                 officer,
                 `${data.hours}`,
-                `$${data.billableRate.toFixed(2)}`,
-                `$${data.billableAmount.toFixed(2)}`,
-                extractRankFromOfficerName(officer) || 'Unknown'
+                `$${data.billableAmount.toFixed(2)}`
               ]);
               grandTotal += data.payment;
               billableGrandTotal += data.billableAmount;
@@ -1228,7 +1226,7 @@ export default function SchedulePage() {
           
           // Add payment details table
           autoTable(doc, {
-            head: [['OFFICER', 'HOURS', 'BILLABLE RATE', 'BILLABLE AMOUNT', 'RANK']],
+            head: [['OFFICER', 'HOURS', 'BILLABLE AMOUNT']],
             body: paymentTableData,
             startY: currentY,
             margin: { left: 15, right: 15 },
@@ -1248,11 +1246,9 @@ export default function SchedulePage() {
               halign: 'center',
             },
             columnStyles: {
-              0: { cellWidth: 60, halign: 'left' },
-              1: { cellWidth: 25, halign: 'center' },
-              2: { cellWidth: 30, halign: 'center' },
-              3: { cellWidth: 35, halign: 'right', fontStyle: 'bold' },
-              4: { cellWidth: 30, halign: 'center' },
+              0: { cellWidth: 90, halign: 'left' },
+              1: { cellWidth: 40, halign: 'center' },
+              2: { cellWidth: 50, halign: 'right', fontStyle: 'bold' },
             },
             footStyles: {
               fillColor: [240, 240, 240],
@@ -1260,39 +1256,17 @@ export default function SchedulePage() {
               fontStyle: 'bold',
               fontSize: 10,
             },
-            foot: [['BILLABLE TOTAL', `${totalHoursWorked}`, '', `$${billableGrandTotal.toFixed(2)}`, '']],
+            foot: [['BILLABLE TOTAL', `${totalHoursWorked}`, `$${billableGrandTotal.toFixed(2)}`]],
           });
           
-          // Add billing breakdown
+          // Add billing total
           // @ts-expect-error jspdf-autotable adds lastAutoTable property
           const paymentTableY = doc.lastAutoTable?.finalY || 100;
           
-          // Billing Breakdown Box
+          // Total Billable Amount Box
           doc.setFontSize(12);
           doc.setFont('helvetica', 'bold');
-          doc.text('Billing Breakdown:', 20, paymentTableY + 15);
-          
-          doc.setFontSize(10);
-          doc.setFont('helvetica', 'normal');
-          doc.text(`Base Payment (Officer Wages): $${grandTotal.toFixed(2)}`, 25, paymentTableY + 25);
-          doc.text(`Service Charge (${totalHoursWorked} hrs × $10.00): $${serviceChargeTotal.toFixed(2)}`, 25, paymentTableY + 32);
-          
-          // Draw a line above total
-          doc.setLineWidth(0.5);
-          doc.line(25, paymentTableY + 35, 120, paymentTableY + 35);
-          
-          doc.setFontSize(11);
-          doc.setFont('helvetica', 'bold');
-          doc.text(`TOTAL BILLABLE AMOUNT: $${billableGrandTotal.toFixed(2)}`, 25, paymentTableY + 42);
-          
-          // Add payment notes
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'italic');
-          doc.setTextColor(100, 100, 100);
-          doc.text('Billable Rates: Sgt. and above = $75/hr | Below Sgt. = $70/hr (includes $10/hr service charge)', 20, paymentTableY + 52);
-          
-          // Reset text color
-          doc.setTextColor(0, 0, 0);
+          doc.text(`TOTAL BILLABLE AMOUNT: $${billableGrandTotal.toFixed(2)}`, 20, paymentTableY + 15);
           
         doc.save(`metro-schedule-billable-${monthNames[selectedMonth].toLowerCase()}-${selectedYear}.pdf`);
         toast.dismiss(toastId);
