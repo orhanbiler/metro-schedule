@@ -206,16 +206,16 @@ export function ChangelogDialog() {
                     index !== changelog.length - 1 ? 'border-b' : ''
                   }`}
                 >
-                  {isNew && (
-                    <div className="absolute top-0 right-0">
-                      <Badge className="bg-green-600 text-white">Latest</Badge>
-                    </div>
-                  )}
-                  <div className={`flex items-start justify-between mb-3 ${isNew ? 'pr-16' : ''}`}>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-lg font-semibold">{entry.title}</span>
-                        <Badge variant={getTypeBadgeVariant(entry.type)} className="gap-1">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="text-lg font-semibold truncate">{entry.title}</span>
+                          {isNew && (
+                            <Badge className="bg-green-600 text-white flex-shrink-0">Latest</Badge>
+                          )}
+                        </div>
+                        <Badge variant={getTypeBadgeVariant(entry.type)} className="gap-1 flex-shrink-0 self-start sm:self-center">
                           {getTypeIcon(entry.type)}
                           {getTypeLabel(entry.type)}
                         </Badge>
