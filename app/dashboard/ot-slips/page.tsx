@@ -80,7 +80,19 @@ export default function OTSlipsPage() {
           const data = await response.json();
           if (data.schedule) {
             data.schedule.forEach((slot: { date: string; dayName: string; morningSlot?: { time: string; officers?: Officer[] }; afternoonSlot?: { time: string; officers?: Officer[] } }) => {
-              const slotDate = new Date(slot.date);
+              // Parse the date string properly to avoid timezone issues
+              // If the date is already in ISO format, extract just the date part
+              let dateStr: string;
+              if (typeof slot.date === 'string' && slot.date.includes('T')) {
+                // ISO format - extract just the date part
+                dateStr = slot.date.split('T')[0];
+              } else {
+                // Try parsing as a date and format it
+                const parsedDate = new Date(slot.date);
+                // Create a local date to avoid timezone shifts
+                const localDate = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
+                dateStr = localDate.toISOString().split('T')[0];
+              }
               
               // Check morning slot
               const morningOfficer = slot.morningSlot?.officers?.find((officer: Officer) => 
@@ -88,7 +100,7 @@ export default function OTSlipsPage() {
               );
               if (morningOfficer) {
                 shifts.push({
-                  date: slotDate.toISOString().split('T')[0],
+                  date: dateStr,
                   dayName: slot.dayName,
                   timeSlot: 'morning',
                   hours: calculateHoursFromTimeString(morningOfficer.customHours || slot.morningSlot?.time || ''),
@@ -103,7 +115,7 @@ export default function OTSlipsPage() {
               );
               if (afternoonOfficer) {
                 shifts.push({
-                  date: slotDate.toISOString().split('T')[0],
+                  date: dateStr,
                   dayName: slot.dayName,
                   timeSlot: 'afternoon',
                   hours: calculateHoursFromTimeString(afternoonOfficer.customHours || slot.afternoonSlot?.time || ''),
@@ -281,7 +293,7 @@ export default function OTSlipsPage() {
       
       // Add the actual date
       doc.setFont('helvetica', 'normal');
-      const dateWorked = new Date(targetShift.date).toLocaleDateString('en-US', {
+      const dateWorked = parseLocalDate(targetShift.date).toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -397,6 +409,14 @@ export default function OTSlipsPage() {
     const ampm = h >= 12 ? 'PM' : 'AM';
     const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
     return `${h12}:${minutes} ${ampm}`;
+  };
+
+  // Helper function to parse date string and create a proper Date object
+  const parseLocalDate = (dateStr: string): Date => {
+    // dateStr is in format "YYYY-MM-DD"
+    const [year, month, day] = dateStr.split('-').map(num => parseInt(num));
+    // Create date in local timezone (month is 0-indexed in JS)
+    return new Date(year, month - 1, day);
   };
 
   // Month Selection View
@@ -553,7 +573,7 @@ export default function OTSlipsPage() {
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                       <div className="space-y-1 flex-1">
                         <div className="font-medium text-sm sm:text-base">
-                          {new Date(shift.date).toLocaleDateString('en-US', {
+                          {parseLocalDate(shift.date).toLocaleDateString('en-US', {
                             weekday: 'short',
                             month: 'short',
                             day: 'numeric'
