@@ -2,6 +2,36 @@
 
 This file documents changes and improvements made by Claude AI to the Metro Schedule application.
 
+## Lint and Typecheck Commands
+
+To ensure code quality, run the following commands before committing:
+- `npm run lint` - Check for linting issues
+- `npm run typecheck` - Check for TypeScript type errors
+
+## [2025-10-23] - Billable PDF Duplicate Officer Fix
+
+### Problem Identified
+User reported duplicate entries for Officer Thypam in the billable PDF, showing as both "Ofc. Thypam #1755" and "Officer Thypam #1755" with different hour counts.
+
+### Root Cause Analysis
+The issue was caused by inconsistent officer name formatting where "Officer" and "Ofc." (both meaning the same rank) were being treated as different entries in the payment summary.
+
+### Solution Implemented
+1. **Added Officer Name Normalization**
+   - Created `normalizeOfficerName()` function that creates consistent keys based on last name and ID number
+   - Treats "Officer" and "Ofc." as equivalent rank abbreviations
+
+2. **Added Display Name Standardization**
+   - Created `standardizeDisplayName()` function to ensure consistent display format
+   - All "Officer" prefixes are converted to "Ofc." for consistency
+
+3. **Updated Payment Aggregation Logic**
+   - Modified both morning and afternoon slot processing in `generateBillablePDF()`
+   - Officers are now properly grouped regardless of rank abbreviation format
+
+### Files Modified
+- `app/dashboard/schedule/page.tsx` (lines 1125-1245)
+
 ## [2025-09-19] - OT Slips Date Timezone Issue Resolution
 
 ### Problem Identified

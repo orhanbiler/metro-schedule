@@ -1095,22 +1095,22 @@ export default function SchedulePage() {
     try {
       const jsPDF = (await import('jspdf')).default;
       const autoTable = (await import('jspdf-autotable')).default;
-      
+
       const doc = new jsPDF();
-      
+
       // Add logo
       const logoImg = new Image();
       logoImg.src = '/logo-cool.png';
       await new Promise((resolve) => {
         logoImg.onload = resolve;
       });
-      
+
       // Add logo to PDF (positioned at top left)
       const logoWidth = 30;
       const logoHeight = 30;
       const pageWidth = doc.internal.pageSize.getWidth();
       doc.addImage(logoImg, 'PNG', 20, 15, logoWidth, logoHeight);
-          
+
           // Header (positioned to the right of logo)
           doc.setFontSize(18);
           doc.setFont('helvetica', 'bold');
@@ -1121,12 +1121,49 @@ export default function SchedulePage() {
           doc.setFontSize(12);
           doc.setFont('helvetica', 'bold');
           doc.text(`${monthNames[selectedMonth]} ${selectedYear}`, 60, 45);
-          
+
+          // Helper function to normalize officer names for consistent grouping
+          const normalizeOfficerName = (name: string): string => {
+            // Extract the ID number and use it as part of the key
+            const idMatch = name.match(/#(\d+)/);
+            const id = idMatch ? idMatch[1] : '';
+
+            // Normalize the rank prefix - treat "Officer" and "Ofc." as the same
+            let normalizedName = name;
+            if (name.startsWith('Officer ')) {
+              // Replace "Officer " with "Ofc. " for consistency
+              normalizedName = name.replace(/^Officer\s+/, 'Ofc. ');
+            }
+
+            // Extract the last name after normalizing the rank
+            const nameMatch = normalizedName.match(/(?:Ofc\.|PFC\.|Cpl\.|Sgt\.|Lt\.|Capt\.|Chief)\.?\s+([A-Za-z]+)/i);
+            const lastName = nameMatch ? nameMatch[1] : normalizedName;
+
+            // Return a normalized key combining last name and ID
+            return `${lastName.toUpperCase()}_${id}`;
+          };
+
+          // Helper function to standardize display names
+          const standardizeDisplayName = (name: string): string => {
+            // If the name starts with "Officer ", replace it with "Ofc. " for consistency
+            if (name.startsWith('Officer ')) {
+              return name.replace(/^Officer\s+/, 'Ofc. ');
+            }
+            return name;
+          };
+
           // Prepare table data and calculate total hours and payments with service charge
           const tableData: Array<[string, string, string]> = [];
           let totalHoursWorked = 0;
           const officerHours: Record<string, number> = {};
-          const officerPayments: Record<string, { hours: number; rate: number; payment: number; billableRate: number; billableAmount: number }> = {};
+          const officerPayments: Record<string, {
+            displayName: string; // Store the display name
+            hours: number;
+            rate: number;
+            payment: number;
+            billableRate: number;
+            billableAmount: number
+          }> = {};
           
           schedule.forEach(slot => {
             // Only process days that have at least one officer assigned
@@ -1143,31 +1180,35 @@ export default function SchedulePage() {
             // Morning slot - only show if officers are assigned
             if (hasMorningOfficers) {
               slot.morningSlot.officers.forEach((officer) => {
-                const displayTime = officer.customHours || 
+                const displayTime = officer.customHours ||
                   `${slot.morningSlot.time.slice(0, 2)}:${slot.morningSlot.time.slice(2, 4)}-${slot.morningSlot.time.slice(5, 7)}:${slot.morningSlot.time.slice(7, 9)}`;
-                
+
                 // Calculate hours for this shift
                 const hours = calculateHoursFromTimeString(officer.customHours || slot.morningSlot.time);
                 totalHoursWorked += hours;
-                officerHours[officer.name] = (officerHours[officer.name] || 0) + hours;
-                
+
+                // Use normalized name for grouping
+                const normalizedKey = normalizeOfficerName(officer.name);
+                officerHours[normalizedKey] = (officerHours[normalizedKey] || 0) + hours;
+
                 // Calculate payment with service charge
                 const rank = extractRankFromOfficerName(officer.name);
                 const baseRate = calculateOfficerPayRate(rank);
                 const billableRate = baseRate + 10; // Add $10/hour service charge
-                
-                if (!officerPayments[officer.name]) {
-                  officerPayments[officer.name] = { 
-                    hours: 0, 
-                    rate: baseRate, 
+
+                if (!officerPayments[normalizedKey]) {
+                  officerPayments[normalizedKey] = {
+                    displayName: standardizeDisplayName(officer.name), // Store standardized name for display
+                    hours: 0,
+                    rate: baseRate,
                     payment: 0,
                     billableRate: billableRate,
-                    billableAmount: 0 
+                    billableAmount: 0
                   };
                 }
-                officerPayments[officer.name].hours += hours;
-                officerPayments[officer.name].payment += hours * baseRate;
-                officerPayments[officer.name].billableAmount += hours * billableRate;
+                officerPayments[normalizedKey].hours += hours;
+                officerPayments[normalizedKey].payment += hours * baseRate;
+                officerPayments[normalizedKey].billableAmount += hours * billableRate;
                 
                 tableData.push([
                   !dayShown ? `${slot.dayName} ${formatDate(slot.date)}` : '',
@@ -1181,31 +1222,35 @@ export default function SchedulePage() {
             // Afternoon slot - only show if officers are assigned
             if (hasAfternoonOfficers) {
               slot.afternoonSlot.officers.forEach((officer) => {
-                const displayTime = officer.customHours || 
+                const displayTime = officer.customHours ||
                   `${slot.afternoonSlot.time.slice(0, 2)}:${slot.afternoonSlot.time.slice(2, 4)}-${slot.afternoonSlot.time.slice(5, 7)}:${slot.afternoonSlot.time.slice(7, 9)}`;
-                
+
                 // Calculate hours for this shift
                 const hours = calculateHoursFromTimeString(officer.customHours || slot.afternoonSlot.time);
                 totalHoursWorked += hours;
-                officerHours[officer.name] = (officerHours[officer.name] || 0) + hours;
-                
+
+                // Use normalized name for grouping
+                const normalizedKey = normalizeOfficerName(officer.name);
+                officerHours[normalizedKey] = (officerHours[normalizedKey] || 0) + hours;
+
                 // Calculate payment with service charge
                 const rank = extractRankFromOfficerName(officer.name);
                 const baseRate = calculateOfficerPayRate(rank);
                 const billableRate = baseRate + 10; // Add $10/hour service charge
-                
-                if (!officerPayments[officer.name]) {
-                  officerPayments[officer.name] = { 
-                    hours: 0, 
-                    rate: baseRate, 
+
+                if (!officerPayments[normalizedKey]) {
+                  officerPayments[normalizedKey] = {
+                    displayName: standardizeDisplayName(officer.name), // Store standardized name for display
+                    hours: 0,
+                    rate: baseRate,
                     payment: 0,
                     billableRate: billableRate,
-                    billableAmount: 0 
+                    billableAmount: 0
                   };
                 }
-                officerPayments[officer.name].hours += hours;
-                officerPayments[officer.name].payment += hours * baseRate;
-                officerPayments[officer.name].billableAmount += hours * billableRate;
+                officerPayments[normalizedKey].hours += hours;
+                officerPayments[normalizedKey].payment += hours * baseRate;
+                officerPayments[normalizedKey].billableAmount += hours * billableRate;
                 
                 tableData.push([
                   !dayShown ? `${slot.dayName} ${formatDate(slot.date)}` : '',
@@ -1283,12 +1328,12 @@ export default function SchedulePage() {
           const paymentTableData: Array<[string, string, string]> = [];
           let grandTotal = 0;
           let billableGrandTotal = 0;
-          
+
           Object.entries(officerPayments)
-            .sort(([a], [b]) => a.localeCompare(b))
-            .forEach(([officer, data]) => {
+            .sort(([, a], [, b]) => a.displayName.localeCompare(b.displayName))
+            .forEach(([, data]) => {
               paymentTableData.push([
-                officer,
+                data.displayName, // Use the display name instead of the normalized key
                 `${data.hours}`,
                 `$${data.billableAmount.toFixed(2)}`
               ]);
