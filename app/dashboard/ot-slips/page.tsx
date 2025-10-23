@@ -24,6 +24,15 @@ interface WorkedShift {
   endTime: string;
 }
 
+interface ConsolidatedShift {
+  date: string;
+  dayName: string;
+  shifts: WorkedShift[];
+  totalHours: string;
+  startTime: string;
+  endTime: string;
+}
+
 export default function OTSlipsPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -51,7 +60,8 @@ export default function OTSlipsPage() {
   
   // Schedule data
   const [workedShifts, setWorkedShifts] = useState<WorkedShift[]>([]);
-  const [selectedShift, setSelectedShift] = useState<WorkedShift | null>(null);
+  const [consolidatedShifts, setConsolidatedShifts] = useState<ConsolidatedShift[]>([]);
+  const [selectedShift, setSelectedShift] = useState<ConsolidatedShift | null>(null);
   
   // Form state
   const [email] = useState(user?.email || '');
@@ -130,6 +140,47 @@ export default function OTSlipsPage() {
         // Sort by date ascending (earliest first within the month)
         shifts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         setWorkedShifts(shifts);
+        
+        // Consolidate shifts by date
+        const consolidated: ConsolidatedShift[] = [];
+        const shiftsByDate = new Map<string, WorkedShift[]>();
+        
+        // Group shifts by date
+        shifts.forEach(shift => {
+          const existing = shiftsByDate.get(shift.date) || [];
+          existing.push(shift);
+          shiftsByDate.set(shift.date, existing);
+        });
+        
+        // Create consolidated shifts
+        shiftsByDate.forEach((dayShifts, date) => {
+          // Sort shifts by start time
+          dayShifts.sort((a, b) => {
+            const aTime = parseInt(a.startTime.replace(':', ''));
+            const bTime = parseInt(b.startTime.replace(':', ''));
+            return aTime - bTime;
+          });
+          
+          // Calculate total hours
+          const totalHours = dayShifts.reduce((sum, shift) => sum + parseFloat(shift.hours), 0).toFixed(1);
+          
+          // Get earliest start time and latest end time
+          const startTime = dayShifts[0].startTime;
+          const endTime = dayShifts[dayShifts.length - 1].endTime;
+          
+          consolidated.push({
+            date,
+            dayName: dayShifts[0].dayName,
+            shifts: dayShifts,
+            totalHours,
+            startTime,
+            endTime
+          });
+        });
+        
+        // Sort consolidated shifts by date
+        consolidated.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        setConsolidatedShifts(consolidated);
       } catch (error) {
         console.error('Error fetching worked shifts:', error);
         toast.error('Failed to load your worked shifts');
@@ -245,7 +296,7 @@ export default function OTSlipsPage() {
   };
 
 
-  const generateOTSlipPDF = async (shiftToGenerate?: WorkedShift) => {
+  const generateOTSlipPDF = async (shiftToGenerate?: ConsolidatedShift) => {
     const targetShift = shiftToGenerate || selectedShift;
     
     // Validation
@@ -352,15 +403,25 @@ export default function OTSlipsPage() {
       doc.setFont('helvetica', 'bold');
       doc.text('Metro Transit', margin, yPos);
       
-      // Metro Transit table
-      const metroData = [
-        [
+      // Metro Transit table - show all shifts for the day
+      const metroData = targetShift.shifts.map(shift => {
+        return [
           METRO_LOCATION,
           'Off-Duty',  // Officers can only work metro shifts when off-duty
-          targetShift.hours,
-          `${formatTime12Hour(targetShift.startTime)} -- ${formatTime12Hour(targetShift.endTime)}`
-        ]
-      ];
+          shift.hours,
+          `${formatTime12Hour(shift.startTime)} -- ${formatTime12Hour(shift.endTime)}`
+        ];
+      });
+      
+      // Add total row if multiple shifts
+      if (targetShift.shifts.length > 1) {
+        metroData.push([
+          'TOTAL',
+          '',
+          targetShift.totalHours,
+          ''
+        ]);
+      }
       
       autoTable(doc, {
         startY: yPos + 5,
@@ -566,11 +627,11 @@ export default function OTSlipsPage() {
                 <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                 Your Worked Shifts
               </h3>
-              {!scheduleLoading && workedShifts.length > 0 && (
+              {!scheduleLoading && consolidatedShifts.length > 0 && (
                 <div className="text-xs sm:text-sm text-muted-foreground">
-                  <span className="block sm:inline">{workedShifts.length} shift{workedShifts.length !== 1 ? 's' : ''}</span>
+                  <span className="block sm:inline">{consolidatedShifts.length} day{consolidatedShifts.length !== 1 ? 's' : ''} worked</span>
                   <span className="hidden sm:inline"> • </span>
-                  <span className="block sm:inline">{workedShifts.reduce((total, shift) => total + parseFloat(shift.hours || '0'), 0).toFixed(1)} total hours</span>
+                  <span className="block sm:inline">{consolidatedShifts.reduce((total, day) => total + parseFloat(day.totalHours || '0'), 0).toFixed(1)} total hours</span>
                 </div>
               )}
             </div>
@@ -580,7 +641,7 @@ export default function OTSlipsPage() {
                 <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-primary mx-auto"></div>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-2">Loading your worked shifts...</p>
               </div>
-            ) : workedShifts.length === 0 ? (
+            ) : consolidatedShifts.length === 0 ? (
               <div className="text-center py-6 sm:py-8 border rounded-lg bg-muted/20">
                 <AlertCircle className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm sm:text-base text-muted-foreground">No worked shifts found for {selectedMonthData?.label}.</p>
@@ -592,6 +653,7 @@ export default function OTSlipsPage() {
                   onClick={() => {
                     setSelectedMonth('');
                     setWorkedShifts([]);
+                    setConsolidatedShifts([]);
                   }}
                   className="mt-4"
                 >
@@ -600,45 +662,44 @@ export default function OTSlipsPage() {
               </div>
             ) : (
               <div className="grid gap-3">
-                {workedShifts.map((shift, index) => (
+                {consolidatedShifts.map((dayShift, index) => (
                   <div
-                    key={`${shift.date}-${shift.timeSlot}-${index}`}
+                    key={`${dayShift.date}-${index}`}
                     className="p-3 sm:p-4 border rounded-lg bg-card hover:bg-muted/50 active:bg-muted/70 transition-colors cursor-pointer touch-manipulation"
                     onClick={() => {
                       if (!loading) {
-                        setSelectedShift(shift);
-                        generateOTSlipPDF(shift);
+                        setSelectedShift(dayShift);
+                        generateOTSlipPDF(dayShift);
                       }
                     }}
                   >
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                       <div className="space-y-1 flex-1">
                         <div className="font-medium text-sm sm:text-base">
-                          {parseLocalDate(shift.date).toLocaleDateString('en-US', {
+                          {parseLocalDate(dayShift.date).toLocaleDateString('en-US', {
                             weekday: 'short',
                             month: 'short',
                             day: 'numeric'
                           })}
                         </div>
                         <div className="text-xs sm:text-sm text-muted-foreground">
-                          {shift.timeSlot === 'morning' ? 'Morning' : 'Afternoon'} • {formatTime12Hour(shift.startTime)} - {formatTime12Hour(shift.endTime)}
+                          {dayShift.shifts.map((shift, idx) => (
+                            <div key={idx}>
+                              {shift.timeSlot === 'morning' ? 'Morning' : 'Afternoon'}: {formatTime12Hour(shift.startTime)} - {formatTime12Hour(shift.endTime)} ({shift.hours} hrs)
+                            </div>
+                          ))}
                         </div>
-                        {shift.customHours && (
-                          <div className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">
-                            Custom: {shift.customHours}
-                          </div>
-                        )}
                       </div>
                       
                       <div className="flex items-center justify-between sm:justify-end gap-3">
                         <div className="text-left sm:text-right">
-                          <div className="font-medium text-base sm:text-lg">{shift.hours} hrs</div>
+                          <div className="font-medium text-base sm:text-lg">{dayShift.totalHours} hrs</div>
                         </div>
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedShift(shift);
-                            generateOTSlipPDF(shift);
+                            setSelectedShift(dayShift);
+                            generateOTSlipPDF(dayShift);
                           }}
                           variant="outline"
                           size="sm"
@@ -647,12 +708,12 @@ export default function OTSlipsPage() {
                         >
                           <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                           <span className="hidden sm:inline">
-                            {loading && selectedShift?.date === shift.date && selectedShift?.timeSlot === shift.timeSlot 
+                            {loading && selectedShift?.date === dayShift.date 
                               ? 'Generating...' 
                               : 'Generate OT Slip'}
                           </span>
                           <span className="sm:hidden">
-                            {loading && selectedShift?.date === shift.date && selectedShift?.timeSlot === shift.timeSlot 
+                            {loading && selectedShift?.date === dayShift.date 
                               ? '...' 
                               : 'Generate'}
                           </span>
