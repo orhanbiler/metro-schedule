@@ -77,7 +77,7 @@ export default function OTSlipsPage() {
       setScheduleLoading(true);
       try {
         const currentOfficerName = user?.rank && user?.idNumber 
-          ? formatOfficerName(user.name, user.rank, user.idNumber)
+          ? `${user.rank} ${user.name} #${user.idNumber}`
           : user?.name;
 
         const monthData = availableMonths.find(m => m.key === selectedMonth);
