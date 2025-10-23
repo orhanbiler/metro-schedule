@@ -145,6 +145,27 @@ export default function OTSlipsPage() {
   const calculateHoursFromTimeString = (timeStr: string): string => {
     if (!timeStr) return '0';
     
+    // Check if it's a split shift (contains comma)
+    if (timeStr.includes(',')) {
+      // Split shift - calculate total hours from all segments
+      const segments = timeStr.split(',').map(s => s.trim());
+      let totalHours = 0;
+      
+      for (const segment of segments) {
+        const segmentHours = calculateSingleTimeRange(segment);
+        totalHours += parseFloat(segmentHours);
+      }
+      
+      return totalHours.toFixed(1);
+    }
+    
+    // Single shift
+    return calculateSingleTimeRange(timeStr);
+  };
+  
+  const calculateSingleTimeRange = (timeStr: string): string => {
+    if (!timeStr) return '0';
+    
     // Handle custom time format like "6:00am-2:00pm" or "06:00-14:00" or "0600-1400"
     const timePattern = /(\d{1,2}):?(\d{2})?\s*(am|pm)?\s*[-–]\s*(\d{1,2}):?(\d{2})?\s*(am|pm)?/i;
     const match = timeStr.toLowerCase().match(timePattern);
@@ -176,6 +197,26 @@ export default function OTSlipsPage() {
   };
 
   const parseTimeRange = (timeStr: string): { startTime: string; endTime: string } => {
+    if (!timeStr) return { startTime: '', endTime: '' };
+    
+    // Check if it's a split shift (contains comma)
+    if (timeStr.includes(',')) {
+      // Split shift - get first start time and last end time
+      const segments = timeStr.split(',').map(s => s.trim());
+      const firstSegment = parseSingleTimeRange(segments[0]);
+      const lastSegment = parseSingleTimeRange(segments[segments.length - 1]);
+      
+      return {
+        startTime: firstSegment.startTime,
+        endTime: lastSegment.endTime
+      };
+    }
+    
+    // Single shift
+    return parseSingleTimeRange(timeStr);
+  };
+  
+  const parseSingleTimeRange = (timeStr: string): { startTime: string; endTime: string } => {
     if (!timeStr) return { startTime: '', endTime: '' };
     
     // Handle various time formats

@@ -134,13 +134,13 @@ export function canAddOfficerShift(
   shiftStart: string,
   shiftEnd: string
 ): { valid: boolean; conflicts: string[] } {
-  // Check minimum shift length (2 hours)
+  // Check minimum shift length (1 hour)
   for (const range of newTimeRanges) {
     const duration = timeToMinutes(range.end) - timeToMinutes(range.start);
-    if (duration < 120) { // 2 hours = 120 minutes
+    if (duration < 60) { // 1 hour = 60 minutes
       return { 
         valid: false, 
-        conflicts: ['Each shift block must be at least 2 hours long'] 
+        conflicts: ['Each shift block must be at least 1 hour long'] 
       };
     }
   }

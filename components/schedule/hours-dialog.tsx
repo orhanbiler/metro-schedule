@@ -75,7 +75,7 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
             Choose your working hours for this shift. You can work the full scheduled time or customize your hours.
             <br />
             <span className="text-xs text-muted-foreground mt-2 block">
-              Tip: For split shifts, use format like &quot;05:00-10:00,11:00-13:00&quot; (minimum 2 hours per block)
+              Tip: For split shifts, use format like &quot;05:00-10:00,11:00-13:00&quot; (minimum 1 hour per block)
             </span>
           </DialogDescription>
         </DialogHeader>
