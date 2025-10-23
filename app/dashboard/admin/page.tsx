@@ -261,12 +261,10 @@ export default function AdminPage() {
         date: Date | string; 
         morningSlot?: { 
           officers?: Array<{ name: string; customHours?: string }>; 
-          maxOfficers?: number;
           time?: string;
         }; 
         afternoonSlot?: { 
           officers?: Array<{ name: string; customHours?: string }>; 
-          maxOfficers?: number;
           time?: string;
         } 
       }) => {
@@ -294,8 +292,8 @@ export default function AdminPage() {
           const afternoonOfficers = day.afternoonSlot?.officers || [];
           const morningTime = day.morningSlot?.time || '0500-1300';
           const afternoonTime = day.afternoonSlot?.time || '1300-2200';
-          const maxMorning = day.morningSlot?.maxOfficers || 2;
-          const maxAfternoon = day.afternoonSlot?.maxOfficers || 2;
+          const maxMorning = 2; // Now we check hourly limits instead
+          const maxAfternoon = 2; // Now we check hourly limits instead
           
           // Count all filled slots for the entire month
           filledSlots += morningOfficers.length + afternoonOfficers.length;

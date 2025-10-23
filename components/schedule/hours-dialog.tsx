@@ -73,6 +73,10 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
           <DialogTitle>Sign Up for Shift</DialogTitle>
           <DialogDescription>
             Choose your working hours for this shift. You can work the full scheduled time or customize your hours.
+            <br />
+            <span className="text-xs text-muted-foreground mt-2 block">
+              Tip: For split shifts, use format like "0500-1000,1100-1300" (minimum 2 hours per block)
+            </span>
           </DialogDescription>
         </DialogHeader>
         

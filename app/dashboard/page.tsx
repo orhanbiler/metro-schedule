@@ -120,8 +120,8 @@ export default function DashboardPage() {
       schedule.forEach((day: { 
         id: string; 
         date: Date | string; 
-        morningSlot?: { officers?: { name: string }[]; maxOfficers?: number }; 
-        afternoonSlot?: { officers?: { name: string }[]; maxOfficers?: number } 
+        morningSlot?: { officers?: { name: string }[] }; 
+        afternoonSlot?: { officers?: { name: string }[] } 
       }) => {
         // Only count days from today onwards
         let dayOfMonth;

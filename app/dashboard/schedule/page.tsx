@@ -17,6 +17,13 @@ import { toast } from 'sonner';
 import { formatOfficerName, formatOfficerNameForDisplay, extractRankFromOfficerName, calculateOfficerPayRate } from '@/lib/utils';
 import { ScheduleSkeleton } from '@/components/schedule/schedule-skeleton';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { 
+  parseTimeString, 
+  getHourlyAvailability, 
+  canAddOfficerShift, 
+  getAvailableTimeSlots,
+  type OfficerShift 
+} from '@/lib/schedule-utils';
 
 interface Officer {
   name: string;
@@ -31,13 +38,13 @@ interface TimeSlot {
     time: string;
     available: boolean;
     officers: Officer[];
-    maxOfficers: 2;
+    // Removed maxOfficers - now checking hourly limits
   };
   afternoonSlot: {
     time: string;
     available: boolean;
     officers: Officer[];
-    maxOfficers: 2;
+    // Removed maxOfficers - now checking hourly limits
   };
 }
 
@@ -217,13 +224,11 @@ export default function SchedulePage() {
             time: '0500-1300',
             available: true,
             officers: [],
-            maxOfficers: 2,
           },
           afternoonSlot: {
             time: '1300-2200',
             available: true,
             officers: [],
-            maxOfficers: 2,
           }
         });
       }
@@ -301,8 +306,7 @@ export default function SchedulePage() {
         migratedSlot.morningSlot = {
           time: updatedTime,
           available: officers.length < 2,
-          officers: officers,
-          maxOfficers: 2
+          officers: officers
         };
       } else if (!slot.morningSlot.officers) {
         // No officers array, create empty one
@@ -310,7 +314,6 @@ export default function SchedulePage() {
           ...slot.morningSlot,
           time: updatedTime,
           officers: [],
-          maxOfficers: 2,
           available: true
         };
       } else {
@@ -319,7 +322,6 @@ export default function SchedulePage() {
           ...slot.morningSlot,
           time: updatedTime,
           available: slot.morningSlot.officers.length < 2,
-          maxOfficers: slot.morningSlot.maxOfficers || 2
         };
       }
     }
@@ -337,8 +339,7 @@ export default function SchedulePage() {
         migratedSlot.afternoonSlot = {
           time: updatedTime,
           available: officers.length < 2,
-          officers: officers,
-          maxOfficers: 2
+          officers: officers
         };
       } else if (!slot.afternoonSlot.officers) {
         // No officers array, create empty one
@@ -346,7 +347,6 @@ export default function SchedulePage() {
           ...slot.afternoonSlot,
           time: updatedTime,
           officers: [],
-          maxOfficers: 2,
           available: true
         };
       } else {
@@ -355,7 +355,6 @@ export default function SchedulePage() {
           ...slot.afternoonSlot,
           time: updatedTime,
           available: slot.afternoonSlot.officers.length < 2,
-          maxOfficers: slot.afternoonSlot.maxOfficers || 2
         };
       }
     }
@@ -462,51 +461,80 @@ export default function SchedulePage() {
     setLoading(true);
     
     try {
-      const updatedSchedule = schedule.map(slot => {
-        if (slot.id === slotId) {
-          const currentOfficer = getCurrentOfficerFormatted();
+      const slot = schedule.find(s => s.id === slotId);
+      if (!slot) {
+        toast.error('Shift not found. Please refresh the page and try again.');
+        return;
+      }
+
+      const currentOfficer = getCurrentOfficerFormatted();
+      const targetSlot = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
+      
+      // Check if officer is already signed up
+      const alreadySignedUp = targetSlot.officers.some(officer => officer.name === currentOfficer);
+      if (alreadySignedUp) {
+        toast.error('You are already signed up for this shift');
+        return;
+      }
+
+      // Parse the custom hours into time ranges
+      const newTimeRanges = parseTimeString(customHours);
+      if (newTimeRanges.length === 0) {
+        toast.error('Invalid time format. Please use format like "0500-1300" or "0500-1000,1100-1300" for split shifts.');
+        return;
+      }
+
+      // Convert existing officers to OfficerShift format
+      const existingOfficerShifts: OfficerShift[] = targetSlot.officers.map(officer => ({
+        name: officer.name,
+        timeRanges: parseTimeString(officer.customHours || targetSlot.time)
+      }));
+
+      // Validate if the new shift can be added
+      const validation = canAddOfficerShift(
+        existingOfficerShifts,
+        currentOfficer,
+        newTimeRanges,
+        targetSlot.time.split('-')[0], // shift start
+        targetSlot.time.split('-')[1]  // shift end
+      );
+
+      if (!validation.valid) {
+        toast.error(validation.conflicts.join('. '));
+        return;
+      }
+
+      // Update the schedule
+      const updatedSchedule = schedule.map(s => {
+        if (s.id === slotId) {
           const newOfficer: Officer = {
             name: currentOfficer,
-            customHours: customHours !== (slotType === 'morning' ? slot.morningSlot.time : slot.afternoonSlot.time) ? customHours : undefined
+            customHours: customHours !== targetSlot.time ? customHours : undefined
           };
 
           if (slotType === 'morning') {
-            // Check if officer is already signed up
-            const alreadySignedUp = slot.morningSlot.officers.some(officer => officer.name === currentOfficer);
-            if (alreadySignedUp) {
-              toast.error('You are already signed up for this shift');
-              return slot;
-            }
-            
-            const updatedOfficers = [...slot.morningSlot.officers, newOfficer];
+            const updatedOfficers = [...s.morningSlot.officers, newOfficer];
             return {
-              ...slot,
+              ...s,
               morningSlot: {
-                ...slot.morningSlot,
+                ...s.morningSlot,
                 officers: updatedOfficers,
-                available: updatedOfficers.length < slot.morningSlot.maxOfficers
+                available: true // Always true now since we check hourly availability
               }
             };
           } else {
-            // Check if officer is already signed up
-            const alreadySignedUp = slot.afternoonSlot.officers.some(officer => officer.name === currentOfficer);
-            if (alreadySignedUp) {
-              toast.error('You are already signed up for this shift');
-              return slot;
-            }
-            
-            const updatedOfficers = [...slot.afternoonSlot.officers, newOfficer];
+            const updatedOfficers = [...s.afternoonSlot.officers, newOfficer];
             return {
-              ...slot,
+              ...s,
               afternoonSlot: {
-                ...slot.afternoonSlot,
+                ...s.afternoonSlot,
                 officers: updatedOfficers,
-                available: updatedOfficers.length < slot.afternoonSlot.maxOfficers
+                available: true // Always true now since we check hourly availability
               }
             };
           }
         }
-        return slot;
+        return s;
       });
 
       // Don't update local state - let real-time listener handle it
@@ -577,7 +605,7 @@ export default function SchedulePage() {
               morningSlot: {
                 ...slot.morningSlot,
                 officers: updatedOfficers,
-                available: updatedOfficers.length < slot.morningSlot.maxOfficers
+                available: true // Always true now since we check hourly availability
               }
             };
           } else {
@@ -587,7 +615,7 @@ export default function SchedulePage() {
               afternoonSlot: {
                 ...slot.afternoonSlot,
                 officers: updatedOfficers,
-                available: updatedOfficers.length < slot.afternoonSlot.maxOfficers
+                available: true // Always true now since we check hourly availability
               }
             };
           }
@@ -626,58 +654,77 @@ export default function SchedulePage() {
     }
 
     const targetSlot = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
-    if (targetSlot.officers.length >= targetSlot.maxOfficers) {
-      toast.error('This shift is already full. Maximum 2 officers allowed per shift.');
+    
+    // Check if officer is already assigned
+    const alreadyAssigned = targetSlot.officers.some(officer => officer.name === officerName);
+    if (alreadyAssigned) {
+      toast.error('Officer is already assigned to this shift');
+      return;
+    }
+
+    // If no custom hours provided, use default shift hours
+    const hoursToAssign = customHours || targetSlot.time;
+
+    // Parse the hours into time ranges
+    const newTimeRanges = parseTimeString(hoursToAssign);
+    if (newTimeRanges.length === 0) {
+      toast.error('Invalid time format. Please use format like "0500-1300" or "0500-1000,1100-1300" for split shifts.');
+      return;
+    }
+
+    // Convert existing officers to OfficerShift format
+    const existingOfficerShifts: OfficerShift[] = targetSlot.officers.map(officer => ({
+      name: officer.name,
+      timeRanges: parseTimeString(officer.customHours || targetSlot.time)
+    }));
+
+    // Validate if the new shift can be added
+    const validation = canAddOfficerShift(
+      existingOfficerShifts,
+      officerName,
+      newTimeRanges,
+      targetSlot.time.split('-')[0], // shift start
+      targetSlot.time.split('-')[1]  // shift end
+    );
+
+    if (!validation.valid) {
+      toast.error(validation.conflicts.join('. '));
       return;
     }
 
     setLoading(true);
     
     try {
-      const updatedSchedule = schedule.map(slot => {
-        if (slot.id === slotId) {
+      const updatedSchedule = schedule.map(s => {
+        if (s.id === slotId) {
           const newOfficer: Officer = {
             name: officerName,
             customHours: customHours || undefined
           };
 
           if (slotType === 'morning') {
-            // Check if officer is already assigned
-            const alreadyAssigned = slot.morningSlot.officers.some(officer => officer.name === officerName);
-            if (alreadyAssigned) {
-              toast.error('Officer is already assigned to this shift');
-              return slot;
-            }
-            
-            const updatedOfficers = [...slot.morningSlot.officers, newOfficer];
+            const updatedOfficers = [...s.morningSlot.officers, newOfficer];
             return {
-              ...slot,
+              ...s,
               morningSlot: {
-                ...slot.morningSlot,
+                ...s.morningSlot,
                 officers: updatedOfficers,
-                available: updatedOfficers.length < slot.morningSlot.maxOfficers
+                available: true // Always true now since we check hourly availability
               }
             };
           } else {
-            // Check if officer is already assigned
-            const alreadyAssigned = slot.afternoonSlot.officers.some(officer => officer.name === officerName);
-            if (alreadyAssigned) {
-              toast.error('Officer is already assigned to this shift');
-              return slot;
-            }
-            
-            const updatedOfficers = [...slot.afternoonSlot.officers, newOfficer];
+            const updatedOfficers = [...s.afternoonSlot.officers, newOfficer];
             return {
-              ...slot,
+              ...s,
               afternoonSlot: {
-                ...slot.afternoonSlot,
+                ...s.afternoonSlot,
                 officers: updatedOfficers,
-                available: updatedOfficers.length < slot.afternoonSlot.maxOfficers
+                available: true // Always true now since we check hourly availability
               }
             };
           }
         }
-        return slot;
+        return s;
       });
 
       await saveSchedule(updatedSchedule);
@@ -688,6 +735,34 @@ export default function SchedulePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to get display text for available time slots
+  const getAvailabilityDisplay = (slot: TimeSlot, slotType: 'morning' | 'afternoon'): React.ReactElement => {
+    const targetSlot = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
+    
+    // Convert officers to OfficerShift format
+    const officerShifts: OfficerShift[] = targetSlot.officers.map(officer => ({
+      name: officer.name,
+      timeRanges: parseTimeString(officer.customHours || targetSlot.time)
+    }));
+    
+    // Get available time slots
+    const availableSlots = getAvailableTimeSlots(
+      officerShifts,
+      targetSlot.time.split('-')[0],
+      targetSlot.time.split('-')[1]
+    );
+    
+    if (availableSlots.length === 0) {
+      return <span className="text-2xs sm:text-sm text-muted-foreground">No slots available</span>;
+    }
+    
+    return (
+      <div className="text-2xs sm:text-xs text-muted-foreground italic">
+        Available: {availableSlots.join(', ')}
+      </div>
+    );
   };
 
   // Helper function to calculate hours from time string (e.g., "6am-2pm" = 8 hours or "0500-1300" = 8 hours)
@@ -1534,25 +1609,31 @@ export default function SchedulePage() {
                                   )}
                                 </div>
                               ))}
-                              {slot.morningSlot.officers.length < slot.morningSlot.maxOfficers && (
-                                <div className="text-2xs sm:text-xs text-muted-foreground italic">
-                                  {slot.morningSlot.maxOfficers - slot.morningSlot.officers.length} slot(s) available
-                                </div>
-                              )}
+                              {getAvailabilityDisplay(slot, 'morning')}
                             </div>
                           ) : (
-                            <span className="text-2xs sm:text-sm text-muted-foreground italic">Available ({slot.morningSlot.maxOfficers} slots)</span>
+                            getAvailabilityDisplay(slot, 'morning')
                           )}
                         </td>
                         <td className="p-1.5 sm:py-1.5 sm:px-2 text-center">
                           {(() => {
                             const userSignedUp = hasUserSignedUpForSlot(slot.date, 'morning');
-                            const slotsAvailable = slot.morningSlot.officers.length < slot.morningSlot.maxOfficers;
+                            // Check if there are any available time slots
+                            const officerShifts: OfficerShift[] = slot.morningSlot.officers.map(officer => ({
+                              name: officer.name,
+                              timeRanges: parseTimeString(officer.customHours || slot.morningSlot.time)
+                            }));
+                            const availableSlots = getAvailableTimeSlots(
+                              officerShifts,
+                              slot.morningSlot.time.split('-')[0],
+                              slot.morningSlot.time.split('-')[1]
+                            );
+                            const slotsAvailable = availableSlots.length > 0;
                             const isAdmin = user?.role === 'admin';
                             const canModify = canUserModifySchedule();
                             
                             if (!slotsAvailable && !userSignedUp) {
-                              return <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.morningSlot.officers.length}/{slot.morningSlot.maxOfficers})</span>;
+                              return <span className="text-xs sm:text-sm text-muted-foreground">Full</span>;
                             }
                             
                             // Show message for past months for regular users
@@ -1662,25 +1743,31 @@ export default function SchedulePage() {
                                   )}
                                 </div>
                               ))}
-                              {slot.afternoonSlot.officers.length < slot.afternoonSlot.maxOfficers && (
-                                <div className="text-2xs sm:text-xs text-muted-foreground italic">
-                                  {slot.afternoonSlot.maxOfficers - slot.afternoonSlot.officers.length} slot(s) available
-                                </div>
-                              )}
+                              {getAvailabilityDisplay(slot, 'afternoon')}
                             </div>
                           ) : (
-                            <span className="text-2xs sm:text-sm text-muted-foreground italic">Available ({slot.afternoonSlot.maxOfficers} slots)</span>
+                            getAvailabilityDisplay(slot, 'afternoon')
                           )}
                         </td>
                         <td className="p-1.5 sm:py-1.5 sm:px-2 text-center">
                           {(() => {
                             const userSignedUp = hasUserSignedUpForSlot(slot.date, 'afternoon');
-                            const slotsAvailable = slot.afternoonSlot.officers.length < slot.afternoonSlot.maxOfficers;
+                            // Check if there are any available time slots
+                            const officerShifts: OfficerShift[] = slot.afternoonSlot.officers.map(officer => ({
+                              name: officer.name,
+                              timeRanges: parseTimeString(officer.customHours || slot.afternoonSlot.time)
+                            }));
+                            const availableSlots = getAvailableTimeSlots(
+                              officerShifts,
+                              slot.afternoonSlot.time.split('-')[0],
+                              slot.afternoonSlot.time.split('-')[1]
+                            );
+                            const slotsAvailable = availableSlots.length > 0;
                             const isAdmin = user?.role === 'admin';
                             const canModify = canUserModifySchedule();
                             
                             if (!slotsAvailable && !userSignedUp) {
-                              return <span className="text-xs sm:text-sm text-muted-foreground">Full ({slot.afternoonSlot.officers.length}/{slot.afternoonSlot.maxOfficers})</span>;
+                              return <span className="text-xs sm:text-sm text-muted-foreground">Full</span>;
                             }
                             
                             // Show message for past months for regular users
