@@ -20,18 +20,29 @@ export interface HourlyAvailability {
 }
 
 /**
- * Parse time string formats like "0500-1300" or "0500-1000,1100-1300" (split shift)
+ * Parse time string formats like "0500-1300", "05:00-13:00", or "0500-1000,1100-1300" (split shift)
  */
 export function parseTimeString(timeString: string): TimeRange[] {
   const ranges: TimeRange[] = [];
   const parts = timeString.split(',').map(s => s.trim());
   
   for (const part of parts) {
-    const match = part.match(/^(\d{4})-(\d{4})$/);
+    // Try format without colons first (e.g., "0500-1300")
+    let match = part.match(/^(\d{4})-(\d{4})$/);
     if (match) {
       ranges.push({
         start: match[1],
         end: match[2]
+      });
+      continue;
+    }
+    
+    // Try format with colons (e.g., "05:00-13:00")
+    match = part.match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
+    if (match) {
+      ranges.push({
+        start: match[1] + match[2],
+        end: match[3] + match[4]
       });
     }
   }

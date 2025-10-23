@@ -480,7 +480,7 @@ export default function SchedulePage() {
       // Parse the custom hours into time ranges
       const newTimeRanges = parseTimeString(customHours);
       if (newTimeRanges.length === 0) {
-        toast.error('Invalid time format. Please use format like "0500-1300" or "0500-1000,1100-1300" for split shifts.');
+        toast.error('Invalid time format. Please use format like "0500-1300", "05:00-13:00", or "0500-1000,1100-1300" for split shifts.');
         return;
       }
 
