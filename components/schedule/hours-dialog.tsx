@@ -62,9 +62,20 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
     setEndTime('');
     onCancel();
   };
+  
+  // Reset state when dialog opens/closes
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) {
+      // Reset when closing
+      setUseCustomHours(false);
+      setStartTime('');
+      setEndTime('');
+    }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
@@ -94,7 +105,13 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
                 type="checkbox"
                 id="customHours"
                 checked={useCustomHours}
-                onChange={(e) => setUseCustomHours(e.target.checked)}
+                onChange={(e) => {
+                  setUseCustomHours(e.target.checked);
+                  if (e.target.checked && !startTime) {
+                    // Set default start time to the beginning of the shift
+                    setStartTime(originalStart);
+                  }
+                }}
                 className="rounded"
               />
               <Label htmlFor="customHours" className="text-xs sm:text-sm font-medium">
