@@ -33,6 +33,94 @@ interface ConsolidatedShift {
   endTime: string;
 }
 
+const calculateHoursFromTimeString = (timeStr: string): string => {
+  if (!timeStr) return '0';
+
+  if (timeStr.includes(',')) {
+    const segments = timeStr.split(',').map((segment) => segment.trim());
+    const total = segments.reduce((hours, segment) => hours + parseFloat(calculateSingleTimeRange(segment)), 0);
+    return total.toFixed(1);
+  }
+
+  return calculateSingleTimeRange(timeStr);
+};
+
+const calculateSingleTimeRange = (timeStr: string): string => {
+  if (!timeStr) return '0';
+
+  const timePattern = /(\d{1,2}):?(\d{2})?\s*(am|pm)?\s*[-–]\s*(\d{1,2}):?(\d{2})?\s*(am|pm)?/i;
+  const match = timeStr.toLowerCase().match(timePattern);
+
+  if (match) {
+    const [, startHour, startMin = '00', startPeriod, endHour, endMin = '00', endPeriod] = match;
+    let startHour24 = parseInt(startHour, 10);
+    let endHour24 = parseInt(endHour, 10);
+
+    if (startPeriod === 'pm' && startHour24 !== 12) startHour24 += 12;
+    if (startPeriod === 'am' && startHour24 === 12) startHour24 = 0;
+    if (endPeriod === 'pm' && endHour24 !== 12) endHour24 += 12;
+    if (endPeriod === 'am' && endHour24 === 12) endHour24 = 0;
+
+    const startMinutes = startHour24 * 60 + parseInt(startMin, 10);
+    let endMinutes = endHour24 * 60 + parseInt(endMin, 10);
+
+    if (endMinutes < startMinutes) {
+      endMinutes += 24 * 60;
+    }
+
+    return ((endMinutes - startMinutes) / 60).toFixed(1);
+  }
+
+  return '0';
+};
+
+const parseTimeRange = (timeStr: string): { startTime: string; endTime: string } => {
+  if (!timeStr) {
+    return { startTime: '', endTime: '' };
+  }
+
+  if (timeStr.includes(',')) {
+    const segments = timeStr.split(',').map((segment) => segment.trim());
+    const firstSegment = parseSingleTimeRange(segments[0]);
+    const lastSegment = parseSingleTimeRange(segments[segments.length - 1]);
+
+    return {
+      startTime: firstSegment.startTime,
+      endTime: lastSegment.endTime,
+    };
+  }
+
+  return parseSingleTimeRange(timeStr);
+};
+
+const parseSingleTimeRange = (timeStr: string): { startTime: string; endTime: string } => {
+  if (!timeStr) {
+    return { startTime: '', endTime: '' };
+  }
+
+  const timePattern = /(\d{1,2}):?(\d{2})?\s*(am|pm)?\s*[-–]\s*(\d{1,2}):?(\d{2})?\s*(am|pm)?/i;
+  const match = timeStr.toLowerCase().match(timePattern);
+
+  if (match) {
+    const [, startHour, startMin = '00', startPeriod, endHour, endMin = '00', endPeriod] = match;
+
+    let startHour24 = parseInt(startHour, 10);
+    let endHour24 = parseInt(endHour, 10);
+
+    if (startPeriod === 'pm' && startHour24 !== 12) startHour24 += 12;
+    if (startPeriod === 'am' && startHour24 === 12) startHour24 = 0;
+    if (endPeriod === 'pm' && endHour24 !== 12) endHour24 += 12;
+    if (endPeriod === 'am' && endHour24 === 12) endHour24 = 0;
+
+    return {
+      startTime: `${startHour24.toString().padStart(2, '0')}:${startMin}`,
+      endTime: `${endHour24.toString().padStart(2, '0')}:${endMin}`,
+    };
+  }
+
+  return { startTime: '', endTime: '' };
+};
+
 export default function OTSlipsPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -59,7 +147,6 @@ export default function OTSlipsPage() {
   });
   
   // Schedule data
-  const [workedShifts, setWorkedShifts] = useState<WorkedShift[]>([]);
   const [consolidatedShifts, setConsolidatedShifts] = useState<ConsolidatedShift[]>([]);
   const [selectedShift, setSelectedShift] = useState<ConsolidatedShift | null>(null);
   
@@ -139,7 +226,6 @@ export default function OTSlipsPage() {
         
         // Sort by date ascending (earliest first within the month)
         shifts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        setWorkedShifts(shifts);
         
         // Consolidate shifts by date
         const consolidated: ConsolidatedShift[] = [];
@@ -191,109 +277,6 @@ export default function OTSlipsPage() {
 
     fetchWorkedShiftsForMonth();
   }, [user, selectedMonth, availableMonths]);
-
-  // Helper functions
-  const calculateHoursFromTimeString = (timeStr: string): string => {
-    if (!timeStr) return '0';
-    
-    // Check if it's a split shift (contains comma)
-    if (timeStr.includes(',')) {
-      // Split shift - calculate total hours from all segments
-      const segments = timeStr.split(',').map(s => s.trim());
-      let totalHours = 0;
-      
-      for (const segment of segments) {
-        const segmentHours = calculateSingleTimeRange(segment);
-        totalHours += parseFloat(segmentHours);
-      }
-      
-      return totalHours.toFixed(1);
-    }
-    
-    // Single shift
-    return calculateSingleTimeRange(timeStr);
-  };
-  
-  const calculateSingleTimeRange = (timeStr: string): string => {
-    if (!timeStr) return '0';
-    
-    // Handle custom time format like "6:00am-2:00pm" or "06:00-14:00" or "0600-1400"
-    const timePattern = /(\d{1,2}):?(\d{2})?\s*(am|pm)?\s*[-–]\s*(\d{1,2}):?(\d{2})?\s*(am|pm)?/i;
-    const match = timeStr.toLowerCase().match(timePattern);
-    
-    if (match) {
-      const [, startHour, startMin = '00', startPeriod, endHour, endMin = '00', endPeriod] = match;
-      
-      // Convert to 24-hour format
-      let startHour24 = parseInt(startHour);
-      let endHour24 = parseInt(endHour);
-      
-      if (startPeriod === 'pm' && startHour24 !== 12) startHour24 += 12;
-      if (startPeriod === 'am' && startHour24 === 12) startHour24 = 0;
-      if (endPeriod === 'pm' && endHour24 !== 12) endHour24 += 12;
-      if (endPeriod === 'am' && endHour24 === 12) endHour24 = 0;
-      
-      const startMinutes = startHour24 * 60 + parseInt(startMin);
-      let endMinutes = endHour24 * 60 + parseInt(endMin);
-      
-      // Handle overnight shifts
-      if (endMinutes < startMinutes) {
-        endMinutes += 24 * 60;
-      }
-      
-      return ((endMinutes - startMinutes) / 60).toFixed(1);
-    }
-    
-    return '0';
-  };
-
-  const parseTimeRange = (timeStr: string): { startTime: string; endTime: string } => {
-    if (!timeStr) return { startTime: '', endTime: '' };
-    
-    // Check if it's a split shift (contains comma)
-    if (timeStr.includes(',')) {
-      // Split shift - get first start time and last end time
-      const segments = timeStr.split(',').map(s => s.trim());
-      const firstSegment = parseSingleTimeRange(segments[0]);
-      const lastSegment = parseSingleTimeRange(segments[segments.length - 1]);
-      
-      return {
-        startTime: firstSegment.startTime,
-        endTime: lastSegment.endTime
-      };
-    }
-    
-    // Single shift
-    return parseSingleTimeRange(timeStr);
-  };
-  
-  const parseSingleTimeRange = (timeStr: string): { startTime: string; endTime: string } => {
-    if (!timeStr) return { startTime: '', endTime: '' };
-    
-    // Handle various time formats
-    const timePattern = /(\d{1,2}):?(\d{2})?\s*(am|pm)?\s*[-–]\s*(\d{1,2}):?(\d{2})?\s*(am|pm)?/i;
-    const match = timeStr.toLowerCase().match(timePattern);
-    
-    if (match) {
-      const [, startHour, startMin = '00', startPeriod, endHour, endMin = '00', endPeriod] = match;
-      
-      // Convert to 24-hour format
-      let startHour24 = parseInt(startHour);
-      let endHour24 = parseInt(endHour);
-      
-      if (startPeriod === 'pm' && startHour24 !== 12) startHour24 += 12;
-      if (startPeriod === 'am' && startHour24 === 12) startHour24 = 0;
-      if (endPeriod === 'pm' && endHour24 !== 12) endHour24 += 12;
-      if (endPeriod === 'am' && endHour24 === 12) endHour24 = 0;
-      
-      return {
-        startTime: `${startHour24.toString().padStart(2, '0')}:${startMin}`,
-        endTime: `${endHour24.toString().padStart(2, '0')}:${endMin}`
-      };
-    }
-    
-    return { startTime: '', endTime: '' };
-  };
 
 
   const generateOTSlipPDF = async (shiftToGenerate?: ConsolidatedShift) => {
@@ -598,7 +581,6 @@ export default function OTSlipsPage() {
               size="sm"
               onClick={() => {
                 setSelectedMonth('');
-                setWorkedShifts([]);
                 setSelectedShift(null);
               }}
               className="flex items-center gap-2 -ml-2"
@@ -652,7 +634,6 @@ export default function OTSlipsPage() {
                   variant="outline"
                   onClick={() => {
                     setSelectedMonth('');
-                    setWorkedShifts([]);
                     setConsolidatedShifts([]);
                   }}
                   className="mt-4"

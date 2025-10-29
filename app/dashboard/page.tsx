@@ -1,14 +1,29 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useMemo } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Users } from 'lucide-react';
+import { CalendarCheck2, Clock3, Percent, Users } from 'lucide-react';
 import Link from 'next/link';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { isFirestoreInitialized } from '@/lib/firebase-utils';
 import { useAuth } from '@/lib/auth-context';
+import { getShiftDateBounds } from '@/lib/schedule-utils';
+
+interface NextShiftInfo {
+  id: string;
+  dayName: string;
+  dateLabel: string;
+  dateISO: string;
+  slotLabel: string;
+  isToday: boolean;
+  assignedCount: number;
+  capacity: number;
+  openSpots: number;
+  orderIndex: number;
+  status: 'upcoming' | 'ongoing';
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -17,6 +32,7 @@ export default function DashboardPage() {
     filledSlots: 0,
     availableSlots: 0,
     thisMonthUsers: 0,
+    nextShift: null as NextShiftInfo | null,
   });
 
   useEffect(() => {
@@ -53,13 +69,13 @@ export default function DashboardPage() {
 
   const calculateScheduleStats = async () => {
     try {
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth(); // Keep 0-indexed for API consistency
-      const currentYear = currentDate.getFullYear();
+      const now = new Date();
+      const currentMonth = now.getMonth(); // Keep 0-indexed for API consistency
+      const currentYear = now.getFullYear();
       
       // Calculate remaining WEEKDAYS in the current month (from today onwards, excluding weekends)
-      const today = currentDate.getDate();
-      const currentHour = currentDate.getHours();
+      const today = now.getDate();
+      const currentHour = now.getHours();
       const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
       
       let remainingSlots = 0;
@@ -95,6 +111,7 @@ export default function DashboardPage() {
           filledSlots: 0,
           availableSlots: maxPossibleSlots,
           thisMonthUsers: 0,
+          nextShift: null,
         });
         return;
       }
@@ -109,6 +126,7 @@ export default function DashboardPage() {
           filledSlots: 0,
           availableSlots: maxPossibleSlots,
           thisMonthUsers: 0,
+          nextShift: null,
         });
         return;
       }
@@ -116,16 +134,43 @@ export default function DashboardPage() {
       // Calculate actual statistics from existing schedule (only from today onwards)
       let filledSlots = 0;
       const uniqueOfficers = new Set<string>();
-      
-      schedule.forEach((day: { 
-        id: string; 
-        date: Date | string; 
-        morningSlot?: { officers?: { name: string }[] }; 
-        afternoonSlot?: { officers?: { name: string }[] } 
+      const todayDate = new Date(currentYear, currentMonth, today);
+      let upcomingShift: NextShiftInfo | null = null;
+
+      const toTimeLabel = (time?: string) => {
+        if (!time) return '';
+        if (time.includes(':') && time.includes('-')) return time;
+        if (!time.includes('-')) return time;
+
+        const [start, end] = time.split('-');
+
+        const formatSegment = (segment: string) => {
+          if (segment.includes(':')) return segment;
+          const hours = Number(segment.slice(0, 2));
+          const minutes = Number(segment.slice(2, 4));
+          const date = new Date();
+          date.setHours(hours, minutes, 0, 0);
+          return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        };
+
+        return `${formatSegment(start)} – ${formatSegment(end)}`;
+      };
+
+      const defaultShiftTimes: Record<'Morning' | 'Afternoon', string> = {
+        Morning: '0500-1300',
+        Afternoon: '1300-2200',
+      };
+
+      schedule.forEach((day: {
+        id: string;
+        date: Date | string;
+        dayName?: string;
+        morningSlot?: { officers?: { name: string }[]; maxOfficers?: number; time?: string };
+        afternoonSlot?: { officers?: { name: string }[]; maxOfficers?: number; time?: string };
       }) => {
         // Only count days from today onwards
         let dayOfMonth;
-        
+
         if (day.date instanceof Date) {
           dayOfMonth = day.date.getDate();
         } else if (typeof day.date === 'string') {
@@ -134,14 +179,14 @@ export default function DashboardPage() {
           // Fallback: assume it's a day number or use day ID
           dayOfMonth = parseInt(day.id) || 1;
         }
-        
+
         if (dayOfMonth >= today) {
+          const slotDate = new Date(currentYear, currentMonth, dayOfMonth);
           const morningOfficers = day.morningSlot?.officers || [];
           const afternoonOfficers = day.afternoonSlot?.officers || [];
-          
+
           // For today, only count shifts that haven't started yet
           if (dayOfMonth === today) {
-            const currentHour = new Date().getHours();
             // Morning shift: 0500-1300
             if (currentHour < 5) {
               // Both shifts are in the future
@@ -155,7 +200,7 @@ export default function DashboardPage() {
             // Future days - count all filled slots
             filledSlots += morningOfficers.length + afternoonOfficers.length;
           }
-          
+
           // Track unique officers (for all slots, regardless of time)
           [...morningOfficers, ...afternoonOfficers].forEach((officer: { name: string } | string) => {
             if (officer && typeof officer === 'object' && officer.name) {
@@ -164,6 +209,75 @@ export default function DashboardPage() {
               uniqueOfficers.add(officer);
             }
           });
+
+          const considerShift = (
+            slotName: 'Morning' | 'Afternoon',
+            slotData?: { officers?: { name: string }[]; maxOfficers?: number; time?: string }
+          ) => {
+            if (!slotData) return;
+
+            const officers = slotData.officers || [];
+            const capacity = slotData.maxOfficers ?? 2;
+            const spotsLeft = capacity - officers.length;
+            const isOpen = spotsLeft > 0;
+            const timeString = slotData.time || defaultShiftTimes[slotName];
+            const { start, end } = getShiftDateBounds(slotDate, timeString);
+
+            if (end && now >= end) {
+              return; // Skip shifts that have completely finished
+            }
+
+            const isOngoing = Boolean(start && end && now >= start && now < end);
+            const isUpcoming = start ? now < start : true;
+
+            if (!isOngoing && !isUpcoming) {
+              return;
+            }
+
+            const candidate: NextShiftInfo = {
+              id: `${day.id}-${slotName.toLowerCase()}`,
+              dayName: day.dayName ?? slotDate.toLocaleDateString(undefined, { weekday: 'long' }),
+              dateLabel: slotDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+              dateISO: (start ?? slotDate).toISOString(),
+              slotLabel: `${slotName} • ${toTimeLabel(timeString)}`.trim(),
+              isToday: slotDate.toDateString() === todayDate.toDateString(),
+              assignedCount: officers.length,
+              capacity,
+              openSpots: Math.max(spotsLeft, 0),
+              orderIndex: slotName === 'Morning' ? 0 : 1,
+              status: isOngoing ? 'ongoing' : 'upcoming',
+            };
+
+            const shouldReplace = () => {
+              if (!upcomingShift) return true;
+
+              const candidateDate = new Date(candidate.dateISO);
+              const existingDate = new Date(upcomingShift.dateISO);
+
+              const candidateOpen = candidate.openSpots > 0;
+              const existingOpen = upcomingShift.openSpots > 0;
+
+              if (candidateOpen && !existingOpen) return true;
+              if (!candidateOpen && existingOpen) return false;
+
+              if (candidateDate < existingDate) return true;
+              if (candidateDate > existingDate) return false;
+
+              if (candidate.status === 'ongoing' && upcomingShift.status === 'upcoming') return true;
+              if (candidate.status === 'upcoming' && upcomingShift.status === 'ongoing') return false;
+
+              return candidate.orderIndex < upcomingShift.orderIndex;
+            };
+
+            if (isOpen || !upcomingShift) {
+              if (shouldReplace()) {
+                upcomingShift = candidate;
+              }
+            }
+          };
+
+          considerShift('Morning', day.morningSlot);
+          considerShift('Afternoon', day.afternoonSlot);
         }
       });
       
@@ -174,6 +288,7 @@ export default function DashboardPage() {
         filledSlots,
         availableSlots,
         thisMonthUsers: uniqueOfficers.size,
+        nextShift: upcomingShift,
       });
     } catch (error) {
       console.error('Error calculating schedule stats:', error);
@@ -210,9 +325,17 @@ export default function DashboardPage() {
         filledSlots: 0,
         availableSlots: maxPossibleSlots,
         thisMonthUsers: 0,
+        nextShift: null,
       });
     }
   };
+
+  const fillRate = useMemo(() => {
+    if (scheduleStats.totalSlots === 0) {
+      return 0;
+    }
+    return Math.round((scheduleStats.filledSlots / scheduleStats.totalSlots) * 100);
+  }, [scheduleStats.filledSlots, scheduleStats.totalSlots]);
 
   return (
     <div className="space-y-6">
@@ -230,13 +353,93 @@ export default function DashboardPage() {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-base font-medium">Available Shifts</CardTitle>
-          <CheckCircle className="h-4 w-4 text-green-600" />
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-base font-semibold">Metro Coverage Snapshot</CardTitle>
+          <CardDescription>Live scheduling health for the rest of this month</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">{scheduleStats.availableSlots}</div>
-          <p className="text-xs text-muted-foreground">Shifts remaining for the rest of this month</p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>Fill rate</span>
+                <Percent className="h-4 w-4" />
+              </div>
+              <p className="mt-2 text-2xl font-semibold text-primary">{fillRate}%</p>
+              <div className="mt-3 h-2 w-full rounded-full bg-muted" aria-hidden>
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{ width: `${Math.min(fillRate, 100)}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {scheduleStats.filledSlots} of {scheduleStats.totalSlots} upcoming shifts staffed
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>Open slots</span>
+                <Clock3 className="h-4 w-4" />
+              </div>
+              <p className="mt-2 text-2xl font-semibold text-green-600">{scheduleStats.availableSlots}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Remaining overtime opportunities this month
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>Officers participating</span>
+                <Users className="h-4 w-4" />
+              </div>
+              <p className="mt-2 text-2xl font-semibold">{scheduleStats.thisMonthUsers}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Unique officers scheduled from today forward
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>Next open shift</span>
+                <CalendarCheck2 className="h-4 w-4" />
+              </div>
+              {scheduleStats.nextShift ? (
+                <div className="mt-2 space-y-1 text-sm">
+                  <p className="text-lg font-semibold text-foreground">
+                    {scheduleStats.nextShift.dayName}
+                    <span className="ml-2 text-sm font-medium text-muted-foreground">
+                      {scheduleStats.nextShift.dateLabel}
+                    </span>
+                  </p>
+                  <p className="text-muted-foreground">{scheduleStats.nextShift.slotLabel}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {scheduleStats.nextShift.openSpots} spots left • {scheduleStats.nextShift.assignedCount}/{scheduleStats.nextShift.capacity} filled
+                  </p>
+                  {scheduleStats.nextShift.status === 'ongoing' && (
+                    <p className="text-xs text-muted-foreground">
+                      Currently on duty: {scheduleStats.nextShift.assignedCount}{' '}
+                      {scheduleStats.nextShift.assignedCount === 1 ? 'officer' : 'officers'}
+                    </p>
+                  )}
+                  {(scheduleStats.nextShift.isToday || scheduleStats.nextShift.status === 'ongoing') && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {scheduleStats.nextShift.isToday && (
+                        <Badge variant="outline" className="w-fit border-emerald-600 text-emerald-600">
+                          Today
+                        </Badge>
+                      )}
+                      {scheduleStats.nextShift.status === 'ongoing' && (
+                        <Badge variant="outline" className="w-fit border-sky-500 text-sky-600">
+                          In progress
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Every shift is staffed—check back as new overtime hits the board.
+                </p>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
 

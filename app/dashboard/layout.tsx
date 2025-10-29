@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import ProtectedRoute from '@/components/auth/protected-route';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -18,6 +19,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { formatOfficerName } from '@/lib/utils';
 import { User, Shield, LogOut, FileText } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function DashboardLayout({
   children,
@@ -26,6 +28,15 @@ export default function DashboardLayout({
 }) {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  const navigationLinks = useMemo(
+    () => [
+      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/dashboard/schedule', label: 'Schedule' },
+    ],
+    []
+  );
 
 
   const handleLogout = async () => {
@@ -61,18 +72,24 @@ export default function DashboardLayout({
                   </h1>
                 </div>
                 <div className="hidden md:ml-6 md:flex md:space-x-2 lg:space-x-4 xl:space-x-8">
-                  <Link
-                    href="/dashboard"
-                    className="text-navbar-foreground hover:bg-navbar-hover px-1 md:px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                  >
-                    Dashboard
-                  </Link>
-                  <Link
-                    href="/dashboard/schedule"
-                    className="text-navbar-foreground hover:bg-navbar-hover px-1 md:px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                  >
-                    Schedule
-                  </Link>
+                  {navigationLinks.map((item) => {
+                    const isActive = pathname ? pathname.startsWith(item.href) : false;
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          'px-1 md:px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                          'text-navbar-foreground hover:bg-navbar-hover/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/60',
+                          isActive && 'bg-navbar-hover/80 text-white shadow-sm'
+                        )}
+                        aria-current={isActive ? 'page' : undefined}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
               <div className="hidden md:ml-4 md:flex md:items-center space-x-2 lg:space-x-4 flex-shrink-0">
@@ -146,41 +163,61 @@ export default function DashboardLayout({
             </div>
           </div>
           {menuOpen && (
-            <div className="md:hidden bg-navbar-hover border-t border-navbar-hover/50">
+            <div className="md:hidden bg-navbar-hover/95 border-t border-navbar-hover/50 backdrop-blur">
               <div className="px-4 pt-4 pb-3 space-y-1">
-                <Link
-                  href="/dashboard"
-                  className="text-navbar-foreground block px-3 py-3 rounded-md text-base font-medium hover:bg-navbar-hover transition-colors"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/dashboard/schedule"
-                  className="text-navbar-foreground block px-3 py-3 rounded-md text-base font-medium hover:bg-navbar-hover transition-colors"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Schedule
-                </Link>
+                {navigationLinks.map((item) => {
+                  const isActive = pathname ? pathname.startsWith(item.href) : false;
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        'block px-3 py-3 rounded-md text-base font-medium transition-colors',
+                        'text-navbar-foreground hover:bg-navbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/60',
+                        isActive && 'bg-navbar-hover/70 text-white shadow-sm'
+                      )}
+                      onClick={() => setMenuOpen(false)}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
                 <Link
                   href="/dashboard/profile"
-                  className="text-navbar-foreground block px-3 py-3 rounded-md text-base font-medium hover:bg-navbar-hover transition-colors"
+                  className={cn(
+                    'block px-3 py-3 rounded-md text-base font-medium transition-colors',
+                    'text-navbar-foreground hover:bg-navbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/60',
+                    pathname === '/dashboard/profile' && 'bg-navbar-hover/70 text-white shadow-sm'
+                  )}
                   onClick={() => setMenuOpen(false)}
+                  aria-current={pathname === '/dashboard/profile' ? 'page' : undefined}
                 >
                   Profile
                 </Link>
                 <Link
                   href="/dashboard/ot-slips"
-                  className="text-navbar-foreground block px-3 py-3 rounded-md text-base font-medium hover:bg-navbar-hover transition-colors"
+                  className={cn(
+                    'block px-3 py-3 rounded-md text-base font-medium transition-colors',
+                    'text-navbar-foreground hover:bg-navbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/60',
+                    pathname?.startsWith('/dashboard/ot-slips') && 'bg-navbar-hover/70 text-white shadow-sm'
+                  )}
                   onClick={() => setMenuOpen(false)}
+                  aria-current={pathname?.startsWith('/dashboard/ot-slips') ? 'page' : undefined}
                 >
                   OT Slips
                 </Link>
                 {user?.role === 'admin' && (
                   <Link
                     href="/dashboard/admin"
-                    className="text-navbar-foreground block px-3 py-3 rounded-md text-base font-medium hover:bg-navbar-hover transition-colors"
+                    className={cn(
+                      'block px-3 py-3 rounded-md text-base font-medium transition-colors',
+                      'text-navbar-foreground hover:bg-navbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/60',
+                      pathname?.startsWith('/dashboard/admin') && 'bg-navbar-hover/70 text-white shadow-sm'
+                    )}
                     onClick={() => setMenuOpen(false)}
+                    aria-current={pathname?.startsWith('/dashboard/admin') ? 'page' : undefined}
                   >
                     Admin
                   </Link>

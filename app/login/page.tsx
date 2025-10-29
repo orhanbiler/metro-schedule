@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner';
 import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { Eye, EyeOff, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -17,6 +19,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -121,57 +125,125 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Cheverly PD Metro Schedule
-          </CardTitle>
-          <CardDescription className="text-center">
-            Sign in to your account to manage schedules
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="officer@cheverlypd.gov"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={loading}
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Button>
-            <div className="text-sm text-center text-muted-foreground">
-              Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-primary hover:underline">
-                Sign up
-              </Link>
-            </div>
-          </CardFooter>
-        </form>
-      </Card>
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-background text-foreground">
+      <div className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-950 via-primary to-slate-900 p-10 text-white">
+        <div className="absolute inset-0 opacity-20">
+          <Image
+            src="/logo-cool.png"
+            alt="Cheverly Police Department"
+            fill
+            sizes="50vw"
+            className="object-contain object-center"
+            priority
+          />
+        </div>
+        <div className="relative z-10 space-y-6">
+          <div className="inline-flex items-center gap-3 rounded-full bg-white/10 px-4 py-2 text-sm uppercase tracking-wide">
+            <ShieldCheck className="h-5 w-5 text-emerald-300" />
+            Cheverly PD Metro Detail
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold leading-tight">Protecting The Line Starts With A Solid Schedule</h1>
+            <p className="mt-3 max-w-md text-white/80">
+              Review coverage, lock in overtime, and keep your team coordinated with real-time updates from HQ.
+            </p>
+          </div>
+          <ul className="space-y-3 text-white/80">
+            <li className="flex items-start gap-3">
+              <span className="mt-1 h-2 w-2 rounded-full bg-emerald-300" aria-hidden />
+              Secure access backed by Firebase authentication
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="mt-1 h-2 w-2 rounded-full bg-emerald-300" aria-hidden />
+              Live schedule sync so every shift stays covered
+            </li>
+          </ul>
+        </div>
+        <div className="relative z-10 text-sm text-white/70">
+          Need help? Email <a href="mailto:metro.admin@cheverlypd.gov" className="underline">metro.admin@cheverlypd.gov</a>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center p-6 sm:p-10">
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="space-y-1 text-center">
+            <CardTitle className="text-2xl font-bold">Cheverly PD Metro Portal</CardTitle>
+            <CardDescription>
+              Sign in with your department-issued credentials to manage metro coverage.
+            </CardDescription>
+          </CardHeader>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <CardContent className="space-y-4">
+              <div className="space-y-2 text-left">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="officer@cheverlypd.gov"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                />
+              </div>
+              <div className="space-y-2 text-left">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyUp={(event) => setCapsLockOn(event.getModifierState('CapsLock'))}
+                    onKeyDown={(event) => setCapsLockOn(event.getModifierState('CapsLock'))}
+                    onBlur={() => setCapsLockOn(false)}
+                    autoComplete="current-password"
+                    required
+                    className="pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-2 flex items-center rounded-md px-2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                {capsLockOn && (
+                  <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
+                    <AlertTriangle className="h-4 w-4" />
+                    Caps Lock is on
+                  </div>
+                )}
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Signing in…' : 'Sign In'}
+              </Button>
+              <div className="flex flex-col gap-2 text-sm text-center text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => { window.location.href = 'mailto:metro.admin@cheverlypd.gov'; }}
+                  className="text-primary hover:underline"
+                >
+                  Forgot password or need access?
+                </button>
+                <div>
+                  Don&apos;t have an account?{' '}
+                  <Link href="/signup" className="text-primary hover:underline">
+                    Request one
+                  </Link>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Need help after hours? Email <a href="mailto:metro.support@cheverlypd.gov" className="text-primary hover:underline">metro.support@cheverlypd.gov</a>
+                </p>
+              </div>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }

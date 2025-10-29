@@ -69,18 +69,6 @@ function minutesToTime(minutes: number): string {
 }
 
 /**
- * Check if two time ranges overlap
- */
-function rangesOverlap(range1: TimeRange, range2: TimeRange): boolean {
-  const start1 = timeToMinutes(range1.start);
-  const end1 = timeToMinutes(range1.end);
-  const start2 = timeToMinutes(range2.start);
-  const end2 = timeToMinutes(range2.end);
-  
-  return start1 < end2 && end1 > start2;
-}
-
-/**
  * Get hourly availability for a shift
  */
 export function getHourlyAvailability(
@@ -206,11 +194,11 @@ export function getAvailableTimeSlots(
   for (let i = 0; i < availability.length; i++) {
     const current = availability[i];
     const next = availability[i + 1];
-    
+
     if (current.available && !slotStart) {
       slotStart = current.hour;
     }
-    
+
     if (slotStart && (!current.available || !next)) {
       // End of available slot
       const endHour = !current.available 
@@ -222,4 +210,68 @@ export function getAvailableTimeSlots(
   }
   
   return availableSlots;
+}
+
+/**
+ * Get concrete start/end Date objects for a shift based on its time string
+ */
+export function getShiftDateBounds(
+  slotDate: Date,
+  timeString: string
+): { start: Date | null; end: Date | null } {
+  if (!timeString) {
+    return { start: null, end: null };
+  }
+
+  const ranges = parseTimeString(timeString);
+  if (ranges.length === 0) {
+    return { start: null, end: null };
+  }
+
+  const toMinutes = (value: string): number => {
+    const hours = parseInt(value.slice(0, 2), 10);
+    const minutes = parseInt(value.slice(2, 4), 10);
+    return hours * 60 + minutes;
+  };
+
+  let minStart = Number.POSITIVE_INFINITY;
+  let maxEnd = Number.NEGATIVE_INFINITY;
+
+  for (const range of ranges) {
+    const startMinutes = toMinutes(range.start);
+    const endMinutes = toMinutes(range.end);
+
+    if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes)) {
+      continue;
+    }
+
+    if (startMinutes < minStart) {
+      minStart = startMinutes;
+    }
+
+    if (endMinutes > maxEnd) {
+      maxEnd = endMinutes;
+    }
+  }
+
+  if (!Number.isFinite(minStart) || !Number.isFinite(maxEnd)) {
+    return { start: null, end: null };
+  }
+
+  // Handle overnight shifts that wrap past midnight
+  if (maxEnd <= minStart) {
+    maxEnd += 24 * 60;
+  }
+
+  const createDateFromMinutes = (minutes: number): Date => {
+    const result = new Date(slotDate);
+    result.setHours(0, 0, 0, 0);
+    result.setMinutes(minutes, 0, 0);
+    return result;
+  };
+
+  return {
+    start: createDateFromMinutes(minStart),
+    end: createDateFromMinutes(maxEnd),
+  };
 }

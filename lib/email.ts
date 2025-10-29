@@ -1,6 +1,57 @@
-import { Client } from 'postmark';
+type PostmarkClient = {
+  sendEmail: (payload: {
+    From: string;
+    To: string;
+    Subject: string;
+    HtmlBody: string;
+    TextBody?: string;
+  }) => Promise<unknown>;
+};
 
-const client = new Client(process.env.POSTMARK_SERVER_TOKEN!);
+let cachedClient: PostmarkClient | null = null;
+let clientPromise: Promise<PostmarkClient | null> | null = null;
+
+async function loadPostmarkClient(): Promise<PostmarkClient | null> {
+  if (cachedClient) {
+    return cachedClient;
+  }
+
+  if (!process.env.POSTMARK_SERVER_TOKEN) {
+    console.warn('POSTMARK_SERVER_TOKEN is not set. Email notifications are disabled.');
+    return null;
+  }
+
+  if (!clientPromise) {
+    clientPromise = (async () => {
+      try {
+        const postmarkModule = (await import('postmark')) as {
+          Client?: new (token: string) => PostmarkClient;
+          ServerClient?: new (token: string) => PostmarkClient;
+        };
+
+        const ClientCtor = postmarkModule.Client ?? postmarkModule.ServerClient;
+
+        if (!ClientCtor) {
+          console.warn('Postmark client constructor not found. Email notifications are disabled.');
+          return null;
+        }
+
+        cachedClient = new ClientCtor(process.env.POSTMARK_SERVER_TOKEN!);
+        return cachedClient;
+      } catch (error) {
+        console.warn('Postmark package not available. Email notifications are disabled.', error);
+        return null;
+      }
+    })();
+  }
+
+  if (!clientPromise) {
+    return null;
+  }
+
+  cachedClient = await clientPromise;
+  return cachedClient;
+}
 
 export interface ChangelogNotificationData {
   title: string;
@@ -14,6 +65,13 @@ export async function sendChangelogNotification(
   data: ChangelogNotificationData
 ) {
   const typeLabel = getTypeLabel(data.type);
+  const client = await loadPostmarkClient();
+
+  if (!client) {
+    const error = new Error('Postmark client unavailable');
+    console.warn('Skipping changelog notification: Postmark client unavailable');
+    return { success: false, error };
+  }
   
   try {
     await client.sendEmail({

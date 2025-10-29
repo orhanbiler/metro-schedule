@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { isFirestoreInitialized } from '@/lib/firebase-utils';
@@ -8,21 +8,23 @@ import { useAuth, type User } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { HoursDialog } from '@/components/schedule/hours-dialog';
 import { AdminAssignDialog } from '@/components/schedule/admin-assign-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Download, Trash2, Plus, Calendar, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatOfficerName, formatOfficerNameForDisplay, extractRankFromOfficerName, calculateOfficerPayRate } from '@/lib/utils';
+import { formatOfficerName, formatOfficerNameForDisplay, extractRankFromOfficerName, calculateOfficerPayRate, cn } from '@/lib/utils';
 import { ScheduleSkeleton } from '@/components/schedule/schedule-skeleton';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import { 
-  parseTimeString, 
-  getHourlyAvailability, 
-  canAddOfficerShift, 
+import {
+  parseTimeString,
+  getHourlyAvailability,
+  canAddOfficerShift,
   getAvailableTimeSlots,
-  type OfficerShift 
+  getShiftDateBounds,
+  type OfficerShift,
 } from '@/lib/schedule-utils';
 
 interface Officer {
@@ -38,13 +40,13 @@ interface TimeSlot {
     time: string;
     available: boolean;
     officers: Officer[];
-    // Removed maxOfficers - now checking hourly limits
+    maxOfficers?: number;
   };
   afternoonSlot: {
     time: string;
     available: boolean;
     officers: Officer[];
-    // Removed maxOfficers - now checking hourly limits
+    maxOfficers?: number;
   };
 }
 
@@ -69,6 +71,266 @@ export default function SchedulePage() {
     threshold: 60, // Reduced for more native feel
   });
 
+
+
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 5 }, (_, index) => currentYear - 1 + index);
+  }, []);
+
+  const today = useMemo(() => {
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    return base;
+  }, []);
+
+  const isSameDay = (date: Date) => {
+    const compare = new Date(date);
+    compare.setHours(0, 0, 0, 0);
+    return compare.getTime() === today.getTime();
+  };
+
+  const formatSlotDateLabel = (date: Date) =>
+    date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+  const toMinutes = (value: string) => {
+    const hours = parseInt(value.slice(0, 2), 10);
+    const minutes = parseInt(value.slice(2, 4), 10);
+    return hours * 60 + minutes;
+  };
+
+  const minutesToHHMM = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}${mins.toString().padStart(2, '0')}`;
+  };
+
+  const getShiftAvailabilitySummary = (
+    slot: TimeSlot,
+    slotType: 'morning' | 'afternoon'
+  ): {
+    availableSlots: string[];
+    maxRemaining: number;
+    status: 'past' | 'ongoing' | 'upcoming';
+  } => {
+    const slotData = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
+    const fallbackTime = slotType === 'morning' ? '0500-1300' : '1300-2200';
+    const timeString = slotData.time || fallbackTime;
+    const ranges = parseTimeString(timeString);
+
+    let shiftStart = ranges[0]?.start ?? fallbackTime.slice(0, 4);
+    let shiftEnd = ranges[0]?.end ?? fallbackTime.slice(5, 9);
+
+    for (const range of ranges) {
+      if (range.start < shiftStart) {
+        shiftStart = range.start;
+      }
+      if (range.end > shiftEnd) {
+        shiftEnd = range.end;
+      }
+    }
+
+    const { start, end } = getShiftDateBounds(slot.date, timeString);
+    const now = new Date();
+    let status: 'past' | 'ongoing' | 'upcoming' = 'upcoming';
+
+    if (start && end) {
+      if (now >= end) {
+        status = 'past';
+      } else if (now >= start) {
+        status = 'ongoing';
+      }
+    } else if (end && now >= end) {
+      status = 'past';
+    } else if (start && now >= start) {
+      status = 'ongoing';
+    } else if (slot.date < now) {
+      status = 'past';
+    }
+
+    if (status === 'past') {
+      return { availableSlots: [], maxRemaining: 0, status };
+    }
+
+    const officerShifts: OfficerShift[] = slotData.officers.map((officer) => ({
+      name: officer.name,
+      timeRanges: parseTimeString(officer.customHours || timeString),
+    }));
+
+    const shiftEndMinutes = toMinutes(shiftEnd);
+    const originalStartMinutes = toMinutes(shiftStart);
+
+    let effectiveStartMinutes = originalStartMinutes;
+    if (status === 'ongoing') {
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const floored = Math.floor(currentMinutes / 60) * 60;
+      effectiveStartMinutes = Math.min(Math.max(floored, originalStartMinutes), shiftEndMinutes);
+    }
+
+    if (effectiveStartMinutes >= shiftEndMinutes) {
+      return { availableSlots: [], maxRemaining: 0, status };
+    }
+
+    const effectiveShiftStart = minutesToHHMM(effectiveStartMinutes);
+    const hourlyAvailability = getHourlyAvailability(officerShifts, effectiveShiftStart, shiftEnd);
+    const availableSlots = getAvailableTimeSlots(officerShifts, effectiveShiftStart, shiftEnd);
+
+    const baseMax = hourlyAvailability.length > 0
+      ? hourlyAvailability.reduce(
+          (max, hour) => Math.max(max, Math.max(0, 2 - hour.officerCount)),
+          0
+        )
+      : 2;
+
+    return {
+      availableSlots,
+      maxRemaining: Math.min(2, baseMax),
+      status,
+    };
+  };
+
+  const renderMobileShift = (
+    slot: TimeSlot,
+    slotType: 'morning' | 'afternoon',
+    summary: { availableSlots: string[]; maxRemaining: number; status: 'past' | 'ongoing' | 'upcoming' }
+  ) => {
+    const slotData = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
+    const { availableSlots, maxRemaining, status } = summary;
+    const hasAvailability = status !== 'past' && maxRemaining > 0 && availableSlots.length > 0;
+    const userSignedUp = hasUserSignedUpForSlot(slot.date, slotType);
+    const isAdmin = user?.role === 'admin';
+    const canModify = canUserModifySchedule();
+
+    return (
+      <div key={`${slot.id}-${slotType}-card`} className="space-y-2 rounded-lg border border-dashed p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {slotType === 'morning' ? 'Morning Shift' : 'Afternoon Shift'}
+            </p>
+            <p className="text-xs text-muted-foreground">{displayTime(slotData.time)}</p>
+          </div>
+          <Badge
+            className={cn(
+              'text-2xs uppercase tracking-wide',
+              status === 'past'
+                ? 'bg-muted text-muted-foreground'
+                : maxRemaining > 0
+                ? 'bg-emerald-500/20 text-emerald-700'
+                : 'bg-muted text-muted-foreground'
+            )}
+          >
+            {status === 'past' ? 'Closed' : maxRemaining > 0 ? `${maxRemaining} open` : 'Full'}
+          </Badge>
+        </div>
+
+        {slotData.officers.length > 0 ? (
+          <div className="space-y-1">
+            {slotData.officers.map((officer, index) => (
+              <div
+                key={`${slot.id}-${slotType}-officer-${index}`}
+                className="flex items-center justify-between gap-2 rounded-md bg-muted/40 p-2 text-sm"
+              >
+                <div className="flex-1 min-w-0">
+                  <span
+                    className={cn(
+                      'block truncate',
+                      officer.name === getCurrentOfficerFormatted() || officer.name === user?.name
+                        ? 'font-semibold text-primary'
+                        : undefined
+                    )}
+                    title={officer.name}
+                  >
+                    {formatOfficerNameForDisplay(officer.name)}
+                  </span>
+                  {officer.customHours && (
+                    <div className="text-2xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
+                  )}
+                </div>
+                {canUserRemoveFromShift(officer, slot.date) && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-8 w-8 p-0"
+                        disabled={loading}
+                        title={
+                          isShiftWithinDays(slot.date, 2)
+                            ? 'Cannot remove - shift is within 2 days'
+                            : isShiftPastRemovalWindow(slot.date)
+                            ? 'Cannot remove - more than 2 days have passed since shift'
+                            : `Remove ${officer.name}`
+                        }
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Officer</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to remove {formatOfficerNameForDisplay(officer.name)} from this shift?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleRemoveOfficer(slot.id, slotType, officer.name)}>
+                          Confirm
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : status === 'past' ? (
+          <div className="text-2xs text-muted-foreground italic">Shift closed</div>
+        ) : (
+          <div className="text-2xs text-muted-foreground italic">No officers yet</div>
+        )}
+
+        <div>{getAvailabilityDisplay(slot, slotType, summary)}</div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {userSignedUp ? (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              <span className="hidden sm:inline">
+                {status === 'past' ? 'Shift completed' : 'Signed up'}
+              </span>
+              <span className="sm:hidden">
+                {status === 'past' ? 'Completed' : 'Signed'}
+              </span>
+            </span>
+          ) : hasAvailability && canModify ? (
+            <HoursDialog
+              originalTime={slotData.time}
+              onConfirm={(customHours) => handleSignUp(slot.id, slotType, customHours)}
+              onCancel={() => {}}
+            >
+              <Button size="sm" disabled={loading} className="flex-1 sm:flex-none h-9 px-3 text-sm" title="Sign up for this shift">
+                <Plus className="mr-2 h-4 w-4" /> Sign Up
+              </Button>
+            </HoursDialog>
+          ) : status === 'past' ? (
+            <span className="text-xs text-muted-foreground">Shift closed</span>
+          ) : (
+            !hasAvailability && <span className="text-xs text-muted-foreground">Fully staffed</span>
+          )}
+          {isAdmin && hasAvailability && (
+            <AdminAssignDialog
+              users={allUsers}
+              originalTime={slotData.time}
+              onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, slotType, officerName, customHours)}
+              disabled={loading}
+            />
+          )}
+        </div>
+      </div>
+    );
+  };
 
 
   const getCurrentOfficerFormatted = (useAbbreviation: boolean = false) => {
@@ -305,7 +567,7 @@ export default function SchedulePage() {
         }] : [];
         migratedSlot.morningSlot = {
           time: updatedTime,
-          available: officers.length < 2,
+          available: true,
           officers: officers
         };
       } else if (!slot.morningSlot.officers) {
@@ -321,7 +583,7 @@ export default function SchedulePage() {
         migratedSlot.morningSlot = {
           ...slot.morningSlot,
           time: updatedTime,
-          available: slot.morningSlot.officers.length < 2,
+          available: true,
         };
       }
     }
@@ -338,7 +600,7 @@ export default function SchedulePage() {
         }] : [];
         migratedSlot.afternoonSlot = {
           time: updatedTime,
-          available: officers.length < 2,
+          available: true,
           officers: officers
         };
       } else if (!slot.afternoonSlot.officers) {
@@ -354,7 +616,7 @@ export default function SchedulePage() {
         migratedSlot.afternoonSlot = {
           ...slot.afternoonSlot,
           time: updatedTime,
-          available: slot.afternoonSlot.officers.length < 2,
+          available: true,
         };
       }
     }
@@ -738,29 +1000,27 @@ export default function SchedulePage() {
   };
 
   // Helper function to get display text for available time slots
-  const getAvailabilityDisplay = (slot: TimeSlot, slotType: 'morning' | 'afternoon'): React.ReactElement => {
-    const targetSlot = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
-    
-    // Convert officers to OfficerShift format
-    const officerShifts: OfficerShift[] = targetSlot.officers.map(officer => ({
-      name: officer.name,
-      timeRanges: parseTimeString(officer.customHours || targetSlot.time)
-    }));
-    
-    // Get available time slots
-    const availableSlots = getAvailableTimeSlots(
-      officerShifts,
-      targetSlot.time.split('-')[0],
-      targetSlot.time.split('-')[1]
-    );
-    
-    if (availableSlots.length === 0) {
+  const getAvailabilityDisplay = (
+    slot: TimeSlot,
+    slotType: 'morning' | 'afternoon',
+    summary?: { availableSlots: string[]; status: 'past' | 'ongoing' | 'upcoming' }
+  ): React.ReactElement => {
+    const computedSummary = summary ?? getShiftAvailabilitySummary(slot, slotType);
+
+    if (computedSummary.status === 'past') {
+      return <span className="text-2xs sm:text-sm text-muted-foreground">Shift closed</span>;
+    }
+
+    if (computedSummary.availableSlots.length === 0) {
       return <span className="text-2xs sm:text-sm text-muted-foreground">No slots available</span>;
     }
-    
+
     return (
       <div className="text-2xs sm:text-xs text-muted-foreground italic">
-        Available: {availableSlots.join(', ')}
+        Available:{' '}
+        {computedSummary.availableSlots
+          .map((slotRange) => (slotRange.includes(':') ? slotRange : displayTime(slotRange)))
+          .join(', ')}
       </div>
     );
   };
@@ -1326,7 +1586,6 @@ export default function SchedulePage() {
           
           // Create billable payment summary table
           const paymentTableData: Array<[string, string, string]> = [];
-          let grandTotal = 0;
           let billableGrandTotal = 0;
 
           Object.entries(officerPayments)
@@ -1337,12 +1596,8 @@ export default function SchedulePage() {
                 `${data.hours}`,
                 `$${data.billableAmount.toFixed(2)}`
               ]);
-              grandTotal += data.payment;
               billableGrandTotal += data.billableAmount;
             });
-          
-          // Calculate service charge total
-          const serviceChargeTotal = totalHoursWorked * 10;
           
           // Add payment details table
           autoTable(doc, {
@@ -1526,12 +1781,12 @@ export default function SchedulePage() {
           </div>
         </CardHeader>
         <CardContent className="px-3 pb-3 sm:p-6 pt-0 sm:pt-0">
-          <div className="flex gap-4 mb-6">
-            <div className="flex gap-2">
-              <Label className="self-center">Month:</Label>
+          <div className="flex flex-wrap gap-3 mb-6">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Label className="shrink-0">Month:</Label>
               <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(Number(value))}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
+                <SelectTrigger className="w-full sm:w-40">
+                  <SelectValue placeholder={monthNames[selectedMonth]} />
                 </SelectTrigger>
                 <SelectContent>
                   {monthNames.map((month, index) => (
@@ -1543,16 +1798,18 @@ export default function SchedulePage() {
               </Select>
             </div>
             
-            <div className="flex gap-2">
-              <Label className="self-center">Year:</Label>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Label className="shrink-0">Year:</Label>
               <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(Number(value))}>
-                <SelectTrigger className="w-20">
-                  <SelectValue />
+                <SelectTrigger className="w-full sm:w-28">
+                  <SelectValue placeholder={selectedYear.toString()} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2024">2024</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2026">2026</SelectItem>
+                  {yearOptions.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1561,7 +1818,8 @@ export default function SchedulePage() {
           {initialLoading ? (
             <ScheduleSkeleton />
           ) : (
-            <div className="border rounded-md overflow-hidden">
+            <div className="space-y-6">
+              <div className="border rounded-md overflow-hidden">
               <table className="w-full">
                 <thead>
                   <tr className="bg-navy-900 text-white">
@@ -1578,12 +1836,32 @@ export default function SchedulePage() {
                       </td>
                     </tr>
                   ) : (
-                  schedule.map((slot) => (
-                    <React.Fragment key={slot.id}>
-                      <tr key={`${slot.id}-morning`} className="border-t hover:bg-muted/50">
+                  schedule.map((slot) => {
+                    const slotDate = new Date(slot.date);
+                    const isToday = isSameDay(slotDate);
+                    const morningSummary = getShiftAvailabilitySummary(slot, 'morning');
+                    const afternoonSummary = getShiftAvailabilitySummary(slot, 'afternoon');
+                    const morningAvailableSlots = morningSummary.availableSlots;
+                    const afternoonAvailableSlots = afternoonSummary.availableSlots;
+                    const morningRemainingCapacity = morningSummary.maxRemaining;
+                    const afternoonRemainingCapacity = afternoonSummary.maxRemaining;
+
+                    return (
+                      <React.Fragment key={slot.id}>
+                      <tr key={`${slot.id}-morning`} className={cn('border-t hover:bg-muted/50', isToday && 'bg-primary/5')}>
                         <td className="p-1.5 sm:py-1.5 sm:px-2">
+                          {isToday && (
+                            <Badge variant="outline" className="mb-1 hidden sm:inline-flex border-emerald-500 text-emerald-600">
+                              Today
+                            </Badge>
+                          )}
                           <div className="font-semibold text-foreground text-2xs sm:text-sm">
-                            <div className="sm:hidden">
+                            <div className="sm:hidden flex items-center gap-2">
+                              {isToday && (
+                                <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
+                                  Today
+                                </span>
+                              )}
                               {new Date(slot.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
                             </div>
                             <div className="hidden sm:inline">{slot.dayName} {formatDate(slot.date)}</div>
@@ -1593,6 +1871,25 @@ export default function SchedulePage() {
                           </div>
                         </td>
                         <td className="p-1.5 sm:py-1.5 sm:px-2">
+                          <div className="mb-1 flex items-center gap-2 text-2xs sm:text-xs uppercase tracking-wide text-muted-foreground">
+                            Morning
+                            <Badge
+                              className={cn(
+                                'text-2xs',
+                                morningSummary.status === 'past'
+                                  ? 'bg-muted text-muted-foreground'
+                                  : morningRemainingCapacity > 0
+                                  ? 'bg-emerald-500/20 text-emerald-700'
+                                  : 'bg-muted text-muted-foreground'
+                              )}
+                            >
+                              {morningSummary.status === 'past'
+                                ? 'Closed'
+                                : morningRemainingCapacity > 0
+                                ? `${morningRemainingCapacity} open`
+                                : 'Full'}
+                            </Badge>
+                          </div>
                           {slot.morningSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.morningSlot.officers.map((officer, index) => (
@@ -1654,29 +1951,35 @@ export default function SchedulePage() {
                                   )}
                                 </div>
                               ))}
-                              {getAvailabilityDisplay(slot, 'morning')}
+                              {getAvailabilityDisplay(slot, 'morning', morningSummary)}
                             </div>
                           ) : (
-                            getAvailabilityDisplay(slot, 'morning')
+                            getAvailabilityDisplay(slot, 'morning', morningSummary)
                           )}
                         </td>
                         <td className="p-1.5 sm:py-1.5 sm:px-2 text-center">
                           {(() => {
                             const userSignedUp = hasUserSignedUpForSlot(slot.date, 'morning');
-                            // Check if there are any available time slots
-                            const officerShifts: OfficerShift[] = slot.morningSlot.officers.map(officer => ({
-                              name: officer.name,
-                              timeRanges: parseTimeString(officer.customHours || slot.morningSlot.time)
-                            }));
-                            const availableSlots = getAvailableTimeSlots(
-                              officerShifts,
-                              slot.morningSlot.time.split('-')[0],
-                              slot.morningSlot.time.split('-')[1]
-                            );
-                            const slotsAvailable = availableSlots.length > 0;
+                            const slotsAvailable =
+                              morningSummary.status !== 'past' &&
+                              morningAvailableSlots.length > 0 &&
+                              morningRemainingCapacity > 0;
                             const isAdmin = user?.role === 'admin';
                             const canModify = canUserModifySchedule();
-                            
+
+                            if (morningSummary.status === 'past') {
+                              if (userSignedUp) {
+                                return (
+                                  <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
+                                    <Calendar className="h-3 w-3 sm:mr-1" />
+                                    <span className="hidden sm:inline">Shift completed</span>
+                                    <span className="sm:hidden">Completed</span>
+                                  </span>
+                                );
+                              }
+                              return <span className="text-xs sm:text-sm text-muted-foreground">Shift closed</span>;
+                            }
+
                             if (!slotsAvailable && !userSignedUp) {
                               return <span className="text-xs sm:text-sm text-muted-foreground">Full</span>;
                             }
@@ -1719,7 +2022,7 @@ export default function SchedulePage() {
 
                         </td>
                       </tr>
-                      <tr key={`${slot.id}-afternoon`} className="border-t bg-muted/30 hover:bg-muted/50">
+                      <tr key={`${slot.id}-afternoon`} className={cn('border-t bg-muted/30 hover:bg-muted/50', isToday && 'bg-primary/10')}>
                         <td className="p-1.5 sm:py-1.5 sm:px-2">
                           <div className="text-2xs sm:text-sm text-muted-foreground ml-2 sm:ml-4">
                             <span className="sm:hidden">or</span>
@@ -1727,6 +2030,25 @@ export default function SchedulePage() {
                           </div>
                         </td>
                         <td className="p-1.5 sm:py-1.5 sm:px-2">
+                          <div className="mb-1 flex items-center gap-2 text-2xs sm:text-xs uppercase tracking-wide text-muted-foreground">
+                            Afternoon
+                            <Badge
+                              className={cn(
+                                'text-2xs',
+                                afternoonSummary.status === 'past'
+                                  ? 'bg-muted text-muted-foreground'
+                                  : afternoonRemainingCapacity > 0
+                                  ? 'bg-emerald-500/20 text-emerald-700'
+                                  : 'bg-muted text-muted-foreground'
+                              )}
+                            >
+                              {afternoonSummary.status === 'past'
+                                ? 'Closed'
+                                : afternoonRemainingCapacity > 0
+                                ? `${afternoonRemainingCapacity} open`
+                                : 'Full'}
+                            </Badge>
+                          </div>
                           {slot.afternoonSlot.officers.length > 0 ? (
                             <div className="space-y-1">
                               {slot.afternoonSlot.officers.map((officer, index) => (
@@ -1788,29 +2110,35 @@ export default function SchedulePage() {
                                   )}
                                 </div>
                               ))}
-                              {getAvailabilityDisplay(slot, 'afternoon')}
+                              {getAvailabilityDisplay(slot, 'afternoon', afternoonSummary)}
                             </div>
                           ) : (
-                            getAvailabilityDisplay(slot, 'afternoon')
+                            getAvailabilityDisplay(slot, 'afternoon', afternoonSummary)
                           )}
                         </td>
                         <td className="p-1.5 sm:py-1.5 sm:px-2 text-center">
                           {(() => {
                             const userSignedUp = hasUserSignedUpForSlot(slot.date, 'afternoon');
-                            // Check if there are any available time slots
-                            const officerShifts: OfficerShift[] = slot.afternoonSlot.officers.map(officer => ({
-                              name: officer.name,
-                              timeRanges: parseTimeString(officer.customHours || slot.afternoonSlot.time)
-                            }));
-                            const availableSlots = getAvailableTimeSlots(
-                              officerShifts,
-                              slot.afternoonSlot.time.split('-')[0],
-                              slot.afternoonSlot.time.split('-')[1]
-                            );
-                            const slotsAvailable = availableSlots.length > 0;
+                            const slotsAvailable =
+                              afternoonSummary.status !== 'past' &&
+                              afternoonAvailableSlots.length > 0 &&
+                              afternoonRemainingCapacity > 0;
                             const isAdmin = user?.role === 'admin';
                             const canModify = canUserModifySchedule();
-                            
+
+                            if (afternoonSummary.status === 'past') {
+                              if (userSignedUp) {
+                                return (
+                                  <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
+                                    <Calendar className="h-3 w-3 sm:mr-1" />
+                                    <span className="hidden sm:inline">Shift completed</span>
+                                    <span className="sm:hidden">Completed</span>
+                                  </span>
+                                );
+                              }
+                              return <span className="text-xs sm:text-sm text-muted-foreground">Shift closed</span>;
+                            }
+
                             if (!slotsAvailable && !userSignedUp) {
                               return <span className="text-xs sm:text-sm text-muted-foreground">Full</span>;
                             }
@@ -1852,11 +2180,63 @@ export default function SchedulePage() {
                           })()}
                         </td>
                       </tr>
-                    </React.Fragment>
-                  ))
+                      </React.Fragment>
+                  );
+                  })
                   )}
                 </tbody>
               </table>
+            </div>
+              <div className="space-y-3 md:hidden">
+                {schedule.map((slot) => {
+                  const slotDate = new Date(slot.date);
+                  const isToday = isSameDay(slotDate);
+                  const morningSummaryMobile = getShiftAvailabilitySummary(slot, 'morning');
+                  const afternoonSummaryMobile = getShiftAvailabilitySummary(slot, 'afternoon');
+                  const totalOpen = morningSummaryMobile.maxRemaining + afternoonSummaryMobile.maxRemaining;
+                  const hasUpcomingShift =
+                    morningSummaryMobile.status !== 'past' || afternoonSummaryMobile.status !== 'past';
+
+                  return (
+                    <div
+                      key={`${slot.id}-mobile`}
+                    className={cn(
+                      'rounded-xl border p-4 shadow-sm transition-colors',
+                      isToday && 'border-primary/60 bg-primary/5 shadow-primary/10'
+                    )}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-base font-semibold text-foreground">
+                          {slot.dayName}, {formatSlotDateLabel(slotDate)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Morning • {displayTime(slot.morningSlot.time)}</p>
+                        <p className="text-xs text-muted-foreground">Afternoon • {displayTime(slot.afternoonSlot.time)}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 text-right">
+                        {isToday && (
+                          <Badge variant="outline" className="border-emerald-500 text-emerald-600">
+                            Today
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {hasUpcomingShift
+                            ? totalOpen > 0
+                              ? `${totalOpen} open slot${totalOpen === 1 ? '' : 's'}`
+                              : 'Fully staffed'
+                            : 'Shift closed'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 space-y-4">
+                      {renderMobileShift(slot, 'morning', morningSummaryMobile)}
+                      {renderMobileShift(slot, 'afternoon', afternoonSummaryMobile)}
+                    </div>
+                  </div>
+                );
+              })}
+              </div>
             </div>
           )}
         </CardContent>
