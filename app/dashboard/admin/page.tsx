@@ -9,6 +9,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { isFirestoreInitialized } from '@/lib/firebase-utils';
 import { formatOfficerName } from '@/lib/utils';
+import { getShiftTimeOrDefault, getShiftStartHour } from '@/lib/schedule-utils';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -185,17 +186,18 @@ export default function AdminPage() {
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
           // Each weekday has 4 slots (2 morning + 2 afternoon)
           totalMonthSlots += 4;
-          
+
           // Calculate remaining slots from current time
           if (day > today) {
             // Future days get all 4 slots
             remainingPossibleSlots += 4;
           } else if (day === today) {
             // For today, only count shifts that haven't started yet
-            // Morning shift: 0500-1300 (5 AM - 1 PM)
-            if (currentHour < 5) {
+            const morningStartHour = getShiftStartHour(date, 'morning');
+            const afternoonStartHour = getShiftStartHour(date, 'afternoon');
+            if (currentHour < morningStartHour) {
               remainingPossibleSlots += 4; // Both morning and afternoon shifts
-            } else if (currentHour < 13) {
+            } else if (currentHour < afternoonStartHour) {
               remainingPossibleSlots += 2; // Only afternoon shifts (1300-2200)
             }
             // If current hour >= 13 (1 PM), no shifts remain for today
@@ -290,14 +292,14 @@ export default function AdminPage() {
         {
           const morningOfficers = day.morningSlot?.officers || [];
           const afternoonOfficers = day.afternoonSlot?.officers || [];
-          const morningTime = day.morningSlot?.time || '0500-1300';
-          const afternoonTime = day.afternoonSlot?.time || '1300-2200';
+          const morningTime = getShiftTimeOrDefault(dayDate, 'morning', day.morningSlot?.time);
+          const afternoonTime = getShiftTimeOrDefault(dayDate, 'afternoon', day.afternoonSlot?.time);
           const maxMorning = 2; // Now we check hourly limits instead
           const maxAfternoon = 2; // Now we check hourly limits instead
-          
+
           // Count all filled slots for the entire month
           filledSlots += morningOfficers.length + afternoonOfficers.length;
-          
+
           // Count remaining filled slots (from current time onwards)
           const dayOfMonth = dayDate.getDate();
           if (dayOfMonth > today) {
@@ -305,10 +307,12 @@ export default function AdminPage() {
             remainingFilledSlots += morningOfficers.length + afternoonOfficers.length;
           } else if (dayOfMonth === today) {
             // Today - only count shifts that haven't started yet
-            if (currentHour < 5) {
+            const morningStartHour = getShiftStartHour(dayDate, 'morning', day.morningSlot?.time);
+            const afternoonStartHour = getShiftStartHour(dayDate, 'afternoon', day.afternoonSlot?.time);
+            if (currentHour < morningStartHour) {
               // Both shifts are in the future
               remainingFilledSlots += morningOfficers.length + afternoonOfficers.length;
-            } else if (currentHour < 13) {
+            } else if (currentHour < afternoonStartHour) {
               // Only afternoon shift is in the future
               remainingFilledSlots += afternoonOfficers.length;
             }
@@ -384,14 +388,16 @@ export default function AdminPage() {
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
           // Each weekday has 4 slots
           totalMonthSlots += 4;
-          
+
           // Calculate remaining slots
           if (day > today) {
             remainingPossibleSlots += 4;
           } else if (day === today) {
-            if (currentHour < 5) {
+            const morningStartHour = getShiftStartHour(date, 'morning');
+            const afternoonStartHour = getShiftStartHour(date, 'afternoon');
+            if (currentHour < morningStartHour) {
               remainingPossibleSlots += 4;
-            } else if (currentHour < 13) {
+            } else if (currentHour < afternoonStartHour) {
               remainingPossibleSlots += 2;
             }
           }

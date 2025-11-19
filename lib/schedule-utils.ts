@@ -2,6 +2,8 @@
  * Utility functions for managing schedule with hourly officer limits
  */
 
+export type ShiftType = 'morning' | 'afternoon';
+
 export interface TimeRange {
   start: string; // Format: "HHMM" (e.g., "0500")
   end: string;   // Format: "HHMM" (e.g., "1300")
@@ -18,6 +20,70 @@ export interface HourlyAvailability {
   officers: string[];
   available: boolean;
 }
+
+const policyDate = new Date('2025-11-19T00:00:00');
+policyDate.setHours(0, 0, 0, 0);
+
+export const SHIFT_POLICY_EFFECTIVE_DATE = policyDate;
+
+const SHIFT_WINDOWS = {
+  legacy: {
+    morning: '0500-1300',
+    afternoon: '1300-2200',
+    maxBlockMinutes: null as number | null,
+  },
+  updated: {
+    morning: '0600-1200',
+    afternoon: '1400-2000',
+    maxBlockMinutes: 4 * 60,
+  },
+} as const;
+
+const startOfDay = (value: Date): number => {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+};
+
+export const usesUpdatedShiftPolicy = (slotDate: Date): boolean => {
+  return startOfDay(slotDate) >= SHIFT_POLICY_EFFECTIVE_DATE.getTime();
+};
+
+export const getDefaultShiftWindow = (slotType: ShiftType, slotDate: Date): string => {
+  const rules = usesUpdatedShiftPolicy(slotDate) ? SHIFT_WINDOWS.updated : SHIFT_WINDOWS.legacy;
+  return slotType === 'morning' ? rules.morning : rules.afternoon;
+};
+
+export const getShiftMaxBlockMinutes = (slotDate: Date): number | null => {
+  const rules = usesUpdatedShiftPolicy(slotDate) ? SHIFT_WINDOWS.updated : SHIFT_WINDOWS.legacy;
+  return rules.maxBlockMinutes;
+};
+
+export const getShiftTimeOrDefault = (
+  slotDate: Date,
+  slotType: ShiftType,
+  providedTime?: string
+): string => {
+  if (providedTime && providedTime.includes('-')) {
+    return providedTime;
+  }
+  return getDefaultShiftWindow(slotType, slotDate);
+};
+
+export const getShiftStartHour = (
+  slotDate: Date,
+  slotType: ShiftType,
+  providedTime?: string
+): number => {
+  const timeString = getShiftTimeOrDefault(slotDate, slotType, providedTime);
+  const [start] = timeString.split('-');
+  const normalized = start.replace(/:/g, '').padEnd(4, '0');
+  const parsed = parseInt(normalized.slice(0, 2), 10);
+  if (Number.isFinite(parsed)) {
+    return parsed;
+  }
+  return parseInt(getDefaultShiftWindow(slotType, slotDate).slice(0, 2), 10);
+};
 
 /**
  * Parse time string formats like "0500-1300", "05:00-13:00", or "0500-1000,1100-1300" (split shift)
@@ -67,6 +133,22 @@ function minutesToTime(minutes: number): string {
   const mins = minutes % 60;
   return hours.toString().padStart(2, '0') + mins.toString().padStart(2, '0');
 }
+
+export const addMinutesToTimeString = (time: string, minutesToAdd: number): string => {
+  return minutesToTime(timeToMinutes(time) + minutesToAdd);
+};
+
+export const getTimeRangeDurationMinutes = (range: TimeRange): number => {
+  return timeToMinutes(range.end) - timeToMinutes(range.start);
+};
+
+export const isRangeWithinShiftWindow = (
+  range: TimeRange,
+  shiftStart: string,
+  shiftEnd: string
+): boolean => {
+  return range.start >= shiftStart && range.end <= shiftEnd;
+};
 
 /**
  * Get hourly availability for a shift

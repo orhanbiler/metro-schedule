@@ -9,7 +9,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { isFirestoreInitialized } from '@/lib/firebase-utils';
 import { useAuth } from '@/lib/auth-context';
-import { getShiftDateBounds } from '@/lib/schedule-utils';
+import { getShiftDateBounds, getShiftTimeOrDefault, getShiftStartHour } from '@/lib/schedule-utils';
 
 interface NextShiftInfo {
   id: string;
@@ -84,12 +84,13 @@ export default function DashboardPage() {
         const dayOfWeek = date.getDay();
         // Skip weekends (0 = Sunday, 6 = Saturday)
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          const morningStartHour = getShiftStartHour(date, 'morning');
+          const afternoonStartHour = getShiftStartHour(date, 'afternoon');
           if (day === today) {
             // For today, only count shifts that haven't started yet
-            // Morning shift: 0500-1300 (5 AM - 1 PM)
-            if (currentHour < 5) {
+            if (currentHour < morningStartHour) {
               remainingSlots += 4; // Both morning and afternoon shifts
-            } else if (currentHour < 13) {
+            } else if (currentHour < afternoonStartHour) {
               remainingSlots += 2; // Only afternoon shifts (1300-2200)
             }
             // If current hour >= 13 (1 PM), no shifts remain for today
@@ -156,11 +157,6 @@ export default function DashboardPage() {
         return `${formatSegment(start)} – ${formatSegment(end)}`;
       };
 
-      const defaultShiftTimes: Record<'Morning' | 'Afternoon', string> = {
-        Morning: '0500-1300',
-        Afternoon: '1300-2200',
-      };
-
       schedule.forEach((day: {
         id: string;
         date: Date | string;
@@ -184,15 +180,16 @@ export default function DashboardPage() {
           const slotDate = new Date(currentYear, currentMonth, dayOfMonth);
           const morningOfficers = day.morningSlot?.officers || [];
           const afternoonOfficers = day.afternoonSlot?.officers || [];
+          const morningStartHour = getShiftStartHour(slotDate, 'morning', day.morningSlot?.time);
+          const afternoonStartHour = getShiftStartHour(slotDate, 'afternoon', day.afternoonSlot?.time);
 
           // For today, only count shifts that haven't started yet
           if (dayOfMonth === today) {
-            // Morning shift: 0500-1300
-            if (currentHour < 5) {
+            if (currentHour < morningStartHour) {
               // Both shifts are in the future
               filledSlots += morningOfficers.length + afternoonOfficers.length;
-            } else if (currentHour < 13) {
-              // Only afternoon shift is in the future (1300-2200)
+            } else if (currentHour < afternoonStartHour) {
+              // Only afternoon shift is in the future
               filledSlots += afternoonOfficers.length;
             }
             // If current hour >= 13, don't count any slots for today
@@ -220,7 +217,11 @@ export default function DashboardPage() {
             const capacity = slotData.maxOfficers ?? 2;
             const spotsLeft = capacity - officers.length;
             const isOpen = spotsLeft > 0;
-            const timeString = slotData.time || defaultShiftTimes[slotName];
+            const timeString = getShiftTimeOrDefault(
+              slotDate,
+              slotName === 'Morning' ? 'morning' : 'afternoon',
+              slotData.time
+            );
             const { start, end } = getShiftDateBounds(slotDate, timeString);
 
             if (end && now >= end) {
@@ -305,11 +306,13 @@ export default function DashboardPage() {
         const date = new Date(currentYear, currentMonth, day);
         const dayOfWeek = date.getDay();
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          const morningStartHour = getShiftStartHour(date, 'morning');
+          const afternoonStartHour = getShiftStartHour(date, 'afternoon');
           if (day === today) {
             // For today, only count shifts that haven't started yet
-            if (currentHour < 5) {
+            if (currentHour < morningStartHour) {
               remainingSlots += 4; // Both morning and afternoon shifts
-            } else if (currentHour < 13) {
+            } else if (currentHour < afternoonStartHour) {
               remainingSlots += 2; // Only afternoon shifts
             }
           } else {

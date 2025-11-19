@@ -1,24 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, X } from 'lucide-react';
+import { addMinutesToTimeString } from '@/lib/schedule-utils';
 
 interface HoursDialogProps {
   children: React.ReactNode;
   originalTime: string;
   onConfirm: (customHours: string) => void;
   onCancel: () => void;
+  maxBlockMinutes?: number;
 }
 
-export function HoursDialog({ children, originalTime, onConfirm, onCancel }: HoursDialogProps) {
+export function HoursDialog({ children, originalTime, onConfirm, onCancel, maxBlockMinutes }: HoursDialogProps) {
+  const blockMinutes = maxBlockMinutes ?? null;
+  const blockEnforced = blockMinutes !== null;
   const [open, setOpen] = useState(false);
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [useCustomHours, setUseCustomHours] = useState(false);
+  const [useCustomHours, setUseCustomHours] = useState(blockEnforced);
 
   // Generate time options (15-minute intervals)
   const generateTimeOptions = () => {
@@ -33,8 +37,65 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
     return options;
   };
 
-  const timeOptions = generateTimeOptions();
-  const [originalStart, originalEnd] = originalTime.split('-');
+  const timeOptions = useMemo(generateTimeOptions, []);
+  const sanitizeTime = (value?: string) => (value ? value.replace(/:/g, '') : '');
+  const [originalStartRaw, originalEndRaw] = originalTime.split('-');
+  const originalStart = sanitizeTime(originalStartRaw);
+  const originalEnd = sanitizeTime(originalEndRaw);
+  const MIN_BLOCK_MINUTES = 60;
+
+  const compareTimes = (a?: string, b?: string) => {
+    if (!a && !b) return 0;
+    if (!a) return -1;
+    if (!b) return 1;
+    return Number(a) - Number(b);
+  };
+
+  const clampToShiftEnd = (value: string) => {
+    if (!value) return value;
+    if (!originalEnd) return value;
+    return compareTimes(value, originalEnd) > 0 ? originalEnd : value;
+  };
+
+  const computeMaxEndForStart = (start: string) => {
+    if (!start) return originalEnd;
+    if (!blockMinutes) return originalEnd;
+    const desired = addMinutesToTimeString(start, blockMinutes);
+    return clampToShiftEnd(desired);
+  };
+
+  const hasMinimumWindow = (start: string) => {
+    if (!start) return false;
+    const minEnd = addMinutesToTimeString(start, MIN_BLOCK_MINUTES);
+    return compareTimes(minEnd, originalEnd) <= 0;
+  };
+
+  useEffect(() => {
+    if (blockEnforced && originalStart) {
+      setUseCustomHours(true);
+      const desiredEnd = blockMinutes ? addMinutesToTimeString(originalStart, blockMinutes) : originalEnd;
+      const defaultEnd = desiredEnd && compareTimes(desiredEnd, originalEnd) > 0 ? originalEnd : desiredEnd;
+      setStartTime(originalStart);
+      setEndTime(defaultEnd || originalEnd);
+    } else {
+      setUseCustomHours(false);
+      setStartTime('');
+      setEndTime('');
+    }
+  }, [blockEnforced, blockMinutes, originalStart, originalEnd]);
+
+  const resetSelection = () => {
+    if (blockEnforced && originalStart) {
+      setUseCustomHours(true);
+      const defaultEnd = computeMaxEndForStart(originalStart) || originalEnd;
+      setStartTime(originalStart);
+      setEndTime(defaultEnd);
+    } else {
+      setUseCustomHours(false);
+      setStartTime('');
+      setEndTime('');
+    }
+  };
 
   const handleConfirm = () => {
     if (useCustomHours && startTime && endTime) {
@@ -50,16 +111,12 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
       onConfirm(originalTime);
     }
     setOpen(false);
-    setUseCustomHours(false);
-    setStartTime('');
-    setEndTime('');
+    resetSelection();
   };
 
   const handleCancel = () => {
     setOpen(false);
-    setUseCustomHours(false);
-    setStartTime('');
-    setEndTime('');
+    resetSelection();
     onCancel();
   };
   
@@ -68,10 +125,57 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
     setOpen(newOpen);
     if (!newOpen) {
       // Reset when closing
-      setUseCustomHours(false);
-      setStartTime('');
-      setEndTime('');
+      resetSelection();
     }
+  };
+
+  const formatDisplayTime = (value: string) =>
+    value ? `${value.slice(0, 2)}:${value.slice(2)}` : '';
+
+  const handleStartTimeChange = (value: string) => {
+    setStartTime(value);
+    if (blockEnforced && value) {
+      const maxEnd = computeMaxEndForStart(value) || originalEnd;
+      setEndTime((prev) => {
+        if (!prev) return maxEnd;
+        if (compareTimes(prev, value) <= 0) {
+          return maxEnd;
+        }
+        if (maxEnd && compareTimes(prev, maxEnd) > 0) {
+          return maxEnd;
+        }
+        return prev;
+      });
+    } else if (!blockEnforced) {
+      setEndTime((prev) => (prev && compareTimes(prev, value) <= 0 ? '' : prev));
+    }
+  };
+
+  const handleEndTimeChange = (value: string) => {
+    if (!value) {
+      setEndTime('');
+      return;
+    }
+    if (blockEnforced) {
+      const referenceStart = startTime || originalStart;
+      const maxEnd = computeMaxEndForStart(referenceStart) || originalEnd;
+      if (maxEnd && compareTimes(value, maxEnd) > 0) {
+        setEndTime(maxEnd);
+        return;
+      }
+    }
+    setEndTime(value);
+  };
+
+  const getDurationHours = () => {
+    if (!startTime || !endTime) return 0;
+    const toMinutes = (value: string) => {
+      const hours = parseInt(value.slice(0, 2), 10);
+      const minutes = parseInt(value.slice(2), 10);
+      return hours * 60 + minutes;
+    };
+    const diff = toMinutes(endTime) - toMinutes(startTime);
+    return Math.max(diff, 0) / 60;
   };
 
   return (
@@ -88,6 +192,11 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
             <span className="text-xs text-muted-foreground mt-2 block">
               Tip: For split shifts, use format like &quot;05:00-10:00,11:00-13:00&quot; (minimum 1 hour per block)
             </span>
+            {blockEnforced && (
+              <span className="text-xs text-primary mt-1 block">
+                New policy: pick up to {(blockMinutes || 0) / 60} continuous hours between {formatDisplayTime(originalStart)} and {formatDisplayTime(originalEnd)}.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
         
@@ -105,11 +214,16 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
                 type="checkbox"
                 id="customHours"
                 checked={useCustomHours}
+                disabled={blockEnforced}
                 onChange={(e) => {
+                  if (blockEnforced) return;
                   setUseCustomHours(e.target.checked);
-                  if (e.target.checked && !startTime) {
-                    // Set default start time to the beginning of the shift
+                  if (e.target.checked) {
                     setStartTime(originalStart);
+                    setEndTime(originalEnd);
+                  } else {
+                    setStartTime('');
+                    setEndTime('');
                   }
                 }}
                 className="rounded"
@@ -119,17 +233,30 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
               </Label>
             </div>
 
+            {blockEnforced && (
+              <p className="text-2xs text-primary font-medium">
+                This shift allows a single continuous block up to {(blockMinutes || 0) / 60} hours inside the listed window.
+              </p>
+            )}
+
             {useCustomHours && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-md border bg-background">
                 <div className="space-y-2">
                   <Label htmlFor="startTime" className="text-xs sm:text-sm">Start Time</Label>
-                  <Select value={startTime} onValueChange={setStartTime}>
+                  <Select value={startTime} onValueChange={handleStartTimeChange}>
                     <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                       <SelectValue placeholder="Select start" />
                     </SelectTrigger>
                     <SelectContent>
                       {timeOptions
-                        .filter(opt => opt.value >= originalStart && opt.value < originalEnd)
+                        .filter(opt => {
+                          const withinWindow = opt.value >= originalStart && opt.value < originalEnd;
+                          if (!withinWindow) return false;
+                          if (blockEnforced) {
+                            return hasMinimumWindow(opt.value);
+                          }
+                          return true;
+                        })
                         .map(option => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.display}
@@ -141,14 +268,25 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
 
                 <div className="space-y-2">
                   <Label htmlFor="endTime" className="text-xs sm:text-sm">End Time</Label>
-                  <Select value={endTime} onValueChange={setEndTime}>
+                  <Select value={endTime} onValueChange={handleEndTimeChange}>
                     <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
-                      <SelectValue placeholder="Select end" />
+                      <SelectValue placeholder={startTime || !blockEnforced ? 'Select end' : 'Pick start first'} />
                     </SelectTrigger>
                     <SelectContent>
                       {timeOptions
                         .filter(opt => opt.value > originalStart && opt.value <= originalEnd)
-                        .filter(opt => !startTime || opt.value > startTime)
+                        .filter(opt => {
+                          const effectiveStart = startTime || (blockEnforced ? originalStart : '');
+                          if (!effectiveStart) {
+                            return !blockEnforced;
+                          }
+                          if (compareTimes(opt.value, effectiveStart) <= 0) return false;
+                          if (blockEnforced) {
+                            const limit = computeMaxEndForStart(effectiveStart) || originalEnd;
+                            return !limit || compareTimes(opt.value, limit) <= 0;
+                          }
+                          return true;
+                        })
                         .map(option => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.display}
@@ -164,10 +302,10 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel }: Hou
               <div className="rounded-md border p-3 bg-primary/10">
                 <Label className="text-xs sm:text-sm font-medium">Your Selected Hours</Label>
                 <p className="text-sm sm:text-lg font-semibold mt-1">
-                  {startTime.slice(0, 2)}:{startTime.slice(2)} - {endTime.slice(0, 2)}:{endTime.slice(2)}
+                  {formatDisplayTime(startTime)} - {formatDisplayTime(endTime)}
                 </p>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  Total: {(parseInt(endTime) - parseInt(startTime)) / 100} hours
+                  Total: {getDurationHours()} hours
                 </p>
               </div>
             )}

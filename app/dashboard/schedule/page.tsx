@@ -24,6 +24,11 @@ import {
   canAddOfficerShift,
   getAvailableTimeSlots,
   getShiftDateBounds,
+  getDefaultShiftWindow,
+  getShiftMaxBlockMinutes,
+  usesUpdatedShiftPolicy,
+  getTimeRangeDurationMinutes,
+  isRangeWithinShiftWindow,
   type OfficerShift,
 } from '@/lib/schedule-utils';
 
@@ -114,12 +119,12 @@ export default function SchedulePage() {
     status: 'past' | 'ongoing' | 'upcoming';
   } => {
     const slotData = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
-    const fallbackTime = slotType === 'morning' ? '0500-1300' : '1300-2200';
-    const timeString = slotData.time || fallbackTime;
+    const defaultWindow = getDefaultShiftWindow(slotType, slot.date);
+    const timeString = slotData.time || defaultWindow;
     const ranges = parseTimeString(timeString);
 
-    let shiftStart = ranges[0]?.start ?? fallbackTime.slice(0, 4);
-    let shiftEnd = ranges[0]?.end ?? fallbackTime.slice(5, 9);
+    let shiftStart = ranges[0]?.start ?? defaultWindow.slice(0, 4);
+    let shiftEnd = ranges[0]?.end ?? defaultWindow.slice(5, 9);
 
     for (const range of ranges) {
       if (range.start < shiftStart) {
@@ -200,6 +205,7 @@ export default function SchedulePage() {
     const userSignedUp = hasUserSignedUpForSlot(slot.date, slotType);
     const isAdmin = user?.role === 'admin';
     const canModify = canUserModifySchedule();
+    const blockMinutes = getShiftMaxBlockMinutes(slot.date);
 
     return (
       <div key={`${slot.id}-${slotType}-card`} className="space-y-2 rounded-lg border border-dashed p-3">
@@ -307,6 +313,7 @@ export default function SchedulePage() {
           ) : hasAvailability && canModify ? (
             <HoursDialog
               originalTime={slotData.time}
+              maxBlockMinutes={blockMinutes ?? undefined}
               onConfirm={(customHours) => handleSignUp(slot.id, slotType, customHours)}
               onCancel={() => {}}
             >
@@ -323,6 +330,7 @@ export default function SchedulePage() {
             <AdminAssignDialog
               users={allUsers}
               originalTime={slotData.time}
+              maxBlockMinutes={blockMinutes ?? undefined}
               onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, slotType, officerName, customHours)}
               disabled={loading}
             />
@@ -478,17 +486,19 @@ export default function SchedulePage() {
       
       // Skip weekends for this example
       if (date.getDay() !== 0 && date.getDay() !== 6) {
+        const defaultMorning = getDefaultShiftWindow('morning', date);
+        const defaultAfternoon = getDefaultShiftWindow('afternoon', date);
         slots.push({
           id: `${year}-${month}-${day}`,
           date: date,
           dayName: dayName,
           morningSlot: {
-            time: '0500-1300',
+            time: defaultMorning,
             available: true,
             officers: [],
           },
           afternoonSlot: {
-            time: '1300-2200',
+            time: defaultAfternoon,
             available: true,
             officers: [],
           }
@@ -515,10 +525,13 @@ export default function SchedulePage() {
         const data = await response.json();
         if (data.schedule && data.schedule.length > 0) {
           // Convert date strings back to Date objects and migrate data structure
-          const scheduleWithDates = data.schedule.map((slot: TimeSlot) => ({
-            ...migrateSlotData(slot),
-            date: new Date(slot.date)
-          }));
+          const scheduleWithDates = data.schedule.map((slot: TimeSlot) => {
+            const slotDate = new Date(slot.date);
+            return {
+              ...migrateSlotData(slot, slotDate),
+              date: slotDate
+            };
+          });
           setSchedule(scheduleWithDates);
         } else {
           // No saved schedule, generate new one
@@ -543,21 +556,21 @@ export default function SchedulePage() {
   const migrateSlotData = (slot: TimeSlot & { 
     morningSlot?: { officer?: string; customHours?: string }; 
     afternoonSlot?: { officer?: string; customHours?: string } 
-  }) => {
+  }, slotDate: Date) => {
     // Migrate old data structure to new structure
     const migratedSlot = { ...slot };
-    
-    // Update old time values to new times
-    const updateTime = (time: string) => {
-      if (time === '0600-1200') return '0500-1300';
-      if (time === '1400-2000') return '1300-2200';
-      if (time === '1300-1900') return '1300-2200';
-      return time;
+
+    const shouldUseUpdatedRules = usesUpdatedShiftPolicy(slotDate);
+    const ensureTime = (time: string | undefined, slotType: 'morning' | 'afternoon') => {
+      if (shouldUseUpdatedRules) {
+        return getDefaultShiftWindow(slotType, slotDate);
+      }
+      return time || getDefaultShiftWindow(slotType, slotDate);
     };
     
     // Handle morning slot migration
     if (slot.morningSlot) {
-      const updatedTime = updateTime(slot.morningSlot.time);
+      const updatedTime = ensureTime(slot.morningSlot.time, 'morning');
       
       if (slot.morningSlot.officer && !slot.morningSlot.officers) {
         // Old structure: has officer field, migrate to officers array
@@ -590,7 +603,7 @@ export default function SchedulePage() {
     
     // Handle afternoon slot migration
     if (slot.afternoonSlot) {
-      const updatedTime = updateTime(slot.afternoonSlot.time);
+      const updatedTime = ensureTime(slot.afternoonSlot.time, 'afternoon');
       
       if (slot.afternoonSlot.officer && !slot.afternoonSlot.officers) {
         // Old structure: has officer field, migrate to officers array
@@ -639,10 +652,13 @@ export default function SchedulePage() {
         const data = doc.data();
         if (data.schedule && data.schedule.length > 0) {
           // Convert date strings back to Date objects and migrate data structure
-          const scheduleWithDates = data.schedule.map((slot: TimeSlot) => ({
-            ...migrateSlotData(slot),
-            date: new Date(slot.date)
-          }));
+          const scheduleWithDates = data.schedule.map((slot: TimeSlot) => {
+            const slotDate = new Date(slot.date);
+            return {
+              ...migrateSlotData(slot, slotDate),
+              date: slotDate
+            };
+          });
           
           setSchedule(scheduleWithDates);
         }
@@ -731,7 +747,8 @@ export default function SchedulePage() {
 
       const currentOfficer = getCurrentOfficerFormatted();
       const targetSlot = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
-      
+      const blockMinutes = getShiftMaxBlockMinutes(slot.date);
+
       // Check if officer is already signed up
       const alreadySignedUp = targetSlot.officers.some(officer => officer.name === currentOfficer);
       if (alreadySignedUp) {
@@ -742,8 +759,29 @@ export default function SchedulePage() {
       // Parse the custom hours into time ranges
       const newTimeRanges = parseTimeString(customHours);
       if (newTimeRanges.length === 0) {
-        toast.error('Invalid time format. Please use format like "0500-1300", "05:00-13:00", or "0500-1000,1100-1300" for split shifts.');
+        toast.error('Invalid time format. Please use HHMM-HHMM (e.g., "0600-1200") or HH:MM-HH:MM, with commas for split shifts.');
         return;
+      }
+
+      const shiftStart = targetSlot.time.split('-')[0];
+      const shiftEnd = targetSlot.time.split('-')[1];
+
+      const outsideWindow = newTimeRanges.some((range) => !isRangeWithinShiftWindow(range, shiftStart, shiftEnd));
+      if (outsideWindow) {
+        toast.error('Selected hours must stay within the scheduled shift window.');
+        return;
+      }
+
+      if (blockMinutes) {
+        if (newTimeRanges.length !== 1) {
+          toast.error('This shift allows only one continuous block inside the window.');
+          return;
+        }
+        const duration = getTimeRangeDurationMinutes(newTimeRanges[0]);
+        if (duration > blockMinutes) {
+          toast.error(`Please limit your signup to at most ${blockMinutes / 60} consecutive hours.`);
+          return;
+        }
       }
 
       // Convert existing officers to OfficerShift format
@@ -757,8 +795,8 @@ export default function SchedulePage() {
         existingOfficerShifts,
         currentOfficer,
         newTimeRanges,
-        targetSlot.time.split('-')[0], // shift start
-        targetSlot.time.split('-')[1]  // shift end
+        shiftStart, // shift start
+        shiftEnd  // shift end
       );
 
       if (!validation.valid) {
@@ -930,8 +968,29 @@ export default function SchedulePage() {
     // Parse the hours into time ranges
     const newTimeRanges = parseTimeString(hoursToAssign);
     if (newTimeRanges.length === 0) {
-      toast.error('Invalid time format. Please use format like "0500-1300" or "0500-1000,1100-1300" for split shifts.');
+      toast.error('Invalid time format. Please use HHMM-HHMM (e.g., "1400-2000") or HH:MM-HH:MM for split shifts.');
       return;
+    }
+
+    const shiftStart = targetSlot.time.split('-')[0];
+    const shiftEnd = targetSlot.time.split('-')[1];
+
+    const outsideWindow = newTimeRanges.some((range) => !isRangeWithinShiftWindow(range, shiftStart, shiftEnd));
+    if (outsideWindow) {
+      toast.error('Assigned hours must remain within the scheduled shift window.');
+      return;
+    }
+
+    if (blockMinutes) {
+      if (newTimeRanges.length !== 1) {
+        toast.error('Only one continuous block can be assigned per shift.');
+        return;
+      }
+      const duration = getTimeRangeDurationMinutes(newTimeRanges[0]);
+      if (duration > blockMinutes) {
+        toast.error(`Assigned hours cannot exceed ${blockMinutes / 60} consecutive hours.`);
+        return;
+      }
     }
 
     // Convert existing officers to OfficerShift format
@@ -945,8 +1004,8 @@ export default function SchedulePage() {
       existingOfficerShifts,
       officerName,
       newTimeRanges,
-      targetSlot.time.split('-')[0], // shift start
-      targetSlot.time.split('-')[1]  // shift end
+      shiftStart,
+      shiftEnd
     );
 
     if (!validation.valid) {
@@ -1966,6 +2025,7 @@ export default function SchedulePage() {
                               morningRemainingCapacity > 0;
                             const isAdmin = user?.role === 'admin';
                             const canModify = canUserModifySchedule();
+                            const blockMinutes = getShiftMaxBlockMinutes(slot.date);
 
                             if (morningSummary.status === 'past') {
                               if (userSignedUp) {
@@ -1999,6 +2059,7 @@ export default function SchedulePage() {
                                 ) : slotsAvailable && canModify ? (
                                   <HoursDialog
                                     originalTime={slot.morningSlot.time}
+                                    maxBlockMinutes={blockMinutes ?? undefined}
                                     onConfirm={(customHours) => handleSignUp(slot.id, 'morning', customHours)}
                                     onCancel={() => {}}
                                   >
@@ -2012,6 +2073,7 @@ export default function SchedulePage() {
                                   <AdminAssignDialog
                                     users={allUsers}
                                     originalTime={slot.morningSlot.time}
+                                    maxBlockMinutes={blockMinutes ?? undefined}
                                     onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
                                     disabled={loading}
                                   />
@@ -2125,6 +2187,7 @@ export default function SchedulePage() {
                               afternoonRemainingCapacity > 0;
                             const isAdmin = user?.role === 'admin';
                             const canModify = canUserModifySchedule();
+                            const blockMinutes = getShiftMaxBlockMinutes(slot.date);
 
                             if (afternoonSummary.status === 'past') {
                               if (userSignedUp) {
@@ -2158,6 +2221,7 @@ export default function SchedulePage() {
                                 ) : slotsAvailable && canModify ? (
                                   <HoursDialog
                                     originalTime={slot.afternoonSlot.time}
+                                    maxBlockMinutes={blockMinutes ?? undefined}
                                     onConfirm={(customHours) => handleSignUp(slot.id, 'afternoon', customHours)}
                                     onCancel={() => {}}
                                   >
@@ -2171,6 +2235,7 @@ export default function SchedulePage() {
                                   <AdminAssignDialog
                                     users={allUsers}
                                     originalTime={slot.afternoonSlot.time}
+                                    maxBlockMinutes={blockMinutes ?? undefined}
                                     onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
                                     disabled={loading}
                                   />
