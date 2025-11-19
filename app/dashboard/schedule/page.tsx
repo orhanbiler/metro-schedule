@@ -954,7 +954,8 @@ export default function SchedulePage() {
     }
 
     const targetSlot = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
-    
+    const blockMinutes = getShiftMaxBlockMinutes(slot.date);
+
     // Check if officer is already assigned
     const alreadyAssigned = targetSlot.officers.some(officer => officer.name === officerName);
     if (alreadyAssigned) {
