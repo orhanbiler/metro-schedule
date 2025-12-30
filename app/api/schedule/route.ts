@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     // Processing schedule save request
 
-    if (!month || !year || !schedule) {
+    if (month === undefined || month === null || !year || !schedule) {
       // Missing required fields for schedule save
       return NextResponse.json({ error: 'Month, year, and schedule are required' }, { status: 400 });
     }

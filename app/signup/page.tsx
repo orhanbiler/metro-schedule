@@ -21,7 +21,33 @@ export default function SignupPage() {
   const [rank, setRank] = useState('Officer');
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [signupDisabled, setSignupDisabled] = useState<boolean | null>(null); // null = checking
   const router = useRouter();
+
+  // Check if signup is disabled - MUST complete before allowing form
+  useEffect(() => {
+    const checkSignupStatus = async () => {
+      try {
+        const response = await fetch('/api/settings/signup-status');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.signupDisabled) {
+            setSignupDisabled(true);
+            toast.error('Sign-up is currently disabled. Please contact an administrator.');
+            router.push('/login');
+          } else {
+            setSignupDisabled(false);
+          }
+        } else {
+          setSignupDisabled(false); // Allow on error
+        }
+      } catch (error) {
+        console.error('Error checking signup status:', error);
+        setSignupDisabled(false); // Allow on error
+      }
+    };
+    checkSignupStatus();
+  }, [router]);
 
   useEffect(() => {
     // Set a timeout to prevent infinite loading
@@ -55,6 +81,20 @@ export default function SignupPage() {
     };
   }, [router, loading]);
 
+  // Show loading while checking signup status or if signup is disabled (redirecting)
+  if (signupDisabled === null || signupDisabled === true) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">
+            {signupDisabled === true ? 'Redirecting...' : 'Loading...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const ranks = [
     'Trainee',
     'Officer', 
@@ -69,6 +109,21 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Double-check signup is allowed before proceeding
+    try {
+      const statusResponse = await fetch('/api/settings/signup-status');
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        if (statusData.signupDisabled) {
+          toast.error('Sign-up is currently disabled. Please contact an administrator.');
+          router.push('/login');
+          return;
+        }
+      }
+    } catch {
+      // Continue if we can't check - API will also validate
+    }
 
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');

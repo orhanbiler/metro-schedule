@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 
+const SETTINGS_DOC_ID = 'app-settings';
+
 export async function POST(request: NextRequest) {
   try {
+    // Check if signup is disabled
+    const settingsDoc = await adminDb().collection('settings').doc(SETTINGS_DOC_ID).get();
+    if (settingsDoc.exists) {
+      const settings = settingsDoc.data();
+      if (settings?.signupDisabled) {
+        return NextResponse.json(
+          { error: 'Sign-up is currently disabled. Please contact an administrator.' },
+          { status: 403 }
+        );
+      }
+    }
 
     const { email, password, name, idNumber, rank, firebaseAuthUID } = await request.json();
 

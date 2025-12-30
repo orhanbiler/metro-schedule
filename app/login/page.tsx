@@ -21,7 +21,29 @@ export default function LoginPage() {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
+  const [signupDisabled, setSignupDisabled] = useState(true); // Default to disabled until we know
+  const [signupStatusLoaded, setSignupStatusLoaded] = useState(false);
   const router = useRouter();
+
+  // Check if signup is disabled
+  useEffect(() => {
+    const checkSignupStatus = async () => {
+      try {
+        const response = await fetch('/api/settings/signup-status');
+        if (response.ok) {
+          const data = await response.json();
+          setSignupDisabled(data.signupDisabled ?? false);
+        }
+      } catch (error) {
+        console.error('Error checking signup status:', error);
+        // On error, default to showing signup link
+        setSignupDisabled(false);
+      } finally {
+        setSignupStatusLoaded(true);
+      }
+    };
+    checkSignupStatus();
+  }, []);
 
   useEffect(() => {
     // Set a timeout to prevent infinite loading
@@ -125,7 +147,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-background text-foreground">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 text-foreground">
+      {/* Mobile background - visible only on small screens, theme-aware */}
+      <div className="fixed inset-0 lg:hidden -z-10 bg-background">
+        {/* Gradient overlay - adapts to theme */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-emerald-500/5 dark:from-primary/10 dark:via-transparent dark:to-emerald-500/10" />
+        {/* Geometric accent shapes */}
+        <div className="absolute top-0 right-0 w-72 h-72 bg-primary/10 dark:bg-primary/20 rounded-full blur-3xl transform translate-x-1/3 -translate-y-1/3" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-full blur-3xl transform -translate-x-1/3 translate-y-1/3" />
+        {/* Subtle dot pattern */}
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" style={{
+          backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`,
+          backgroundSize: '24px 24px'
+        }} />
+      </div>
+
+      {/* Desktop left panel - hidden on mobile */}
       <div className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-950 via-primary to-slate-900 p-10 text-white">
         <div className="absolute inset-0 opacity-20">
           <Image
@@ -160,11 +197,20 @@ export default function LoginPage() {
           </ul>
         </div>
         <div className="relative z-10 text-sm text-white/70">
-          Need help? Email <a href="mailto:metro.admin@cheverlypd.gov" className="underline">metro.admin@cheverlypd.gov</a>
+          Need help? Email <a href="mailto:obiler@cheverlypolice.org" className="underline">obiler@cheverlypolice.org</a>
         </div>
       </div>
 
-      <div className="flex items-center justify-center p-6 sm:p-10">
+      {/* Login form panel */}
+      <div className="flex flex-col items-center justify-center p-6 sm:p-10">
+        {/* Mobile header - visible only on small screens */}
+        <div className="lg:hidden mb-6 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 px-4 py-2 text-sm uppercase tracking-wide text-primary dark:text-primary-foreground">
+            <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="font-medium">Cheverly PD</span>
+          </div>
+        </div>
+
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold">Cheverly PD Metro Portal</CardTitle>
@@ -225,19 +271,21 @@ export default function LoginPage() {
               <div className="flex flex-col gap-2 text-sm text-center text-muted-foreground">
                 <button
                   type="button"
-                  onClick={() => { window.location.href = 'mailto:metro.admin@cheverlypd.gov'; }}
+                  onClick={() => { window.location.href = 'mailto:obiler@cheverlypolice.org'; }}
                   className="text-primary hover:underline"
                 >
                   Forgot password or need access?
                 </button>
-                <div>
-                  Don&apos;t have an account?{' '}
-                  <Link href="/signup" className="text-primary hover:underline">
-                    Request one
-                  </Link>
-                </div>
+                {signupStatusLoaded && !signupDisabled && (
+                  <div>
+                    Don&apos;t have an account?{' '}
+                    <Link href="/signup" className="text-primary hover:underline">
+                      Request one
+                    </Link>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  Need help after hours? Email <a href="mailto:metro.support@cheverlypd.gov" className="text-primary hover:underline">metro.support@cheverlypd.gov</a>
+                  Need help? Email <a href="mailto:obiler@cheverlypolice.org" className="text-primary hover:underline">obiler@cheverlypolice.org</a>
                 </p>
               </div>
             </CardFooter>

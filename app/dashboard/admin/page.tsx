@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Calendar, CheckCircle, Clock, Bell, Settings, Timer, Mail, Send } from 'lucide-react';
+import { Users, Calendar, CheckCircle, Clock, Bell, Settings, Timer, Mail, Send, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -14,7 +14,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { UserListSkeleton, StatsCardSkeleton } from '@/components/schedule/schedule-skeleton';
+import { useAuth } from '@/lib/auth-context';
 
 interface User {
   id: string;
@@ -28,10 +30,13 @@ interface User {
 }
 
 export default function AdminPage() {
+  const { firebaseUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [testEmail, setTestEmail] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [signupDisabled, setSignupDisabled] = useState(false);
+  const [savingSignupSetting, setSavingSignupSetting] = useState(false);
   const [scheduleStats, setScheduleStats] = useState({
     totalSlots: 0,
     filledSlots: 0,
@@ -42,9 +47,59 @@ export default function AdminPage() {
     totalHoursUncovered: 0,
   });
 
+  // Fetch signup disabled setting
+  const fetchSignupSetting = useCallback(async () => {
+    try {
+      const token = firebaseUser ? await firebaseUser.getIdToken() : null;
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch('/api/admin/settings', { headers });
+      if (response.ok) {
+        const data = await response.json();
+        setSignupDisabled(data.signupDisabled ?? false);
+      }
+    } catch (error) {
+      console.error('Error fetching signup setting:', error);
+    }
+  }, [firebaseUser]);
+
+  // Toggle signup setting
+  const handleSignupToggle = async (disabled: boolean) => {
+    setSavingSignupSetting(true);
+    try {
+      const token = firebaseUser ? await firebaseUser.getIdToken() : null;
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ signupDisabled: disabled }),
+      });
+
+      if (response.ok) {
+        setSignupDisabled(disabled);
+        toast.success(disabled ? 'Sign-up disabled' : 'Sign-up enabled');
+      } else {
+        toast.error('Failed to update setting');
+      }
+    } catch (error) {
+      console.error('Error updating signup setting:', error);
+      toast.error('Failed to update setting');
+    } finally {
+      setSavingSignupSetting(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     calculateScheduleStats();
+    fetchSignupSetting();
     
     // Set up real-time listener for schedule changes only if db is properly initialized
     if (isFirestoreInitialized(db)) {
@@ -581,6 +636,28 @@ export default function AdminPage() {
                 <div className="text-sm text-muted-foreground">Coming soon</div>
               </div>
             </Button>
+          </div>
+
+          {/* Sign-up Control */}
+          <div className="border-t pt-6 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <UserPlus className="h-5 w-5" />
+              <h3 className="text-lg font-semibold">Sign-up Control</h3>
+            </div>
+            <div className="flex items-center justify-between max-w-md">
+              <div>
+                <p className="text-sm font-medium">Disable New Sign-ups</p>
+                <p className="text-sm text-muted-foreground">
+                  When enabled, the sign-up link on the login page will be hidden
+                </p>
+              </div>
+              <Switch
+                checked={signupDisabled}
+                onCheckedChange={handleSignupToggle}
+                disabled={savingSignupSetting}
+                aria-label="Disable sign-up"
+              />
+            </div>
           </div>
 
           {/* Email Test Section */}

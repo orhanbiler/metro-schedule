@@ -1775,38 +1775,6 @@ export default function SchedulePage() {
     return `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}/${date.getFullYear().toString().slice(-2)}`;
   };
 
-  const getMyShifts = () => {
-    const myShifts: Array<{ date: string; time: string; dayName: string }> = [];
-    const currentOfficerName = getCurrentOfficerFormatted();
-
-    schedule.forEach(slot => {
-      // Check morning slot
-      const morningOfficer = slot.morningSlot.officers.find(officer =>
-        officer.name === currentOfficerName || officer.name === user?.name
-      );
-      if (morningOfficer) {
-        myShifts.push({
-          date: formatDate(slot.date),
-          time: morningOfficer.customHours || slot.morningSlot.time,
-          dayName: slot.dayName
-        });
-      }
-
-      // Check afternoon slot
-      const afternoonOfficer = slot.afternoonSlot.officers.find(officer =>
-        officer.name === currentOfficerName || officer.name === user?.name
-      );
-      if (afternoonOfficer) {
-        myShifts.push({
-          date: formatDate(slot.date),
-          time: afternoonOfficer.customHours || slot.afternoonSlot.time,
-          dayName: slot.dayName
-        });
-      }
-    });
-    return myShifts;
-  };
-
   const displayTime = (time: string) => {
     if (time.includes('-') && time.includes(':')) {
       return time; // Already formatted (custom hours)
@@ -1894,14 +1862,18 @@ export default function SchedulePage() {
           </div>
         </CardHeader>
         <CardContent className="px-3 pb-3 sm:p-6 pt-0 sm:pt-0">
-          <div className="flex flex-wrap gap-3 mb-6">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Label className="shrink-0">Month:</Label>
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+              <Label className="text-xs sm:text-sm">Month:</Label>
               <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(Number(value))}>
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-full sm:w-40 h-9 text-sm">
                   <SelectValue placeholder={monthNames[selectedMonth]} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent 
+                  side="bottom" 
+                  align="start"
+                  className="max-h-[50vh] sm:max-h-96"
+                >
                   {monthNames.map((month, index) => (
                     <SelectItem key={month} value={index.toString()}>
                       {month}
@@ -1911,13 +1883,17 @@ export default function SchedulePage() {
               </Select>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Label className="shrink-0">Year:</Label>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+              <Label className="text-xs sm:text-sm">Year:</Label>
               <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(Number(value))}>
-                <SelectTrigger className="w-full sm:w-28">
+                <SelectTrigger className="w-full sm:w-28 h-9 text-sm">
                   <SelectValue placeholder={selectedYear.toString()} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent 
+                  side="bottom" 
+                  align="start"
+                  className="max-h-[50vh] sm:max-h-96"
+                >
                   {yearOptions.map((year) => (
                     <SelectItem key={year} value={year.toString()}>
                       {year}
@@ -2358,36 +2334,6 @@ export default function SchedulePage() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>My Scheduled Shifts - {monthNames[selectedMonth]} {selectedYear}</CardTitle>
-          <CardDescription>Your overtime assignments for {monthNames[selectedMonth]} {selectedYear}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {getMyShifts().length > 0 ? (
-              getMyShifts().map((shift, index) => (
-                <div key={index} className="flex justify-between items-center p-3 border rounded-lg bg-muted/30">
-                  <div>
-                    <div className="font-semibold">
-                      {shift.dayName}, {shift.date}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Time: {shift.time.includes(':') ? shift.time : displayTime(shift.time)}
-                    </div>
-                  </div>
-                  <div className="text-sm font-medium text-primary">
-                    Confirmed
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-muted-foreground">No shifts scheduled for {monthNames[selectedMonth]} {selectedYear}</p>
-            )}
-          </div>
         </CardContent>
       </Card>
     </div>

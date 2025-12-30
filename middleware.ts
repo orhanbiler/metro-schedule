@@ -8,7 +8,7 @@ export async function middleware(request: NextRequest) {
   const isApiPath = path.startsWith('/api');
   
   // Skip middleware for public API routes
-  const publicApiPaths = ['/api/auth/login', '/api/auth/signup', '/api/auth/sync-user'];
+  const publicApiPaths = ['/api/auth/login', '/api/auth/signup', '/api/auth/sync-user', '/api/settings/signup-status', '/api/changelog/public'];
   if (publicApiPaths.some(apiPath => path.startsWith(apiPath))) {
     return NextResponse.next();
   }
