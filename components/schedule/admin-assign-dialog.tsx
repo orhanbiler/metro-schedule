@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserPlus } from 'lucide-react';
 import { formatOfficerName } from '@/lib/utils';
@@ -25,6 +26,8 @@ interface User {
   rank?: string;
   idNumber?: string;
 }
+
+const MANUAL_ENTRY_VALUE = '__manual_entry__';
 
 interface AdminAssignDialogProps {
   users: User[];
@@ -43,6 +46,8 @@ export function AdminAssignDialog({
 }: AdminAssignDialogProps) {
   const [open, setOpen] = useState(false);
   const [selectedOfficer, setSelectedOfficer] = useState<string>('');
+  const [manualOfficerName, setManualOfficerName] = useState<string>('');
+  const [useManualEntry, setUseManualEntry] = useState(false);
   const blockMinutes = maxBlockMinutes ?? null;
   const blockEnforced = blockMinutes !== null;
   const [useCustomHours, setUseCustomHours] = useState(blockEnforced);
@@ -117,6 +122,8 @@ export function AdminAssignDialog({
 
   const resetFormState = () => {
     setSelectedOfficer('');
+    setManualOfficerName('');
+    setUseManualEntry(false);
     if (blockEnforced && shiftStart) {
       setUseCustomHours(true);
       const defaultEnd = defaultBlockedEnd || shiftEnd;
@@ -175,7 +182,8 @@ export function AdminAssignDialog({
   };
 
   const handleConfirm = () => {
-    if (!selectedOfficer) return;
+    const officerName = useManualEntry ? manualOfficerName.trim() : selectedOfficer;
+    if (!officerName) return;
 
     let customHours: string | undefined;
     if (useCustomHours && startTime && endTime) {
@@ -183,9 +191,20 @@ export function AdminAssignDialog({
       customHours = `${formatSegment(startTime)}-${formatSegment(endTime)}`;
     }
 
-    onConfirm(selectedOfficer, customHours);
+    onConfirm(officerName, customHours);
     resetFormState();
     setOpen(false);
+  };
+
+  const handleOfficerSelect = (value: string) => {
+    if (value === MANUAL_ENTRY_VALUE) {
+      setUseManualEntry(true);
+      setSelectedOfficer('');
+    } else {
+      setUseManualEntry(false);
+      setSelectedOfficer(value);
+      setManualOfficerName('');
+    }
   };
 
   const handleReset = () => {
@@ -228,7 +247,7 @@ export function AdminAssignDialog({
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="officer">Select Officer</Label>
-            <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+            <Select value={useManualEntry ? MANUAL_ENTRY_VALUE : selectedOfficer} onValueChange={handleOfficerSelect}>
               <SelectTrigger id="officer">
                 <SelectValue placeholder="Choose an officer" />
               </SelectTrigger>
@@ -238,8 +257,26 @@ export function AdminAssignDialog({
                     {getOfficerDisplayName(user)}
                   </SelectItem>
                 ))}
+                <SelectItem value={MANUAL_ENTRY_VALUE} className="text-primary font-medium border-t mt-1 pt-1">
+                  + Enter name manually...
+                </SelectItem>
               </SelectContent>
             </Select>
+            
+            {useManualEntry && (
+              <div className="mt-2">
+                <Label htmlFor="manual-name" className="text-xs text-muted-foreground">
+                  Enter officer name (e.g., &quot;Sgt. Smith #1234&quot;)
+                </Label>
+                <Input
+                  id="manual-name"
+                  value={manualOfficerName}
+                  onChange={(e) => setManualOfficerName(e.target.value)}
+                  placeholder="Rank Name #ID (e.g., Ofc. Johnson #5678)"
+                  className="mt-1"
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid gap-2">
@@ -336,7 +373,10 @@ export function AdminAssignDialog({
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={!selectedOfficer || (useCustomHours && (!startTime || !endTime))}
+            disabled={
+              (useManualEntry ? !manualOfficerName.trim() : !selectedOfficer) || 
+              (useCustomHours && (!startTime || !endTime))
+            }
           >
             Assign Officer
           </Button>

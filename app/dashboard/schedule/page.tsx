@@ -153,9 +153,8 @@ export default function SchedulePage() {
       status = 'past';
     }
 
-    if (status === 'past') {
-      return { availableSlots: [], maxRemaining: 0, status };
-    }
+    // For past shifts, we still calculate availability for admin purposes
+    // The UI will use the 'past' status to hide options for regular users
 
     const officerShifts: OfficerShift[] = slotData.officers.map((officer) => ({
       name: officer.name,
@@ -202,6 +201,8 @@ export default function SchedulePage() {
     const slotData = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
     const { availableSlots, maxRemaining, status } = summary;
     const hasAvailability = status !== 'past' && maxRemaining > 0 && availableSlots.length > 0;
+    // Admins can assign to past dates as long as there's capacity
+    const adminCanAssign = maxRemaining > 0 && availableSlots.length > 0;
     const userSignedUp = hasUserSignedUpForSlot(slot.date, slotType);
     const isAdmin = user?.role === 'admin';
     const canModify = canUserModifySchedule();
@@ -326,7 +327,7 @@ export default function SchedulePage() {
           ) : (
             !hasAvailability && <span className="text-xs text-muted-foreground">Fully staffed</span>
           )}
-          {isAdmin && hasAvailability && (
+          {isAdmin && adminCanAssign && (
             <AdminAssignDialog
               users={allUsers}
               originalTime={slotData.time}
@@ -2053,11 +2054,33 @@ export default function SchedulePage() {
                                     morningSummary.status !== 'past' &&
                                     morningAvailableSlots.length > 0 &&
                                     morningRemainingCapacity > 0;
+                                  // Admins can assign to past dates as long as there's capacity
+                                  const adminCanAssign = morningAvailableSlots.length > 0 && morningRemainingCapacity > 0;
                                   const isAdmin = user?.role === 'admin';
                                   const canModify = canUserModifySchedule();
                                   const blockMinutes = getShiftMaxBlockMinutes(slot.date);
 
                                   if (morningSummary.status === 'past') {
+                                    // For admins, show assign button even on past dates
+                                    if (isAdmin && adminCanAssign) {
+                                      return (
+                                        <div className="flex gap-1 sm:gap-2 justify-center">
+                                          {userSignedUp && (
+                                            <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
+                                              <Calendar className="h-3 w-3 sm:mr-1" />
+                                              <span className="hidden sm:inline">Completed</span>
+                                            </span>
+                                          )}
+                                          <AdminAssignDialog
+                                            users={allUsers}
+                                            originalTime={slot.morningSlot.time}
+                                            maxBlockMinutes={blockMinutes ?? undefined}
+                                            onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
+                                            disabled={loading}
+                                          />
+                                        </div>
+                                      );
+                                    }
                                     if (userSignedUp) {
                                       return (
                                         <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
@@ -2215,11 +2238,33 @@ export default function SchedulePage() {
                                     afternoonSummary.status !== 'past' &&
                                     afternoonAvailableSlots.length > 0 &&
                                     afternoonRemainingCapacity > 0;
+                                  // Admins can assign to past dates as long as there's capacity
+                                  const adminCanAssign = afternoonAvailableSlots.length > 0 && afternoonRemainingCapacity > 0;
                                   const isAdmin = user?.role === 'admin';
                                   const canModify = canUserModifySchedule();
                                   const blockMinutes = getShiftMaxBlockMinutes(slot.date);
 
                                   if (afternoonSummary.status === 'past') {
+                                    // For admins, show assign button even on past dates
+                                    if (isAdmin && adminCanAssign) {
+                                      return (
+                                        <div className="flex gap-1 sm:gap-2 justify-center">
+                                          {userSignedUp && (
+                                            <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
+                                              <Calendar className="h-3 w-3 sm:mr-1" />
+                                              <span className="hidden sm:inline">Completed</span>
+                                            </span>
+                                          )}
+                                          <AdminAssignDialog
+                                            users={allUsers}
+                                            originalTime={slot.afternoonSlot.time}
+                                            maxBlockMinutes={blockMinutes ?? undefined}
+                                            onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
+                                            disabled={loading}
+                                          />
+                                        </div>
+                                      );
+                                    }
                                     if (userSignedUp) {
                                       return (
                                         <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
