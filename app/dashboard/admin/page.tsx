@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, Calendar, CheckCircle, Clock, Bell, Settings, Timer, Mail, Send, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { isFirestoreInitialized } from '@/lib/firebase-utils';
 import { formatOfficerName } from '@/lib/utils';
-import { getShiftTimeOrDefault, getShiftStartHour } from '@/lib/schedule-utils';
+import { useScheduleStats } from '@/hooks/use-schedule-stats';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,15 +34,14 @@ export default function AdminPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [signupDisabled, setSignupDisabled] = useState(false);
   const [savingSignupSetting, setSavingSignupSetting] = useState(false);
-  const [scheduleStats, setScheduleStats] = useState({
-    totalSlots: 0,
-    filledSlots: 0,
-    availableSlots: 0,
-    remainingSlots: 0, // Slots remaining from current time
-    thisMonthUsers: 0,
-    totalHoursWorked: 0,
-    totalHoursUncovered: 0,
-  });
+  const {
+    totalSlots,
+    filledSlots,
+    remainingAvailable: remainingSlots,
+    thisMonthUsers,
+    totalHoursWorked,
+  } = useScheduleStats();
+  const scheduleStats = { totalSlots, filledSlots, remainingSlots, thisMonthUsers, totalHoursWorked };
 
   // Fetch signup disabled setting
   const fetchSignupSetting = useCallback(async () => {
@@ -98,40 +94,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchUsers();
-    calculateScheduleStats();
     fetchSignupSetting();
-    
-    // Set up real-time listener for schedule changes only if db is properly initialized
-    if (isFirestoreInitialized(db)) {
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth(); // 0-indexed for schedule ID
-      const currentYear = currentDate.getFullYear();
-      const scheduleId = `${currentYear}-${currentMonth}`;
-      
-      try {
-        const scheduleRef = doc(db, 'schedules', scheduleId);
-        
-        // Setting up real-time listener for schedule changes
-        
-        const unsubscribe = onSnapshot(scheduleRef, () => {
-          // Schedule document changed, recalculating statistics
-          // Recalculate stats when schedule changes
-          calculateScheduleStats();
-        }, (error) => {
-          console.error('Error listening to schedule changes in admin:', error);
-        });
-
-        return () => {
-          if (unsubscribe) {
-            unsubscribe();
-          }
-        };
-      } catch (error) {
-        console.error('Error setting up schedule listener:', error);
-      }
-    } else {
-      console.warn('Firebase/Firestore not properly initialized. Real-time updates disabled.');
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -153,325 +116,6 @@ export default function AdminPage() {
     }
   };
 
-  // Helper function to calculate hours from time string (e.g., "6am-2pm" = 8 hours or "0500-1300" = 8 hours)
-  const calculateHoursFromTimeString = (timeStr: string): number => {
-    if (!timeStr) return 0;
-    
-    // Handle 24-hour format like "0500-1300" or "1300-2200"
-    const militaryMatch = timeStr.match(/(\d{4})-(\d{4})/);
-    if (militaryMatch) {
-      const [, startStr, endStr] = militaryMatch;
-      const startHour = parseInt(startStr.slice(0, 2));
-      const startMin = parseInt(startStr.slice(2, 4));
-      const endHour = parseInt(endStr.slice(0, 2));
-      const endMin = parseInt(endStr.slice(2, 4));
-      
-      // Convert to total minutes
-      const startMinutes = startHour * 60 + startMin;
-      let endMinutes = endHour * 60 + endMin;
-      
-      // Handle overnight shifts
-      if (endMinutes < startMinutes) {
-        endMinutes += 24 * 60; // Add 24 hours
-      }
-      
-      // Calculate hours (with decimal for partial hours)
-      return (endMinutes - startMinutes) / 60;
-    }
-    
-    // Handle 12-hour format like "6am-2pm", "10pm-6am", "12am-8am"
-    const ampmMatch = timeStr.match(/(\d+)(am|pm)-(\d+)(am|pm)/i);
-    if (ampmMatch) {
-      const [, startHour, startPeriod, endHour, endPeriod] = ampmMatch;
-      
-      // Convert to 24-hour format
-      let start = parseInt(startHour);
-      let end = parseInt(endHour);
-      
-      // Handle 12am/12pm special cases
-      if (start === 12 && startPeriod.toLowerCase() === 'am') start = 0;
-      else if (start !== 12 && startPeriod.toLowerCase() === 'pm') start += 12;
-      
-      if (end === 12 && endPeriod.toLowerCase() === 'am') end = 0;
-      else if (end !== 12 && endPeriod.toLowerCase() === 'pm') end += 12;
-      
-      // Calculate hours, handling overnight shifts
-      let hours = end - start;
-      if (hours < 0) hours += 24; // Overnight shift
-      
-      return hours;
-    }
-    
-    // Handle time format like "05:00-13:00"
-    const colonMatch = timeStr.match(/(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/);
-    if (colonMatch) {
-      const [, startHour, startMin, endHour, endMin] = colonMatch;
-      const startMinutes = parseInt(startHour) * 60 + parseInt(startMin);
-      let endMinutes = parseInt(endHour) * 60 + parseInt(endMin);
-      
-      // Handle overnight shifts
-      if (endMinutes < startMinutes) {
-        endMinutes += 24 * 60; // Add 24 hours
-      }
-      
-      return (endMinutes - startMinutes) / 60;
-    }
-    
-    return 0; // Couldn't parse the time format
-  };
-
-  const calculateScheduleStats = useCallback(async () => {
-    try {
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth(); // Keep 0-indexed for API consistency
-      const currentYear = currentDate.getFullYear();
-      
-      // Calculate total WEEKDAYS in the entire month (excluding weekends)
-      const today = currentDate.getDate();
-      const currentHour = currentDate.getHours();
-      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-      
-      let totalMonthSlots = 0;
-      let remainingPossibleSlots = 0;
-      
-      for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(currentYear, currentMonth, day);
-        const dayOfWeek = date.getDay();
-        // Skip weekends (0 = Sunday, 6 = Saturday)
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          // Each weekday has 4 slots (2 morning + 2 afternoon)
-          totalMonthSlots += 4;
-
-          // Calculate remaining slots from current time
-          if (day > today) {
-            // Future days get all 4 slots
-            remainingPossibleSlots += 4;
-          } else if (day === today) {
-            // For today, only count shifts that haven't started yet
-            const morningStartHour = getShiftStartHour(date, 'morning');
-            const afternoonStartHour = getShiftStartHour(date, 'afternoon');
-            if (currentHour < morningStartHour) {
-              remainingPossibleSlots += 4; // Both morning and afternoon shifts
-            } else if (currentHour < afternoonStartHour) {
-              remainingPossibleSlots += 2; // Only afternoon shifts (1300-2200)
-            }
-            // If current hour >= 13 (1 PM), no shifts remain for today
-          }
-        }
-      }
-      
-      const maxPossibleSlots = totalMonthSlots; // Total slots for the entire month
-      
-      // Calculating schedule statistics for current month
-      
-      // Fetch current month's schedule
-      // Fetching schedule data for current month
-      const response = await fetch(`/api/schedule?month=${currentMonth}&year=${currentYear}`);
-      if (!response.ok) {
-        // Failed to fetch schedule data, using fallback statistics
-        // If no schedule exists, show all slots as available
-        const fallbackStats = {
-          totalSlots: maxPossibleSlots,
-          filledSlots: 0,
-          availableSlots: maxPossibleSlots,
-          remainingSlots: remainingPossibleSlots,
-          thisMonthUsers: 0,
-          totalHoursWorked: 0,
-          totalHoursUncovered: maxPossibleSlots * 8, // Assuming 8 hours per slot
-        };
-        // Using fallback statistics due to API error
-        setScheduleStats(fallbackStats);
-        return;
-      }
-      
-      const data = await response.json();
-      // The API returns the document data directly if it exists, or { schedule: [] } if not
-      const schedule = data.schedule || data || [];
-      
-      // Processing fetched schedule data
-      
-      // Ensure schedule is an array and check if empty
-      if (!Array.isArray(schedule) || schedule.length === 0) {
-        const emptyScheduleStats = {
-          totalSlots: maxPossibleSlots,
-          filledSlots: 0,
-          availableSlots: maxPossibleSlots,
-          remainingSlots: remainingPossibleSlots,
-          thisMonthUsers: 0,
-          totalHoursWorked: 0,
-          totalHoursUncovered: maxPossibleSlots * 8, // Assuming 8 hours per slot
-        };
-        // No schedule data found, using empty schedule statistics
-        setScheduleStats(emptyScheduleStats);
-        return;
-      }
-      
-      // Calculate actual statistics from existing schedule
-      let filledSlots = 0;
-      let remainingFilledSlots = 0;
-      let totalHoursWorked = 0;
-      let totalHoursUncovered = 0;
-      const uniqueOfficers = new Set<string>();
-      
-      schedule.forEach((day: { 
-        id: string; 
-        date: Date | string; 
-        morningSlot?: { 
-          officers?: Array<{ name: string; customHours?: string }>; 
-          time?: string;
-        }; 
-        afternoonSlot?: { 
-          officers?: Array<{ name: string; customHours?: string }>; 
-          time?: string;
-        } 
-      }) => {
-        // Count ALL days in the month for statistics
-        let dayDate;
-        
-        if (day.date instanceof Date) {
-          dayDate = day.date;
-        } else if (typeof day.date === 'string') {
-          dayDate = new Date(day.date);
-        } else {
-          // Skip invalid dates
-          return;
-        }
-        
-        // Skip weekends
-        const dayOfWeek = dayDate.getDay();
-        if (dayOfWeek === 0 || dayOfWeek === 6) {
-          return;
-        }
-        
-        // Processing schedule day for statistics calculation
-        {
-          const morningOfficers = day.morningSlot?.officers || [];
-          const afternoonOfficers = day.afternoonSlot?.officers || [];
-          const morningTime = getShiftTimeOrDefault(dayDate, 'morning', day.morningSlot?.time);
-          const afternoonTime = getShiftTimeOrDefault(dayDate, 'afternoon', day.afternoonSlot?.time);
-          const maxMorning = 2; // Now we check hourly limits instead
-          const maxAfternoon = 2; // Now we check hourly limits instead
-
-          // Count all filled slots for the entire month
-          filledSlots += morningOfficers.length + afternoonOfficers.length;
-
-          // Count remaining filled slots (from current time onwards)
-          const dayOfMonth = dayDate.getDate();
-          if (dayOfMonth > today) {
-            // Future days - count all filled slots
-            remainingFilledSlots += morningOfficers.length + afternoonOfficers.length;
-          } else if (dayOfMonth === today) {
-            // Today - only count shifts that haven't started yet
-            const morningStartHour = getShiftStartHour(dayDate, 'morning', day.morningSlot?.time);
-            const afternoonStartHour = getShiftStartHour(dayDate, 'afternoon', day.afternoonSlot?.time);
-            if (currentHour < morningStartHour) {
-              // Both shifts are in the future
-              remainingFilledSlots += morningOfficers.length + afternoonOfficers.length;
-            } else if (currentHour < afternoonStartHour) {
-              // Only afternoon shift is in the future
-              remainingFilledSlots += afternoonOfficers.length;
-            }
-            // If current hour >= 13, no shifts remain for today
-          }
-            
-          // Calculate hours for morning shift
-          morningOfficers.forEach(officer => {
-            const hours = calculateHoursFromTimeString(officer.customHours || morningTime);
-            totalHoursWorked += hours;
-          });
-          
-          // Calculate uncovered hours for morning
-          const uncoveredMorning = maxMorning - morningOfficers.length;
-          if (uncoveredMorning > 0) {
-            totalHoursUncovered += uncoveredMorning * calculateHoursFromTimeString(morningTime);
-          }
-          
-          // Calculate hours for afternoon shift
-          afternoonOfficers.forEach(officer => {
-            const hours = calculateHoursFromTimeString(officer.customHours || afternoonTime);
-            totalHoursWorked += hours;
-          });
-          
-          // Calculate uncovered hours for afternoon
-          const uncoveredAfternoon = maxAfternoon - afternoonOfficers.length;
-          if (uncoveredAfternoon > 0) {
-            totalHoursUncovered += uncoveredAfternoon * calculateHoursFromTimeString(afternoonTime);
-          }
-          
-          // Track unique officers (for all slots, regardless of time)
-          [...morningOfficers, ...afternoonOfficers].forEach((officer: { name: string } | string) => {
-            if (officer && typeof officer === 'object' && officer.name) {
-              uniqueOfficers.add(officer.name);
-            } else if (officer && typeof officer === 'string') {
-              uniqueOfficers.add(officer);
-            }
-          });
-        }
-      });
-      
-      const availableSlots = maxPossibleSlots - filledSlots;
-      const remainingAvailableSlots = remainingPossibleSlots - remainingFilledSlots;
-      
-      const stats = {
-        totalSlots: maxPossibleSlots,
-        filledSlots,
-        availableSlots,
-        remainingSlots: remainingAvailableSlots, // Slots remaining from current time
-        thisMonthUsers: uniqueOfficers.size,
-        totalHoursWorked,
-        totalHoursUncovered,
-      };
-      
-      // Schedule statistics calculated successfully
-      setScheduleStats(stats);
-    } catch (error) {
-      console.error('Error calculating schedule stats:', error);
-      // Fallback: calculate based on total weekdays in current month
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth(); // 0-indexed
-      const currentYear = currentDate.getFullYear();
-      const today = currentDate.getDate();
-      const currentHour = currentDate.getHours();
-      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-      
-      let totalMonthSlots = 0;
-      let remainingPossibleSlots = 0;
-      
-      for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(currentYear, currentMonth, day);
-        const dayOfWeek = date.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          // Each weekday has 4 slots
-          totalMonthSlots += 4;
-
-          // Calculate remaining slots
-          if (day > today) {
-            remainingPossibleSlots += 4;
-          } else if (day === today) {
-            const morningStartHour = getShiftStartHour(date, 'morning');
-            const afternoonStartHour = getShiftStartHour(date, 'afternoon');
-            if (currentHour < morningStartHour) {
-              remainingPossibleSlots += 4;
-            } else if (currentHour < afternoonStartHour) {
-              remainingPossibleSlots += 2;
-            }
-          }
-        }
-      }
-      
-      const maxPossibleSlots = totalMonthSlots;
-      
-      setScheduleStats({
-        totalSlots: maxPossibleSlots,
-        filledSlots: 0,
-        availableSlots: maxPossibleSlots,
-        remainingSlots: remainingPossibleSlots,
-        thisMonthUsers: 0,
-        totalHoursWorked: 0,
-        totalHoursUncovered: maxPossibleSlots * 8.5, // Average of 8 and 9 hours per slot
-      });
-    }
-  }, []);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
