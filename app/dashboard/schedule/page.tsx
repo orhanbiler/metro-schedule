@@ -13,7 +13,7 @@ import { HoursDialog } from '@/components/schedule/hours-dialog';
 import { AdminAssignDialog } from '@/components/schedule/admin-assign-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Download, Trash2, Plus, Calendar, DollarSign } from 'lucide-react';
+import { Download, Trash2, Plus, Calendar, DollarSign, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatOfficerName, formatOfficerNameForDisplay, extractRankFromOfficerName, calculateOfficerPayRate, cn } from '@/lib/utils';
 import { ScheduleSkeleton } from '@/components/schedule/schedule-skeleton';
@@ -1767,6 +1767,212 @@ export default function SchedulePage() {
     }
   };
 
+  const generateFullSchedulePDF = async () => {
+    if (!schedule || schedule.length === 0) {
+      toast.error('No schedule data available to export. Please wait for the schedule to load.');
+      return;
+    }
+
+    const toastId = toast.loading('Generating full schedule PDF...');
+
+    try {
+      const jsPDF = (await import('jspdf')).default;
+      const autoTable = (await import('jspdf-autotable')).default;
+
+      const doc = new jsPDF();
+
+      const logoImg = new Image();
+      logoImg.src = '/logo-cool.png';
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+      });
+
+      const logoWidth = 30;
+      const logoHeight = 30;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      doc.addImage(logoImg, 'PNG', 20, 15, logoWidth, logoHeight);
+
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CHEVERLY POLICE DEPARTMENT', 60, 25);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Metro Full Schedule', 60, 35);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${monthNames[selectedMonth]} ${selectedYear}`, 60, 45);
+
+      const formatSlotTime = (time: string) =>
+        `${time.slice(0, 2)}:${time.slice(2, 4)}-${time.slice(5, 7)}:${time.slice(7, 9)}`;
+
+      const tableData: Array<[string, string, string, string]> = [];
+      let morningFilled = 0;
+      let afternoonFilled = 0;
+      let morningUnfilled = 0;
+      let afternoonUnfilled = 0;
+
+      schedule.forEach(slot => {
+        const dayLabel = `${slot.dayName} ${formatDate(slot.date)}`;
+
+        const morningOfficers = slot.morningSlot.officers;
+        const morningTime = formatSlotTime(slot.morningSlot.time);
+        if (morningOfficers.length > 0) {
+          morningOfficers.forEach((officer, idx) => {
+            const displayTimeStr = officer.customHours || morningTime;
+            tableData.push([
+              idx === 0 ? dayLabel : '',
+              'Morning',
+              displayTimeStr,
+              officer.name
+            ]);
+          });
+          morningFilled += 1;
+        } else {
+          tableData.push([dayLabel, 'Morning', morningTime, 'UNFILLED']);
+          morningUnfilled += 1;
+        }
+
+        const afternoonOfficers = slot.afternoonSlot.officers;
+        const afternoonTime = formatSlotTime(slot.afternoonSlot.time);
+        if (afternoonOfficers.length > 0) {
+          afternoonOfficers.forEach((officer) => {
+            const displayTimeStr = officer.customHours || afternoonTime;
+            tableData.push([
+              '',
+              'Afternoon',
+              displayTimeStr,
+              officer.name
+            ]);
+          });
+          afternoonFilled += 1;
+        } else {
+          tableData.push(['', 'Afternoon', afternoonTime, 'UNFILLED']);
+          afternoonUnfilled += 1;
+        }
+      });
+
+      doc.setLineWidth(0.5);
+      doc.line(20, 55, pageWidth - 20, 55);
+
+      autoTable(doc, {
+        head: [['DATE', 'SHIFT', 'TIME', 'OFFICER ASSIGNMENT']],
+        body: tableData,
+        startY: 60,
+        margin: { left: 15, right: 15 },
+        styles: {
+          fontSize: 7,
+          cellPadding: 1.5,
+          minCellHeight: 6,
+          lineWidth: 0.1,
+          lineColor: [200, 200, 200],
+          font: 'helvetica',
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+        },
+        headStyles: {
+          fillColor: [25, 35, 120],
+          textColor: 255,
+          fontStyle: 'bold',
+          fontSize: 8,
+          halign: 'center',
+          minCellHeight: 8,
+          cellPadding: 2,
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+        },
+        columnStyles: {
+          0: { cellWidth: 45, halign: 'left', fontStyle: 'bold' },
+          1: { cellWidth: 25, halign: 'center' },
+          2: { cellWidth: 35, halign: 'center' },
+          3: { cellWidth: 'auto', halign: 'left' },
+        },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 3 && data.cell.raw === 'UNFILLED') {
+            data.cell.styles.textColor = [200, 30, 30];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+        tableLineColor: [180, 180, 180],
+        tableLineWidth: 0.15,
+        rowPageBreak: 'avoid',
+      });
+
+      // @ts-expect-error jspdf-autotable adds lastAutoTable property
+      const finalY = doc.lastAutoTable?.finalY || 180;
+      const summaryY = finalY + 15;
+
+      let currentY: number;
+      if (summaryY > 240) {
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Coverage Summary', 20, 20);
+        currentY = 35;
+      } else {
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Coverage Summary', 20, summaryY);
+        currentY = summaryY + 10;
+      }
+
+      const totalMorning = morningFilled + morningUnfilled;
+      const totalAfternoon = afternoonFilled + afternoonUnfilled;
+      const totalSlots = totalMorning + totalAfternoon;
+      const totalFilled = morningFilled + afternoonFilled;
+      const totalUnfilled = morningUnfilled + afternoonUnfilled;
+      const fillRate = totalSlots > 0 ? ((totalFilled / totalSlots) * 100).toFixed(1) : '0.0';
+
+      autoTable(doc, {
+        head: [['SHIFT', 'FILLED', 'UNFILLED', 'TOTAL']],
+        body: [
+          ['Morning', `${morningFilled}`, `${morningUnfilled}`, `${totalMorning}`],
+          ['Afternoon', `${afternoonFilled}`, `${afternoonUnfilled}`, `${totalAfternoon}`],
+        ],
+        foot: [['TOTAL', `${totalFilled}`, `${totalUnfilled}`, `${totalSlots}`]],
+        startY: currentY,
+        margin: { left: 15, right: 15 },
+        styles: {
+          fontSize: 9,
+          cellPadding: 2,
+          font: 'helvetica',
+        },
+        headStyles: {
+          fillColor: [25, 35, 120],
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'center',
+        },
+        columnStyles: {
+          0: { cellWidth: 40, halign: 'left', fontStyle: 'bold' },
+          1: { cellWidth: 35, halign: 'center' },
+          2: { cellWidth: 35, halign: 'center' },
+          3: { cellWidth: 35, halign: 'center' },
+        },
+        footStyles: {
+          fillColor: [240, 240, 240],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+        },
+      });
+
+      // @ts-expect-error jspdf-autotable adds lastAutoTable property
+      const summaryTableY = doc.lastAutoTable?.finalY || currentY + 30;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Overall Fill Rate: ${fillRate}%`, 20, summaryTableY + 10);
+
+      doc.save(`metro-full-schedule-${monthNames[selectedMonth].toLowerCase()}-${selectedYear}.pdf`);
+      toast.dismiss(toastId);
+      toast.success('Full schedule PDF exported successfully!');
+    } catch (error) {
+      console.error('Full schedule PDF generation error:', error);
+      toast.dismiss(toastId);
+      toast.error('Failed to generate full schedule PDF. Please try again.');
+    }
+  };
+
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -1857,6 +2063,16 @@ export default function SchedulePage() {
                 >
                   <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span>Billable PDF</span>
+                </Button>
+                <Button
+                  onClick={generateFullSchedulePDF}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center justify-center gap-2 text-xs sm:text-sm"
+                  disabled={loading}
+                >
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span>Full Schedule</span>
                 </Button>
               </div>
             )}
