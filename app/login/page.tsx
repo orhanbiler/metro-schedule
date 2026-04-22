@@ -89,34 +89,21 @@ export default function LoginPage() {
         throw new Error('Authentication not available');
       }
       
-      // Authenticate with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
+      const token = await firebaseUser.getIdToken();
 
-      // Get user data from Firestore using sync API
-      const response = await fetch('/api/auth/sync-user', {
+      // Set HttpOnly session cookie server-side (the AuthProvider will also
+      // do this on auth-state-change, but we do it here to ensure the cookie
+      // is present before the redirect).
+      await fetch('/api/auth/set-cookie', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: firebaseUser.uid }),
+        body: JSON.stringify({ token }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to load user data');
-      }
-
-      const userData = await response.json();
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Set auth cookie for middleware
-      const token = await firebaseUser.getIdToken();
-      document.cookie = `authToken=${token}; path=/; max-age=3600; SameSite=Lax`;
-      
       toast.success('Login successful!');
-      
-      // Use window.location for more reliable redirect
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 100);
+      window.location.href = '/dashboard';
     } catch (err: unknown) {
       const firebaseError = err as { code?: string };
       if (firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/wrong-password') {

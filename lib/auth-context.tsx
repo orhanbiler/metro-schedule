@@ -1,8 +1,14 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, User as FirebaseUser } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  signOut,
+  setPersistence,
+  browserLocalPersistence,
+  User as FirebaseUser,
+} from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 export interface User {
@@ -19,9 +25,41 @@ interface AuthContextType {
   loading: boolean;
   firebaseUser: FirebaseUser | null;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+async function syncSessionCookie(token: string): Promise<void> {
+  await fetch('/api/auth/set-cookie', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+    credentials: 'include',
+  });
+}
+
+async function clearSessionCookie(): Promise<void> {
+  await fetch('/api/auth/set-cookie', {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+}
+
+async function fetchUserProfile(firebaseUser: FirebaseUser): Promise<User | null> {
+  const token = await firebaseUser.getIdToken();
+  const response = await fetch('/api/auth/sync-user', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ userId: firebaseUser.uid }),
+  });
+
+  if (!response.ok) return null;
+  return response.json();
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -29,159 +67,81 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const refreshUser = useCallback(async () => {
+    if (!auth?.currentUser) return;
+    const profile = await fetchUserProfile(auth.currentUser);
+    if (profile) setUser(profile);
+  }, []);
+
   useEffect(() => {
-    // Check if auth is available
     if (!auth) {
       setLoading(false);
       return;
     }
-    
-    // Set persistence to LOCAL (survives browser restarts)
+
     setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-    // Set a timeout to prevent infinite loading
-    const timeout = setTimeout(() => {
-      console.warn('Auth check timeout - forcing loading to false');
-      setLoading(false);
-    }, 10000); // 10 second timeout for auth context
+    const timeout = setTimeout(() => setLoading(false), 10000);
 
-    // Listen to Firebase auth state changes
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      clearTimeout(timeout);
-      if (firebaseUser) {
-        setFirebaseUser(firebaseUser);
-        
-        // Try to get user data from localStorage first for immediate UI update
-        const cachedUser = localStorage.getItem('user');
-        if (cachedUser) {
-          const userData = JSON.parse(cachedUser);
-          // Verify the cached user matches the Firebase user
-          // Check both id and firebaseAuthUID for compatibility
-          if (userData.id === firebaseUser.uid || userData.firebaseAuthUID === firebaseUser.uid) {
-            setUser(userData);
-          }
-        }
-
-        // Get fresh token immediately
-        const token = await firebaseUser.getIdToken();
-        
-        // Set auth cookies immediately to ensure they're available for any API calls
-        document.cookie = `authToken=${token}; path=/; max-age=3600; SameSite=Lax`;
-        document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
-
-        // Then sync with Firestore to get latest data
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (fbUser) => {
+        clearTimeout(timeout);
         try {
-          const response = await fetch('/api/auth/sync-user', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}` // Include token in header
-            },
-            body: JSON.stringify({ userId: firebaseUser.uid }),
-          });
+          if (fbUser) {
+            setFirebaseUser(fbUser);
+            const token = await fbUser.getIdToken();
+            await syncSessionCookie(token);
 
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-            localStorage.setItem('user', JSON.stringify(userData));
-          } else if (response.status === 404) {
-            console.error('Sync-user endpoint not found. Using cached user data.');
-            // Try to use cached user data if available
-            const cachedUserStr = localStorage.getItem('user');
-            if (cachedUserStr) {
-              try {
-                const cachedUser = JSON.parse(cachedUserStr);
-                if (cachedUser.id === firebaseUser.uid) {
-                  setUser(cachedUser);
-                  return; // Exit early if we have valid cached data
-                }
-              } catch (e) {
-                console.error('Failed to parse cached user data:', e);
-              }
+            const profile = await fetchUserProfile(fbUser);
+            if (profile) {
+              setUser(profile);
+            } else {
+              // Firestore profile is missing — don't silently downgrade the
+              // user (could lose admin role). Force sign-out.
+              console.error('User profile missing in Firestore for uid', fbUser.uid);
+              await signOut(auth);
+              await clearSessionCookie();
+              setUser(null);
+              setFirebaseUser(null);
             }
-            // Fallback to basic user info from Firebase
-            const basicUser = {
-              id: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
-              role: 'user' as const,
-            };
-            setUser(basicUser);
-            localStorage.setItem('user', JSON.stringify(basicUser));
+          } else {
+            setFirebaseUser(null);
+            setUser(null);
+            await clearSessionCookie();
           }
         } catch (error) {
-          console.error('Failed to sync user data:', error);
-          // Try to use cached user data if available
-          const cachedUserStr = localStorage.getItem('user');
-          if (cachedUserStr) {
-            try {
-              const cachedUser = JSON.parse(cachedUserStr);
-              if (cachedUser.id === firebaseUser.uid) {
-                setUser(cachedUser);
-                return; // Exit early if we have valid cached data
-              }
-            } catch (e) {
-              console.error('Failed to parse cached user data:', e);
-            }
-          }
-          // Fallback to basic user info from Firebase
-          const basicUser = {
-            id: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
-            role: 'user' as const,
-          };
-          setUser(basicUser);
-          localStorage.setItem('user', JSON.stringify(basicUser));
+          console.error('Auth state handler error:', error);
+        } finally {
+          setLoading(false);
         }
-      } else {
-        // User is logged out
-        setFirebaseUser(null);
-        setUser(null);
-        localStorage.removeItem('user');
-        // Clear all auth cookies
-        document.cookie = 'authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      },
+      (error) => {
+        console.error('Auth state listener error:', error);
+        clearTimeout(timeout);
+        setLoading(false);
       }
-      
-      setLoading(false);
-    }, (error) => {
-      console.error('Auth state listener error:', error);
-      clearTimeout(timeout);
-      setLoading(false);
-    });
+    );
 
     return () => {
       unsubscribe();
       clearTimeout(timeout);
     };
-  }, [router]);
+  }, []);
 
   const logout = async () => {
     try {
-      // Clear local storage first
-      localStorage.removeItem('user');
-      
-      // Clear all auth cookies
-      document.cookie = 'authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      
-      // Sign out from Firebase if available
-      if (auth) {
-        await signOut(auth);
-      }
-      
-      // Force redirect to login immediately
-      router.push('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Even if there's an error, still try to redirect
+      if (auth) await signOut(auth);
+    } finally {
+      await clearSessionCookie();
+      setUser(null);
+      setFirebaseUser(null);
       router.push('/login');
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, firebaseUser, logout }}>
+    <AuthContext.Provider value={{ user, loading, firebaseUser, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

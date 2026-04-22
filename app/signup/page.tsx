@@ -142,51 +142,35 @@ export default function SignupPage() {
         throw new Error('Authentication not available');
       }
       
-      // Create user in Firebase Authentication first
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
-
-      // Force token refresh to ensure it's ready
       const token = await firebaseUser.getIdToken(true);
-      
-      // Set auth cookies explicitly before any API calls
-      document.cookie = `authToken=${token}; path=/; max-age=3600; SameSite=Lax`;
-      document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
 
-      // Then create user document in Firestore via API
+      // Set HttpOnly session cookie server-side
+      await fetch('/api/auth/set-cookie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+
+      // Create the user's Firestore profile. The server re-validates the
+      // token and reads the email/uid from it — we don't send the password.
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // Include token in header
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ 
-          email, 
-          password, 
-          name, 
-          idNumber, 
-          rank,
-          firebaseAuthUID: firebaseUser.uid 
-        }),
+        body: JSON.stringify({ name, idNumber, rank }),
       });
 
       if (!response.ok) {
-        // If Firestore creation fails, delete the Firebase Auth user
         await firebaseUser.delete();
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Signup failed');
       }
 
-      const userData = await response.json();
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Force auth state update by triggering a small delay
-      // This ensures the auth context picks up the new user
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       toast.success('Account created successfully!');
-      
-      // Explicitly redirect to dashboard
       router.push('/dashboard');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Signup failed');

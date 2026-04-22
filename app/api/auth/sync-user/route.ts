@@ -1,40 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { validateApiAuth } from '@/lib/api-auth';
+import { extractToken, validateToken } from '@/lib/auth-validation';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await request.json();
+    const token = extractToken(
+      request.cookies.get('authToken')?.value || request.cookies.get('__session')?.value,
+      request.headers.get('authorization') || undefined
+    );
 
-    if (!userId) {
+    const decoded = await validateToken(token);
+    if (!decoded) {
       return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
     }
 
-    // Try to validate the requesting user
-    // During initial signup, the user might not be fully authenticated yet
-    const requestingUser = await validateApiAuth(request);
-    
-    // If we have a requesting user, verify they can sync this data
-    if (requestingUser) {
-      // Users can only sync their own data unless they're an admin
-      if (requestingUser.uid !== userId && requestingUser.role !== 'admin') {
+    const body = await request.json().catch(() => ({}));
+    const requestedId: string = body.userId || decoded.uid;
+
+    // Users may only read their own profile. Admin access is granted
+    // after reading the caller's own record.
+    if (requestedId !== decoded.uid) {
+      const callerDoc = await adminDb().collection('users').doc(decoded.uid).get();
+      if (callerDoc.data()?.role !== 'admin') {
         return NextResponse.json(
           { error: 'Forbidden - Cannot sync other users data' },
           { status: 403 }
         );
       }
     }
-    // If no requestingUser (during initial sync), we'll allow syncing if the user exists in DB
 
-    // Sync user data from Firestore
-
-    // Get user document from Firestore using Admin SDK
-    const userDocRef = adminDb().collection('users').doc(userId);
-    const userDoc = await userDocRef.get();
-
+    const userDoc = await adminDb().collection('users').doc(requestedId).get();
     if (!userDoc.exists) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -43,10 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userData = userDoc.data();
-    // User data retrieved successfully
-
-    // Return updated user data without password
-    const syncedUser = {
+    return NextResponse.json({
       id: userDoc.id,
       email: userData?.email,
       name: userData?.name,
@@ -55,10 +50,7 @@ export async function POST(request: NextRequest) {
       idNumber: userData?.idNumber,
       firebaseAuthUID: userData?.firebaseAuthUID,
       updatedAt: userData?.updatedAt,
-    };
-
-    return NextResponse.json(syncedUser);
-
+    });
   } catch (error) {
     console.error('User sync error:', error);
     return NextResponse.json(

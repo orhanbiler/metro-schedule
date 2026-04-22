@@ -1,100 +1,90 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, adminAuth } from '@/lib/firebase-admin';
+import { extractToken, validateToken } from '@/lib/auth-validation';
 
 const SETTINGS_DOC_ID = 'app-settings';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if signup is disabled
     const settingsDoc = await adminDb().collection('settings').doc(SETTINGS_DOC_ID).get();
-    if (settingsDoc.exists) {
-      const settings = settingsDoc.data();
-      if (settings?.signupDisabled) {
-        return NextResponse.json(
-          { error: 'Sign-up is currently disabled. Please contact an administrator.' },
-          { status: 403 }
-        );
-      }
+    if (settingsDoc.exists && settingsDoc.data()?.signupDisabled) {
+      return NextResponse.json(
+        { error: 'Sign-up is currently disabled. Please contact an administrator.' },
+        { status: 403 }
+      );
     }
 
-    const { email, password, name, idNumber, rank, firebaseAuthUID } = await request.json();
+    const token = extractToken(
+      request.cookies.get('authToken')?.value || request.cookies.get('__session')?.value,
+      request.headers.get('authorization') || undefined
+    );
 
-    // Processing user registration request
-
-    if (!email || !password || !name || !idNumber || !rank) {
+    const decoded = await validateToken(token);
+    if (!decoded) {
       return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: 'Invalid or missing authentication token' },
+        { status: 401 }
+      );
+    }
+
+    const { name, idNumber, rank } = await request.json();
+    if (!name || !idNumber || !rank) {
+      return NextResponse.json(
+        { error: 'Name, ID number, and rank are required' },
         { status: 400 }
       );
     }
 
-    if (password.length < 6) {
+    const email = decoded.email;
+    if (!email) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
+        { error: 'Authenticated user has no email on record' },
         { status: 400 }
       );
     }
 
-    // Check if user already exists in Firestore using Admin SDK
     const usersRef = adminDb().collection('users');
-    const existingUser = await usersRef.where('email', '==', email).get();
 
-    if (!existingUser.empty) {
-      // User with this email already exists
+    // Prevent duplicate profile for the same auth account
+    const existing = await usersRef.doc(decoded.uid).get();
+    if (existing.exists) {
       return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 400 }
+        { error: 'User profile already exists' },
+        { status: 409 }
       );
     }
 
-    // Create user document in Firestore using Admin SDK
+    // Guard against email reuse under a different UID
+    const emailMatch = await usersRef.where('email', '==', email).get();
+    if (!emailMatch.empty) {
+      // Remove the Firebase Auth account to keep state consistent
+      await adminAuth().deleteUser(decoded.uid).catch(() => undefined);
+      return NextResponse.json(
+        { error: 'A profile with this email already exists' },
+        { status: 409 }
+      );
+    }
+
     const userData = {
       email,
       name,
       idNumber,
       rank,
-      role: 'user',
-      firebaseAuthUID: firebaseAuthUID || null,
+      role: 'user' as const,
+      firebaseAuthUID: decoded.uid,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    let docRef;
-    let userId;
-    
-    if (firebaseAuthUID) {
-      // Use Firebase Auth UID as document ID for consistency
-      docRef = usersRef.doc(firebaseAuthUID);
-      await docRef.set(userData);
-      userId = firebaseAuthUID;
-      // Created user with Firebase Auth UID
-    } else {
-      // Fallback to auto-generated document ID
-      docRef = await usersRef.add(userData);
-      userId = docRef.id;
-      // Created user with auto-generated ID
-    }
+    await usersRef.doc(decoded.uid).set(userData);
 
-    // Return user data without password
-    const newUser = {
-      id: userId,
-      email,
-      name,
-      idNumber,
-      rank,
-      role: 'user' as const,
-      firebaseAuthUID,
-    };
-
-    return NextResponse.json(newUser);
-
+    return NextResponse.json({ id: decoded.uid, ...userData });
   } catch (error) {
     console.error('Signup error:', error);
-    
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to create user account',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
