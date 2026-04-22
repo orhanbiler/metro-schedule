@@ -29,20 +29,16 @@ if (hasValidConfig && (typeof window !== 'undefined' || process.env.NEXT_PUBLIC_
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     auth = getAuth(app);
     db = getFirestore(app);
-    
+
     if (typeof window !== 'undefined' && app) {
       analytics = isSupported().then(yes => yes && app ? getAnalytics(app) : null);
     }
-    
-    console.log('Firebase initialized successfully');
   } catch (error) {
     console.error('Failed to initialize Firebase:', error);
     app = null;
     auth = null;
     db = null;
   }
-} else {
-  console.warn('Firebase not initialized - missing or invalid configuration');
 }
 
 export { app as default, auth, db, analytics };
