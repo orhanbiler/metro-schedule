@@ -12,6 +12,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
+const ALLOWED_EMAIL_DOMAIN = 'cheverlypolice.org';
+
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -125,6 +127,12 @@ export default function SignupPage() {
       // Continue if we can't check - API will also validate
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail.endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) {
+      toast.error('Please use your department-issued work email to sign up.');
+      return;
+    }
+
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -143,7 +151,7 @@ export default function SignupPage() {
       }
       
       // Create user in Firebase Authentication first
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
       const firebaseUser = userCredential.user;
 
       // Force token refresh to ensure it's ready
@@ -160,13 +168,13 @@ export default function SignupPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}` // Include token in header
         },
-        body: JSON.stringify({ 
-          email, 
-          password, 
-          name, 
-          idNumber, 
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password,
+          name,
+          idNumber,
           rank,
-          firebaseAuthUID: firebaseUser.uid 
+          firebaseAuthUID: firebaseUser.uid
         }),
       });
 

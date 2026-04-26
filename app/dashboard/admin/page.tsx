@@ -27,6 +27,24 @@ interface User {
   role: 'admin' | 'user';
   createdAt: string;
   updatedAt?: string;
+  lastSeenAt?: string | null;
+}
+
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+
+function formatLastSeen(iso: string | null | undefined): { label: string; online: boolean } {
+  if (!iso) return { label: 'Never', online: false };
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return { label: 'Never', online: false };
+  const diff = Date.now() - then;
+  if (diff < ONLINE_THRESHOLD_MS) return { label: 'Online now', online: true };
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 60) return { label: `${minutes}m ago`, online: false };
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return { label: `${hours}h ago`, online: false };
+  const days = Math.floor(hours / 24);
+  if (days < 30) return { label: `${days}d ago`, online: false };
+  return { label: new Date(then).toLocaleDateString(), online: false };
 }
 
 export default function AdminPage() {
@@ -706,9 +724,24 @@ export default function AdminPage() {
       {/* Users Management */}
       <Card>
         <CardHeader>
-          <CardTitle>User Management</CardTitle>
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle>User Management</CardTitle>
+            {!loading && (
+              <Badge variant="secondary" className="whitespace-nowrap">
+                {users.length} {users.length === 1 ? 'user' : 'users'}
+              </Badge>
+            )}
+          </div>
           <CardDescription>
             View and manage all system users
+            {!loading && users.length > 0 && (
+              <>
+                {' '}— {users.filter(u => u.role === 'admin').length} admin
+                {users.filter(u => u.role === 'admin').length === 1 ? '' : 's'},{' '}
+                {users.filter(u => u.role === 'user').length} officer
+                {users.filter(u => u.role === 'user').length === 1 ? '' : 's'}
+              </>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
@@ -722,7 +755,7 @@ export default function AdminPage() {
                     <tr className="bg-navy-900 text-white">
                       <th className="text-left p-3 font-semibold whitespace-nowrap">User</th>
                       <th className="text-left p-3 font-semibold whitespace-nowrap">Role</th>
-                      <th className="text-left p-3 font-semibold whitespace-nowrap">Status</th>
+                      <th className="text-left p-3 font-semibold whitespace-nowrap">Last online</th>
                       <th className="text-left p-3 font-semibold whitespace-nowrap">Joined</th>
                     </tr>
                   </thead>
@@ -753,10 +786,15 @@ export default function AdminPage() {
                             </Badge>
                           </td>
                           <td className="p-3 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              <span className="text-sm">Active</span>
-                            </div>
+                            {(() => {
+                              const seen = formatLastSeen(user.lastSeenAt);
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${seen.online ? 'bg-green-500' : 'bg-muted-foreground/40'}`}></div>
+                                  <span className="text-sm">{seen.label}</span>
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="p-3 whitespace-nowrap">
                             <div className="text-sm">

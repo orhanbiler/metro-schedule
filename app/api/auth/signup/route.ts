@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 
 const SETTINGS_DOC_ID = 'app-settings';
+const ALLOWED_EMAIL_DOMAIN = 'cheverlypolice.org';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { email, password, name, idNumber, rank, firebaseAuthUID } = await request.json();
+    const body = await request.json();
+    const { password, name, idNumber, rank, firebaseAuthUID } = body;
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
 
     // Processing user registration request
 
@@ -25,6 +28,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'All fields are required' },
         { status: 400 }
+      );
+    }
+
+    if (!email.endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) {
+      return NextResponse.json(
+        { error: 'Please use your department-issued work email to sign up.' },
+        { status: 403 }
       );
     }
 

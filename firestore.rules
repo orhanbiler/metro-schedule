@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // A signed-in Firebase Auth user is only "real" if they also have a
+    // /users/{uid} document. This blocks bot accounts created directly via
+    // the public Firebase Auth REST API (they have no Firestore user doc).
+    function isSignedInUser() {
+      return request.auth != null
+          && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return isSignedInUser()
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // A user can read their own profile; admins can read anyone.
+      allow read: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+
+      // Self-update: identity / privilege fields must stay unchanged.
+      // Anything else (e.g. preferences) the user can edit.
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.role == resource.data.role
+                    && request.resource.data.email == resource.data.email
+                    && request.resource.data.idNumber == resource.data.idNumber
+                    && request.resource.data.rank == resource.data.rank
+                    && request.resource.data.firebaseAuthUID == resource.data.firebaseAuthUID;
+
+      // Admins can update any user (including role).
+      allow update: if isAdmin();
+
+      // Admins can delete users, but not themselves.
+      allow delete: if isAdmin() && request.auth.uid != userId;
+
+      // No client-side creates. Signup goes through the server (Admin SDK),
+      // which bypasses these rules.
+    }
+
+    // Schedules collection — read-only for officers, all writes server-side.
+    match /schedules/{document=**} {
+      allow read: if isSignedInUser();
+      allow write: if false;
+    }
+
+    // Settings, changelogs, and anything else: server-only.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

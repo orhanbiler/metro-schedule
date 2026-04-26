@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         idNumber: userData.idNumber || null,
         createdAt: userData.createdAt,
         updatedAt: userData.updatedAt,
+        lastSeenAt: userData.lastSeenAt || null,
         firebaseAuthUID: userData.firebaseAuthUID || null,
       };
     });

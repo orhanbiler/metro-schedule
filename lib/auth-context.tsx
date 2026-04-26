@@ -85,7 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(userData);
             localStorage.setItem('user', JSON.stringify(userData));
           } else if (response.status === 404) {
-            console.error('Sync-user endpoint not found. Using cached user data.');
+            // Expected during signup race: Auth user exists but Firestore doc isn't written yet.
+            console.debug('User doc not yet provisioned, falling back to cached/basic info.');
             // Try to use cached user data if available
             const cachedUserStr = localStorage.getItem('user');
             if (cachedUserStr) {

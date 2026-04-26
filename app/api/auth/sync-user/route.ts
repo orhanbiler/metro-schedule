@@ -33,7 +33,16 @@ export async function POST(request: NextRequest) {
 
     // Get user document from Firestore using Admin SDK
     const userDocRef = adminDb().collection('users').doc(userId);
-    const userDoc = await userDocRef.get();
+    let userDoc = await userDocRef.get();
+
+    // Race: during signup the Auth user is created before the Firestore doc.
+    // If the requesting user is syncing themselves, poll briefly for the doc.
+    if (!userDoc.exists && requestingUser && requestingUser.uid === userId) {
+      for (let i = 0; i < 6 && !userDoc.exists; i++) {
+        await new Promise((r) => setTimeout(r, 500));
+        userDoc = await userDocRef.get();
+      }
+    }
 
     if (!userDoc.exists) {
       return NextResponse.json(
@@ -45,6 +54,18 @@ export async function POST(request: NextRequest) {
     const userData = userDoc.data();
     // User data retrieved successfully
 
+    // Bump lastSeenAt when the syncing user is the doc owner. Throttled to
+    // one write per ~5 minutes so navigation doesn't burn Firestore quota.
+    let lastSeenAt: string | undefined = userData?.lastSeenAt;
+    if (requestingUser && requestingUser.uid === userId) {
+      const now = Date.now();
+      const previous = lastSeenAt ? Date.parse(lastSeenAt) : 0;
+      if (!previous || now - previous > 5 * 60 * 1000) {
+        lastSeenAt = new Date(now).toISOString();
+        await userDocRef.update({ lastSeenAt });
+      }
+    }
+
     // Return updated user data without password
     const syncedUser = {
       id: userDoc.id,
@@ -55,6 +76,7 @@ export async function POST(request: NextRequest) {
       idNumber: userData?.idNumber,
       firebaseAuthUID: userData?.firebaseAuthUID,
       updatedAt: userData?.updatedAt,
+      lastSeenAt,
     };
 
     return NextResponse.json(syncedUser);
