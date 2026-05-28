@@ -93,10 +93,17 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
 
+      // Get the ID token first so the sync request is authenticated.
+      const token = await firebaseUser.getIdToken();
+      document.cookie = `authToken=${token}; path=/; max-age=3600; SameSite=Lax`;
+
       // Get user data from Firestore using sync API
       const response = await fetch('/api/auth/sync-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ userId: firebaseUser.uid }),
       });
 
@@ -106,10 +113,6 @@ export default function LoginPage() {
 
       const userData = await response.json();
       localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Set auth cookie for middleware
-      const token = await firebaseUser.getIdToken();
-      document.cookie = `authToken=${token}; path=/; max-age=3600; SameSite=Lax`;
       
       toast.success('Login successful!');
       
@@ -137,9 +140,9 @@ export default function LoginPage() {
   // Show loading state while checking authentication
   if (checkingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background" role="status" aria-label="Checking authentication">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" aria-hidden></div>
           <p className="mt-4 text-muted-foreground">Checking authentication...</p>
         </div>
       </div>
@@ -225,7 +228,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="officer@cheverlypd.gov"
+                  placeholder="officer@cheverlypolice.org"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"

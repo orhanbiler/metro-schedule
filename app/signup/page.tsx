@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { Eye, EyeOff, AlertTriangle, Check } from 'lucide-react';
 
 const ALLOWED_EMAIL_DOMAIN = 'cheverlypolice.org';
 
@@ -23,6 +24,8 @@ export default function SignupPage() {
   const [rank, setRank] = useState('Officer');
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
   const [signupDisabled, setSignupDisabled] = useState<boolean | null>(null); // null = checking
   const router = useRouter();
 
@@ -86,9 +89,9 @@ export default function SignupPage() {
   // Show loading while checking signup status or if signup is disabled (redirecting)
   if (signupDisabled === null || signupDisabled === true) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background" role="status" aria-label={signupDisabled === true ? 'Redirecting' : 'Loading'}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" aria-hidden></div>
           <p className="mt-4 text-muted-foreground">
             {signupDisabled === true ? 'Redirecting...' : 'Loading...'}
           </p>
@@ -206,9 +209,9 @@ export default function SignupPage() {
   // Show loading state while checking authentication
   if (checkingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background" role="status" aria-label="Checking authentication">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" aria-hidden></div>
           <p className="mt-4 text-muted-foreground">Checking authentication...</p>
         </div>
       </div>
@@ -244,7 +247,7 @@ export default function SignupPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="john@cheverlypd.gov"
+                placeholder="officer@cheverlypolice.org"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -252,25 +255,60 @@ export default function SignupPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyUp={(event) => setCapsLockOn(event.getModifierState('CapsLock'))}
+                  onKeyDown={(event) => setCapsLockOn(event.getModifierState('CapsLock'))}
+                  onBlur={() => setCapsLockOn(false)}
+                  autoComplete="new-password"
+                  required
+                  className="pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-2 flex items-center rounded-md px-2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+              {capsLockOn && (
+                <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
+                  <AlertTriangle className="h-4 w-4" />
+                  Caps Lock is on
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
                 id="confirmPassword"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
                 required
               />
+              {confirmPassword.length > 0 && (
+                password === confirmPassword ? (
+                  <div className="flex items-center gap-2 text-xs font-medium text-emerald-600">
+                    <Check className="h-4 w-4" />
+                    Passwords match
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
+                    <AlertTriangle className="h-4 w-4" />
+                    Passwords do not match
+                  </div>
+                )
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="idNumber">ID Number</Label>
