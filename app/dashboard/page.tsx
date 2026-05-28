@@ -3,7 +3,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CalendarCheck2, Clock3, Percent, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { CalendarCheck2, Clock3, Percent, Users, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -34,6 +36,10 @@ export default function DashboardPage() {
     thisMonthUsers: 0,
     nextShift: null as NextShiftInfo | null,
   });
+  // Skeleton shows on the first load only (default true, never reset to true),
+  // so live snapshot refreshes don't flash placeholders.
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState(false);
 
   useEffect(() => {
     calculateScheduleStats();
@@ -69,6 +75,7 @@ export default function DashboardPage() {
 
   const calculateScheduleStats = async () => {
     try {
+      setStatsError(false);
       const now = new Date();
       const currentMonth = now.getMonth(); // Keep 0-indexed for API consistency
       const currentYear = now.getFullYear();
@@ -106,14 +113,8 @@ export default function DashboardPage() {
       // Fetch current month's schedule
       const response = await fetch(`/api/schedule?month=${currentMonth}&year=${currentYear}`);
       if (!response.ok) {
-        // If no schedule exists, show all slots as available
-        setScheduleStats({
-          totalSlots: maxPossibleSlots,
-          filledSlots: 0,
-          availableSlots: maxPossibleSlots,
-          thisMonthUsers: 0,
-          nextShift: null,
-        });
+        // A non-OK response is a real failure (auth/server), not an empty month.
+        setStatsError(true);
         return;
       }
       
@@ -293,43 +294,9 @@ export default function DashboardPage() {
       });
     } catch (error) {
       console.error('Error calculating schedule stats:', error);
-      // Fallback: calculate based on remaining weekdays in current month
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth();
-      const currentYear = currentDate.getFullYear();
-      const today = currentDate.getDate();
-      const currentHour = currentDate.getHours();
-      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-      
-      let remainingSlots = 0;
-      for (let day = today; day <= daysInMonth; day++) {
-        const date = new Date(currentYear, currentMonth, day);
-        const dayOfWeek = date.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          const morningStartHour = getShiftStartHour(date, 'morning');
-          const afternoonStartHour = getShiftStartHour(date, 'afternoon');
-          if (day === today) {
-            // For today, only count shifts that haven't started yet
-            if (currentHour < morningStartHour) {
-              remainingSlots += 4; // Both morning and afternoon shifts
-            } else if (currentHour < afternoonStartHour) {
-              remainingSlots += 2; // Only afternoon shifts
-            }
-          } else {
-            remainingSlots += 4;
-          }
-        }
-      }
-      
-      const maxPossibleSlots = remainingSlots;
-      
-      setScheduleStats({
-        totalSlots: maxPossibleSlots,
-        filledSlots: 0,
-        availableSlots: maxPossibleSlots,
-        thisMonthUsers: 0,
-        nextShift: null,
-      });
+      setStatsError(true);
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -345,7 +312,14 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">
-            Welcome, {user?.name}
+            {user?.name ? (
+              `Welcome, ${user.name}`
+            ) : (
+              <span className="flex items-center gap-2">
+                Welcome,
+                <Skeleton className="inline-block h-6 w-32 align-middle" />
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -361,6 +335,27 @@ export default function DashboardPage() {
           <CardDescription>Live scheduling health for the rest of this month</CardDescription>
         </CardHeader>
         <CardContent>
+          {statsLoading ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-lg border bg-muted/20 p-4 space-y-3">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              ))}
+            </div>
+          ) : statsError ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/20 p-8 text-center">
+              <AlertTriangle className="h-6 w-6 text-amber-600" />
+              <p className="text-sm text-muted-foreground">
+                Couldn&apos;t load the coverage snapshot. Please try again.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => calculateScheduleStats()}>
+                Retry
+              </Button>
+            </div>
+          ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-lg border bg-muted/20 p-4">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -443,6 +438,7 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+          )}
         </CardContent>
       </Card>
 

@@ -140,9 +140,9 @@ export default function LoginPage() {
   // Show loading state while checking authentication
   if (checkingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background" role="status" aria-label="Checking authentication">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" aria-hidden></div>
           <p className="mt-4 text-muted-foreground">Checking authentication...</p>
         </div>
       </div>
@@ -228,7 +228,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="officer@cheverlypd.gov"
+                  placeholder="officer@cheverlypolice.org"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
