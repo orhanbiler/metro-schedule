@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import ProtectedRoute from '@/components/auth/protected-route';
+import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { ChangelogDialog } from '@/components/ui/changelog-dialog';
 import {
@@ -28,6 +29,10 @@ import {
   X,
   ChevronDown,
 } from 'lucide-react';
+
+// The navbar stays navy in both themes, so nav text must stay literal white;
+// theme-aware tokens would flip it dark in light mode
+const navFocusRing = 'focus-visible:ring-white/60 focus-visible:ring-offset-0';
 
 export default function DashboardLayout({
   children,
@@ -92,18 +97,20 @@ export default function DashboardLayout({
               {/* Brand */}
               <Link
                 href="/dashboard"
-                className="flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                className={cn(
+                  'flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60'
+                )}
               >
                 <Image
                   src="/logo-cool.png"
                   alt="Cheverly Police Department"
-                  width={40}
-                  height={40}
+                  width={48}
+                  height={48}
                   quality={100}
                   priority
-                  className="h-9 w-9 rounded-md object-contain md:h-10 md:w-10"
+                  className="h-11 w-11 rounded-md object-contain md:h-12 md:w-12"
                 />
-                <span className="truncate text-base font-bold text-navbar-foreground sm:text-lg">
+                <span className="truncate text-base font-bold text-white sm:text-lg">
                   <span className="hidden lg:inline">Cheverly PD Metro</span>
                   <span className="lg:hidden">Cheverly PD</span>
                 </span>
@@ -112,19 +119,20 @@ export default function DashboardLayout({
               {/* Desktop navigation */}
               <div className="hidden flex-1 items-center gap-1 md:ml-6 md:flex">
                 {primaryLinks.map((item) => (
-                  <Link
+                  <Button
                     key={item.href}
-                    href={item.href}
+                    asChild
+                    variant="ghost"
                     className={cn(
-                      'rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200',
-                      'text-navbar-foreground/75 hover:bg-white/10 hover:text-white',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60',
+                      'rounded-full px-4 text-white/75 hover:bg-white/10 hover:text-white',
+                      navFocusRing,
                       isActive(item.href) && 'bg-white/15 text-white'
                     )}
-                    aria-current={isActive(item.href) ? 'page' : undefined}
                   >
-                    {item.label}
-                  </Link>
+                    <Link href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
+                      {item.label}
+                    </Link>
+                  </Button>
                 ))}
               </div>
 
@@ -134,21 +142,22 @@ export default function DashboardLayout({
                 <ThemeToggle />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button
+                    <Button
+                      variant="ghost"
                       className={cn(
-                        'flex items-center gap-2 rounded-full p-1 pr-2 transition-colors duration-200',
-                        'hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60'
+                        'h-auto gap-2 rounded-full p-1 pr-2 text-white hover:bg-white/10 hover:text-white',
+                        navFocusRing
                       )}
                       aria-label="Account menu"
                     >
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-xs font-semibold text-white">
                         {initials}
                       </span>
-                      <span className="hidden max-w-[160px] truncate text-sm font-medium text-navbar-foreground lg:block">
+                      <span className="hidden max-w-[160px] truncate text-sm font-medium lg:block">
                         {displayName}
                       </span>
-                      <ChevronDown className="h-4 w-4 text-navbar-foreground/70" aria-hidden="true" />
-                    </button>
+                      <ChevronDown className="h-4 w-4 text-white/70" aria-hidden="true" />
+                    </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel className="font-normal">
@@ -182,11 +191,13 @@ export default function DashboardLayout({
               <div className="flex items-center gap-1 md:hidden">
                 <ChangelogDialog />
                 <ThemeToggle />
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setMenuOpen(!menuOpen)}
                   className={cn(
-                    'flex h-11 w-11 items-center justify-center rounded-full text-navbar-foreground transition-colors duration-200',
-                    'hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60'
+                    'h-11 w-11 rounded-full text-white hover:bg-white/10 hover:text-white',
+                    navFocusRing
                   )}
                   aria-label={menuOpen ? 'Close menu' : 'Open menu'}
                   aria-expanded={menuOpen}
@@ -197,7 +208,7 @@ export default function DashboardLayout({
                   ) : (
                     <Menu className="h-6 w-6" aria-hidden="true" />
                   )}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -210,21 +221,26 @@ export default function DashboardLayout({
             >
               <div className="space-y-1 px-3 pb-4 pt-3">
                 {[...primaryLinks, ...accountLinks].map((item) => (
-                  <Link
+                  <Button
                     key={item.href}
-                    href={item.href}
+                    asChild
+                    variant="ghost"
                     className={cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors duration-200',
-                      'text-navbar-foreground/80 hover:bg-white/10 hover:text-white active:bg-white/15',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60',
+                      'h-auto w-full justify-start gap-3 rounded-lg px-3 py-3 text-base font-medium',
+                      'text-white/80 hover:bg-white/10 hover:text-white active:bg-white/15',
+                      navFocusRing,
                       isActive(item.href) && 'bg-white/15 text-white'
                     )}
-                    onClick={() => setMenuOpen(false)}
-                    aria-current={isActive(item.href) ? 'page' : undefined}
                   >
-                    <item.icon className="h-5 w-5" aria-hidden="true" />
-                    {item.label}
-                  </Link>
+                    <Link
+                      href={item.href}
+                      onClick={() => setMenuOpen(false)}
+                      aria-current={isActive(item.href) ? 'page' : undefined}
+                    >
+                      <item.icon className="h-5 w-5" aria-hidden="true" />
+                      {item.label}
+                    </Link>
+                  </Button>
                 ))}
                 <div className="mt-3 border-t border-white/10 pt-3">
                   <div className="flex items-center gap-3 px-3 py-2">
@@ -234,21 +250,22 @@ export default function DashboardLayout({
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium text-white">{displayName}</div>
                       {user?.email && (
-                        <div className="truncate text-xs text-navbar-foreground/60">{user.email}</div>
+                        <div className="truncate text-xs text-white/60">{user.email}</div>
                       )}
                     </div>
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={handleLogout}
                     className={cn(
-                      'flex w-full items-center gap-3 rounded-lg px-3 py-3 text-base font-medium transition-colors duration-200',
-                      'text-red-300 hover:bg-white/10 active:bg-white/15',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60'
+                      'h-auto w-full justify-start gap-3 rounded-lg px-3 py-3 text-base font-medium',
+                      'text-red-300 hover:bg-white/10 hover:text-red-200 active:bg-white/15',
+                      navFocusRing
                     )}
                   >
                     <LogOut className="h-5 w-5" aria-hidden="true" />
                     Logout
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
