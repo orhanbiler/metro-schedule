@@ -11,7 +11,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner';
 import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { Eye, EyeOff, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, AlertTriangle, Loader2 } from 'lucide-react';
+
+// Staggered entrance for landing content; honors prefers-reduced-motion.
+// Delays are set inline because Tailwind can't see runtime-built class names.
+const entrance =
+  'animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-backwards motion-reduce:animate-none';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -155,9 +160,13 @@ export default function LoginPage() {
       <div className="fixed inset-0 lg:hidden -z-10 bg-background">
         {/* Gradient overlay - adapts to theme */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-emerald-500/5 dark:from-primary/10 dark:via-transparent dark:to-emerald-500/10" />
-        {/* Geometric accent shapes */}
-        <div className="absolute top-0 right-0 w-72 h-72 bg-primary/10 dark:bg-primary/20 rounded-full blur-3xl transform translate-x-1/3 -translate-y-1/3" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-full blur-3xl transform -translate-x-1/3 translate-y-1/3" />
+        {/* Geometric accent shapes, drifting slowly. Positioned with inset
+            offsets (not translate) so the float animation owns transform */}
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-primary/10 dark:bg-primary/20 rounded-full blur-3xl animate-float motion-reduce:animate-none" />
+        <div
+          className="absolute -bottom-28 -left-28 w-80 h-80 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-full blur-3xl animate-float motion-reduce:animate-none"
+          style={{ animationDuration: '14s', animationDelay: '2s' }}
+        />
         {/* Subtle dot pattern */}
         <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" style={{
           backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`,
@@ -166,7 +175,7 @@ export default function LoginPage() {
       </div>
 
       {/* Desktop left panel - hidden on mobile */}
-      <div className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-950 via-primary to-slate-900 p-10 text-white">
+      <div className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-950 via-primary to-slate-900 bg-[length:200%_200%] animate-gradient-pan motion-reduce:animate-none p-10 text-white">
         <div className="absolute inset-0 opacity-20">
           <Image
             src="/logo-cool.png"
@@ -177,44 +186,54 @@ export default function LoginPage() {
             priority
           />
         </div>
+        {/* Ambient glow accents */}
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-white/10 blur-3xl animate-float motion-reduce:animate-none" aria-hidden />
+        <div
+          className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl animate-float motion-reduce:animate-none"
+          style={{ animationDuration: '16s', animationDelay: '3s' }}
+          aria-hidden
+        />
         <div className="relative z-10 space-y-6">
-          <div className="inline-flex items-center gap-3 rounded-full bg-white/10 px-4 py-2 text-sm uppercase tracking-wide">
+          <div className={`inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm uppercase tracking-wide backdrop-blur ${entrance}`}>
             <ShieldCheck className="h-5 w-5 text-emerald-300" />
             Cheverly PD Metro Detail
           </div>
-          <div>
-            <h1 className="text-3xl font-bold leading-tight">Protecting The Line Starts With A Solid Schedule</h1>
+          <div className={entrance} style={{ animationDelay: '120ms' }}>
+            <h1 className="text-3xl font-bold leading-tight xl:text-4xl">Protecting The Line Starts With A Solid Schedule</h1>
             <p className="mt-3 max-w-md text-white/80">
               Review coverage, lock in overtime, and keep your team coordinated with real-time updates from HQ.
             </p>
           </div>
           <ul className="space-y-3 text-white/80">
-            <li className="flex items-start gap-3">
+            <li className={`flex items-start gap-3 ${entrance}`} style={{ animationDelay: '240ms' }}>
               <span className="mt-1 h-2 w-2 rounded-full bg-emerald-300" aria-hidden />
               Secure access backed by Firebase authentication
             </li>
-            <li className="flex items-start gap-3">
+            <li className={`flex items-start gap-3 ${entrance}`} style={{ animationDelay: '320ms' }}>
               <span className="mt-1 h-2 w-2 rounded-full bg-emerald-300" aria-hidden />
               Live schedule sync so every shift stays covered
             </li>
           </ul>
         </div>
-        <div className="relative z-10 text-sm text-white/70">
-          Need help? Email <a href="mailto:obiler@cheverlypolice.org" className="underline">obiler@cheverlypolice.org</a>
+        <div className={`relative z-10 text-sm text-white/70 ${entrance}`} style={{ animationDelay: '400ms' }}>
+          Need help? Email <a href="mailto:obiler@cheverlypolice.org" className="underline transition-colors hover:text-white">obiler@cheverlypolice.org</a>
         </div>
       </div>
 
       {/* Login form panel */}
       <div className="flex flex-col items-center justify-center p-6 sm:p-10">
         {/* Mobile header - visible only on small screens */}
-        <div className="lg:hidden mb-6 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 px-4 py-2 text-sm uppercase tracking-wide text-primary dark:text-primary-foreground">
+        <div className={`lg:hidden mb-6 text-center ${entrance}`}>
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 px-4 py-2 text-sm uppercase tracking-wide text-primary dark:text-primary-foreground backdrop-blur">
             <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             <span className="font-medium">Cheverly PD</span>
           </div>
         </div>
 
-        <Card className="w-full max-w-md shadow-xl">
+        <Card
+          className={`w-full max-w-md border-border/60 bg-card/80 shadow-2xl backdrop-blur-xl ${entrance}`}
+          style={{ animationDelay: '150ms' }}
+        >
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold">Cheverly PD Metro Portal</CardTitle>
             <CardDescription>
@@ -260,7 +279,7 @@ export default function LoginPage() {
                   </button>
                 </div>
                 {capsLockOn && (
-                  <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
+                  <div className="flex items-center gap-2 text-xs font-medium text-amber-600 animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
                     <AlertTriangle className="h-4 w-4" />
                     Caps Lock is on
                   </div>
@@ -268,8 +287,19 @@ export default function LoginPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Signing in…' : 'Sign In'}
+              <Button
+                type="submit"
+                className="h-11 w-full text-base shadow-lg shadow-primary/25 transition-all duration-200 hover:shadow-xl hover:shadow-primary/35 hover:brightness-110 active:scale-[0.98] motion-reduce:transition-none"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                    Signing in…
+                  </>
+                ) : (
+                  'Sign In'
+                )}
               </Button>
               <div className="flex flex-col gap-2 text-sm text-center text-muted-foreground">
                 <button

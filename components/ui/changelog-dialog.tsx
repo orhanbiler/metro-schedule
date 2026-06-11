@@ -167,12 +167,12 @@ export function ChangelogDialog() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-9 w-9 rounded-full text-white hover:bg-white/10 hover:text-white"
+          className="relative h-11 w-11 rounded-full text-white hover:bg-white/10 hover:text-white"
           title={hasUnread ? `${unreadCount} new update${unreadCount > 1 ? 's' : ''}` : 'View changelog'}
         >
           <Bell className="h-5 w-5 text-white" />
           {hasUnread && (
-            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center animate-pulse">
+            <span className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center animate-pulse">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}

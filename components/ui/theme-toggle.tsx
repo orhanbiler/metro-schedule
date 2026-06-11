@@ -12,7 +12,7 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-      className="rounded-full text-white hover:bg-white/10 hover:text-white"
+      className="h-11 w-11 rounded-full text-white hover:bg-white/10 hover:text-white"
     >
       <svg
         className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
