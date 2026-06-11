@@ -13,7 +13,7 @@ import { HoursDialog } from '@/components/schedule/hours-dialog';
 import { AdminAssignDialog } from '@/components/schedule/admin-assign-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Download, Trash2, Plus, Calendar, DollarSign, FileText } from 'lucide-react';
+import { Download, Trash2, Plus, Calendar, DollarSign, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatOfficerName, formatOfficerNameForDisplay, extractRankFromOfficerName, calculateOfficerPayRate, cn } from '@/lib/utils';
 import { ScheduleSkeleton } from '@/components/schedule/schedule-skeleton';
@@ -61,17 +61,22 @@ export default function SchedulePage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [schedule, setSchedule] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Native-style pull-to-refresh functionality
   const { isRefreshing, pullDistance, isPulling, pullProgress } = usePullToRefresh({
     onRefresh: async () => {
-      await loadSchedule();
+      const succeeded = await loadSchedule();
       // Use native haptic feedback if available
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
-      toast.success('Schedule refreshed');
+      if (succeeded) {
+        toast.success('Schedule refreshed');
+      } else {
+        toast.error('Could not refresh schedule. Please try again.');
+      }
     },
     threshold: 60, // Reduced for more native feel
   });
@@ -439,7 +444,8 @@ export default function SchedulePage() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    // Load initial schedule
+    // Show the skeleton while the selected month loads (covers initial load too)
+    setScheduleLoading(true);
     loadSchedule();
 
     // Set up real-time listener
@@ -510,7 +516,7 @@ export default function SchedulePage() {
     return slots;
   };
 
-  const loadSchedule = async () => {
+  const loadSchedule = async (): Promise<boolean> => {
     try {
       // Get fresh token if available
       const token = firebaseUser ? await firebaseUser.getIdToken() : null;
@@ -539,18 +545,21 @@ export default function SchedulePage() {
           const newSchedule = generateSchedule();
           setSchedule(newSchedule);
         }
+        setLoadError(null);
+        return true;
       } else {
-        // Fallback to generated schedule
-        const newSchedule = generateSchedule();
-        setSchedule(newSchedule);
+        // Surface the failure instead of showing a blank generated schedule,
+        // which would hide existing sign-ups and mislead officers
+        console.error('Error loading schedule: HTTP', response.status);
+        setLoadError('The server could not return the schedule. Existing sign-ups are not shown.');
+        return false;
       }
     } catch (error) {
       console.error('Error loading schedule:', error);
-      // Fallback to generated schedule
-      const newSchedule = generateSchedule();
-      setSchedule(newSchedule);
+      setLoadError('Could not reach the server. Please check your connection.');
+      return false;
     } finally {
-      setInitialLoading(false);
+      setScheduleLoading(false);
     }
   };
 
@@ -662,6 +671,7 @@ export default function SchedulePage() {
             });
 
             setSchedule(scheduleWithDates);
+            setLoadError(null);
           }
         }
       }, (error) => {
@@ -695,10 +705,7 @@ export default function SchedulePage() {
         })
       });
 
-      if (response.ok) {
-        // Schedule saved successfully - update local state immediately
-        setSchedule(updatedSchedule);
-      } else {
+      if (!response.ok) {
         const errorData = await response.text();
         // API returned error response
 
@@ -711,13 +718,18 @@ export default function SchedulePage() {
           toast.error('Failed to save schedule. Please try again.');
         }
 
-        throw new Error(`HTTP ${response.status}: ${errorData}`);
+        // Flag so callers roll back without showing a second toast
+        const error = new Error(`HTTP ${response.status}: ${errorData}`) as Error & { notified?: boolean };
+        error.notified = true;
+        throw error;
       }
     } catch (error) {
       console.error('Error saving schedule:', error);
       throw error;
     }
   };
+
+  const wasNotified = (error: unknown) => Boolean((error as { notified?: boolean })?.notified);
 
 
   const handleSignUp = async (slotId: string, slotType: 'morning' | 'afternoon', customHours: string) => {
@@ -838,12 +850,22 @@ export default function SchedulePage() {
         return s;
       });
 
-      // Don't update local state - let real-time listener handle it
-      await saveSchedule(updatedSchedule);
-      toast.success(`Successfully signed up for ${customHours} shift`);
+      // Optimistic update: show the sign-up immediately, roll back if the save fails
+      const previousSchedule = schedule;
+      setSchedule(updatedSchedule);
+
+      try {
+        await saveSchedule(updatedSchedule);
+        toast.success(`Successfully signed up for ${customHours} shift`);
+      } catch (saveError) {
+        setSchedule(previousSchedule);
+        throw saveError;
+      }
     } catch (error) {
       console.error('Signup error:', error);
-      toast.error('Failed to sign up for shift. Please try again.');
+      if (!wasNotified(error)) {
+        toast.error('Failed to sign up for shift. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -924,14 +946,26 @@ export default function SchedulePage() {
         return slot;
       });
 
-      await saveSchedule(updatedSchedule);
+      // Optimistic update: reflect the removal immediately, roll back if the save fails
+      const previousSchedule = schedule;
+      setSchedule(updatedSchedule);
+
+      try {
+        await saveSchedule(updatedSchedule);
+      } catch (saveError) {
+        setSchedule(previousSchedule);
+        throw saveError;
+      }
+
       const successMessage = isAdmin
         ? `Successfully removed ${officerToRemove} from shift`
         : 'Successfully removed yourself from shift';
       toast.success(successMessage);
     } catch (error) {
       console.error('Remove officer error:', error);
-      toast.error('Failed to remove officer. Please try again.');
+      if (!wasNotified(error)) {
+        toast.error('Failed to remove officer. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -1050,11 +1084,22 @@ export default function SchedulePage() {
         return s;
       });
 
-      await saveSchedule(updatedSchedule);
-      toast.success(`Successfully assigned ${officerName} to shift`);
+      // Optimistic update: show the assignment immediately, roll back if the save fails
+      const previousSchedule = schedule;
+      setSchedule(updatedSchedule);
+
+      try {
+        await saveSchedule(updatedSchedule);
+        toast.success(`Successfully assigned ${officerName} to shift`);
+      } catch (saveError) {
+        setSchedule(previousSchedule);
+        throw saveError;
+      }
     } catch (error) {
       console.error('Admin assign error:', error);
-      toast.error('Failed to assign officer. Please try again.');
+      if (!wasNotified(error)) {
+        toast.error('Failed to assign officer. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -2121,8 +2166,28 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          {initialLoading ? (
+          {scheduleLoading ? (
             <ScheduleSkeleton />
+          ) : loadError ? (
+            <div className="flex flex-col items-center justify-center gap-4 rounded-md border border-dashed px-4 py-12 text-center">
+              <AlertCircle className="h-8 w-8 text-destructive" aria-hidden="true" />
+              <div className="space-y-1">
+                <p className="font-semibold">Couldn&apos;t load the schedule</p>
+                <p className="text-sm text-muted-foreground">{loadError}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setScheduleLoading(true);
+                  loadSchedule();
+                }}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Try again
+              </Button>
+            </div>
           ) : (
             <div className="space-y-6">
               <div className="border rounded-md overflow-hidden">
