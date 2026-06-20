@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Download, Trash2, Plus, Calendar, DollarSign, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatOfficerName, formatOfficerNameForDisplay, extractRankFromOfficerName, calculateOfficerPayRate, cn } from '@/lib/utils';
+import { formatOfficerName, formatOfficerNameForDisplay, extractRankFromOfficerName, calculateOfficerPayRate, getPayRateConfig, cn } from '@/lib/utils';
 import { ScheduleSkeleton } from '@/components/schedule/schedule-skeleton';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import {
@@ -1184,6 +1184,9 @@ export default function SchedulePage() {
 
       const doc = new jsPDF();
 
+      // Pay rates depend on the schedule's month/year (rates increased July 2026)
+      const rateConfig = getPayRateConfig(selectedYear, selectedMonth);
+
       // Add logo
       const logoImg = new Image();
       logoImg.src = '/logo-cool.png';
@@ -1277,7 +1280,7 @@ export default function SchedulePage() {
 
             // Calculate payment
             const rank = extractRankFromOfficerName(officer.name);
-            const rate = calculateOfficerPayRate(rank);
+            const rate = calculateOfficerPayRate(rank, rateConfig);
 
             if (!officerPayments[normalizedKey]) {
               officerPayments[normalizedKey] = {
@@ -1315,7 +1318,7 @@ export default function SchedulePage() {
 
             // Calculate payment
             const rank = extractRankFromOfficerName(officer.name);
-            const rate = calculateOfficerPayRate(rank);
+            const rate = calculateOfficerPayRate(rank, rateConfig);
 
             if (!officerPayments[normalizedKey]) {
               officerPayments[normalizedKey] = {
@@ -1460,7 +1463,7 @@ export default function SchedulePage() {
       doc.setFontSize(9);
       doc.setFont('helvetica', 'italic');
       doc.setTextColor(100, 100, 100);
-      doc.text('Pay Rates: Sgt. and above = $105/hr | Below Sgt. = $75/hr', 20, paymentTableY + 10);
+      doc.text(`Pay Rates: Sgt. and above = $${rateConfig.commandRate}/hr | Below Sgt. = $${rateConfig.officerRate}/hr`, 20, paymentTableY + 10);
 
       // Reset text color
       doc.setTextColor(0, 0, 0);
@@ -1488,6 +1491,9 @@ export default function SchedulePage() {
       const autoTable = (await import('jspdf-autotable')).default;
 
       const doc = new jsPDF();
+
+      // Pay rates depend on the schedule's month/year (rates increased July 2026)
+      const rateConfig = getPayRateConfig(selectedYear, selectedMonth);
 
       // Add logo
       const logoImg = new Image();
@@ -1584,8 +1590,8 @@ export default function SchedulePage() {
 
             // Calculate payment with service charge
             const rank = extractRankFromOfficerName(officer.name);
-            const baseRate = calculateOfficerPayRate(rank);
-            const billableRate = baseRate + 5; // Add $5/hour service charge
+            const baseRate = calculateOfficerPayRate(rank, rateConfig);
+            const billableRate = baseRate + rateConfig.serviceCharge; // Add per-hour service charge
 
             if (!officerPayments[normalizedKey]) {
               officerPayments[normalizedKey] = {
@@ -1626,8 +1632,8 @@ export default function SchedulePage() {
 
             // Calculate payment with service charge
             const rank = extractRankFromOfficerName(officer.name);
-            const baseRate = calculateOfficerPayRate(rank);
-            const billableRate = baseRate + 5; // Add $5/hour service charge
+            const baseRate = calculateOfficerPayRate(rank, rateConfig);
+            const billableRate = baseRate + rateConfig.serviceCharge; // Add per-hour service charge
 
             if (!officerPayments[normalizedKey]) {
               officerPayments[normalizedKey] = {
@@ -1773,6 +1779,17 @@ export default function SchedulePage() {
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text(`TOTAL BILLABLE AMOUNT: $${billableGrandTotal.toFixed(2)}`, 20, paymentTableY + 15);
+
+      // Billable rate note (base rates + service charge)
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 100, 100);
+      doc.text(
+        `Billable Rates (incl. $${rateConfig.serviceCharge}/hr service charge): Sgt. and above = $${rateConfig.commandRate + rateConfig.serviceCharge}/hr | Below Sgt. = $${rateConfig.officerRate + rateConfig.serviceCharge}/hr`,
+        20,
+        paymentTableY + 25
+      );
+      doc.setTextColor(0, 0, 0);
 
       doc.save(`metro-schedule-billable-${monthNames[selectedMonth].toLowerCase()}-${selectedYear}.pdf`);
       toast.dismiss(toastId);

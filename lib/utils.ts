@@ -117,13 +117,55 @@ export function extractRankFromOfficerName(officerName: string): string | null {
   return null;
 }
 
-export function calculateOfficerPayRate(rank: string | null): number {
-  if (!rank) return 75; // Default to officer rate if rank unknown
+/**
+ * Pay rates for a given period. WMATA rates increased effective July 2026, so
+ * the rates used for any PDF depend on the month/year of the schedule being
+ * exported (not on today's date).
+ */
+export interface PayRateConfig {
+  /** Hourly rate for ranks below Sergeant (and unknown ranks). */
+  officerRate: number;
+  /** Hourly rate for Sergeant and above (command staff). */
+  commandRate: number;
+  /** Per-hour service charge added on top of the base rate for billable PDFs. */
+  serviceCharge: number;
+}
+
+// Rates in effect July 2026 and onward.
+const CURRENT_PAY_RATES: PayRateConfig = {
+  officerRate: 75,
+  commandRate: 105,
+  serviceCharge: 5,
+};
+
+// Legacy rates in effect through June 2026.
+const LEGACY_PAY_RATES: PayRateConfig = {
+  officerRate: 60,
+  commandRate: 65,
+  serviceCharge: 10,
+};
+
+/**
+ * Returns the pay rate configuration that applies to a given schedule period.
+ * The new (higher) WMATA rates take effect July 2026; June 2026 and earlier use
+ * the legacy rates.
+ *
+ * @param year  Full year of the schedule (e.g. 2026).
+ * @param month Zero-indexed month (0 = January, 5 = June, 6 = July).
+ */
+export function getPayRateConfig(year: number, month: number): PayRateConfig {
+  const usesCurrentRates = year > 2026 || (year === 2026 && month >= 6);
+  return usesCurrentRates ? CURRENT_PAY_RATES : LEGACY_PAY_RATES;
+}
+
+export function calculateOfficerPayRate(rank: string | null, config: PayRateConfig): number {
+  if (!rank) return config.officerRate; // Default to officer rate if rank unknown
 
   // Normalize rank for comparison
   const normalizedRank = rank.toLowerCase().trim();
 
-  // Command staff (Sergeant and above) bill at $105/hour; everyone else $75/hour.
+  // Command staff (Sergeant and above) bill at the command rate; everyone else
+  // bills at the officer rate.
   const commandStaffRanks = [
     'chief',
     'asst. chief',
@@ -141,5 +183,5 @@ export function calculateOfficerPayRate(rank: string | null): number {
     normalizedRank.includes(commandRank)
   );
 
-  return isCommandStaff ? 105 : 75;
+  return isCommandStaff ? config.commandRate : config.officerRate;
 }

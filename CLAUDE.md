@@ -8,6 +8,38 @@ To ensure code quality, run the following commands before committing:
 - `npm run lint` - Check for linting issues
 - `npm run typecheck` - Check for TypeScript type errors
 
+## [2026-06-20] - Date-Based Pay Rates (WMATA July 2026 Increase)
+
+### Problem Identified
+WMATA shift pay rates increased effective July 2026. PDFs for June 2026 and
+earlier must keep the legacy rates, while July 2026 and onward use the new
+rates. Previously the rates were hardcoded, so changing them would have
+incorrectly re-priced past months.
+
+### Solution Implemented
+1. **Added `getPayRateConfig(year, month)`** in `lib/utils.ts`
+   - Returns the rate set that applies to a schedule period.
+   - New (current) rates take effect July 2026 (month index 6); June 2026 and
+     earlier use the legacy rates.
+   - Legacy: $65/hr Sgt.+ / $60/hr below Sgt., $10/hr billable service charge.
+   - Current: $105/hr Sgt.+ / $75/hr below Sgt., $5/hr billable service charge.
+
+2. **Made `calculateOfficerPayRate(rank, config)` config-driven**
+   - The base rate is now resolved from the passed `PayRateConfig` rather than
+     hardcoded constants.
+
+3. **Threaded the config through both PDFs** in `app/dashboard/schedule/page.tsx`
+   - `generatePDF` and `generateBillablePDF` compute the config from the
+     exported schedule's `selectedYear`/`selectedMonth`.
+   - The billable service charge now uses `rateConfig.serviceCharge` instead of
+     a hardcoded `+ 5`.
+   - The "Pay Rates" footer note is now dynamic, and a billable rate note
+     (including the service charge) was added to the billable PDF.
+
+### Files Modified
+- `lib/utils.ts`
+- `app/dashboard/schedule/page.tsx`
+
 ## [2025-10-23] - Billable PDF Duplicate Officer Fix
 
 ### Problem Identified
