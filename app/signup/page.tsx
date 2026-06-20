@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Eye, EyeOff, AlertTriangle, Check } from 'lucide-react';
+import { ASSIGNMENTS } from '@/lib/assignments';
 
 const ALLOWED_EMAIL_DOMAIN = 'cheverlypolice.org';
 
@@ -22,6 +23,7 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [rank, setRank] = useState('Officer');
+  const [assignment, setAssignment] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -146,6 +148,11 @@ export default function SignupPage() {
       return;
     }
 
+    if (!assignment) {
+      toast.error('Please select your assignment');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -177,6 +184,7 @@ export default function SignupPage() {
           name,
           idNumber,
           rank,
+          assignment,
           firebaseAuthUID: firebaseUser.uid
         }),
       });
@@ -335,6 +343,24 @@ export default function SignupPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="assignment">Assignment</Label>
+              <Select value={assignment} onValueChange={setAssignment} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your assignment" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ASSIGNMENTS.map((assignmentOption) => (
+                    <SelectItem key={assignmentOption} value={assignmentOption}>
+                      {assignmentOption}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Patrol officers get first priority during the overtime sign-up window.
+              </p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">

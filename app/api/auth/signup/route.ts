@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { isValidAssignment } from '@/lib/assignments';
 
 const SETTINGS_DOC_ID = 'app-settings';
 const ALLOWED_EMAIL_DOMAIN = 'cheverlypolice.org';
@@ -19,14 +20,21 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { password, name, idNumber, rank, firebaseAuthUID } = body;
+    const { password, name, idNumber, rank, assignment, firebaseAuthUID } = body;
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
 
     // Processing user registration request
 
-    if (!email || !password || !name || !idNumber || !rank) {
+    if (!email || !password || !name || !idNumber || !rank || !assignment) {
       return NextResponse.json(
         { error: 'All fields are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidAssignment(assignment)) {
+      return NextResponse.json(
+        { error: 'Please select a valid assignment.' },
         { status: 400 }
       );
     }
@@ -63,6 +71,7 @@ export async function POST(request: NextRequest) {
       name,
       idNumber,
       rank,
+      assignment,
       role: 'user',
       firebaseAuthUID: firebaseAuthUID || null,
       createdAt: new Date().toISOString(),
@@ -92,6 +101,7 @@ export async function POST(request: NextRequest) {
       name,
       idNumber,
       rank,
+      assignment,
       role: 'user' as const,
       firebaseAuthUID,
     };

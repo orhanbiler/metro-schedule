@@ -26,11 +26,13 @@ import {
   getShiftDateBounds,
   getDefaultShiftWindow,
   getShiftMaxBlockMinutes,
+  getMaxOfficersPerHour,
   usesUpdatedShiftPolicy,
   getTimeRangeDurationMinutes,
   isRangeWithinShiftWindow,
   type OfficerShift,
 } from '@/lib/schedule-utils';
+import { getSignupWindowStatus, normalizeAssignment } from '@/lib/assignments';
 
 interface Officer {
   name: string;
@@ -93,6 +95,16 @@ export default function SchedulePage() {
     base.setHours(0, 0, 0, 0);
     return base;
   }, []);
+
+  // Overtime sign-up window for the selected month, based on the user's
+  // assignment. Admins bypass the window entirely.
+  const signupWindow = getSignupWindowStatus(
+    new Date(),
+    selectedMonth,
+    selectedYear,
+    normalizeAssignment(user?.assignment)
+  );
+  const canSelfSignUp = user?.role === 'admin' || signupWindow.canSignUp;
 
   const isSameDay = (date: Date) => {
     const compare = new Date(date);
@@ -181,19 +193,20 @@ export default function SchedulePage() {
     }
 
     const effectiveShiftStart = minutesToHHMM(effectiveStartMinutes);
-    const hourlyAvailability = getHourlyAvailability(officerShifts, effectiveShiftStart, shiftEnd);
-    const availableSlots = getAvailableTimeSlots(officerShifts, effectiveShiftStart, shiftEnd);
+    const maxPerHour = getMaxOfficersPerHour(slot.date);
+    const hourlyAvailability = getHourlyAvailability(officerShifts, effectiveShiftStart, shiftEnd, maxPerHour);
+    const availableSlots = getAvailableTimeSlots(officerShifts, effectiveShiftStart, shiftEnd, maxPerHour);
 
     const baseMax = hourlyAvailability.length > 0
       ? hourlyAvailability.reduce(
-        (max, hour) => Math.max(max, Math.max(0, 2 - hour.officerCount)),
+        (max, hour) => Math.max(max, Math.max(0, maxPerHour - hour.officerCount)),
         0
       )
-      : 2;
+      : maxPerHour;
 
     return {
       availableSlots,
-      maxRemaining: Math.min(2, baseMax),
+      maxRemaining: Math.min(maxPerHour, baseMax),
       status,
     };
   };
@@ -259,7 +272,7 @@ export default function SchedulePage() {
                     <div className="text-2xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
                   )}
                 </div>
-                {canUserRemoveFromShift(officer, slot.date) && (
+                {canUserRemoveFromShift() && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -267,13 +280,7 @@ export default function SchedulePage() {
                         variant="destructive"
                         className="h-8 w-8 p-0"
                         disabled={loading}
-                        title={
-                          isShiftWithinDays(slot.date, 2)
-                            ? 'Cannot remove - shift is within 2 days'
-                            : isShiftPastRemovalWindow(slot.date)
-                              ? 'Cannot remove - more than 2 days have passed since shift'
-                              : `Remove ${officer.name}`
-                        }
+                        title={`Remove ${officer.name}`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -316,7 +323,7 @@ export default function SchedulePage() {
                 {status === 'past' ? 'Completed' : 'Signed'}
               </span>
             </span>
-          ) : hasAvailability && canModify ? (
+          ) : hasAvailability && canModify && canSelfSignUp ? (
             <HoursDialog
               originalTime={slotData.time}
               maxBlockMinutes={blockMinutes ?? undefined}
@@ -327,6 +334,8 @@ export default function SchedulePage() {
                 <Plus className="mr-2 h-4 w-4" /> Sign Up
               </Button>
             </HoursDialog>
+          ) : !isAdmin && !canSelfSignUp && hasAvailability ? (
+            <span className="text-xs text-muted-foreground italic">Sign-up locked</span>
           ) : status === 'past' ? (
             <span className="text-xs text-muted-foreground">Shift closed</span>
           ) : (
@@ -357,27 +366,6 @@ export default function SchedulePage() {
     return user?.name || 'Current Officer';
   };
 
-  const isShiftWithinDays = (shiftDate: Date, days: number): boolean => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset to start of day
-    const shift = new Date(shiftDate);
-    shift.setHours(0, 0, 0, 0); // Reset to start of day
-    const diffTime = shift.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= days;
-  };
-
-  const isShiftPastRemovalWindow = (shiftDate: Date): boolean => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset to start of day
-    const shift = new Date(shiftDate);
-    shift.setHours(0, 0, 0, 0); // Reset to start of day
-    const diffTime = today.getTime() - shift.getTime(); // Note: reversed to check past dates
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    // If shift was more than 2 days ago, it's past the removal window
-    return diffDays > 2;
-  };
-
   const isPastMonth = (): boolean => {
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
@@ -402,24 +390,10 @@ export default function SchedulePage() {
     return true;
   };
 
-  const canUserRemoveFromShift = (officer: Officer, shiftDate: Date): boolean => {
-    // Admin can always remove anyone
-    if (user?.role === 'admin') return true;
-
-    // Check if schedule can be modified
-    if (!canUserModifySchedule()) return false;
-
-    // Regular users can only remove themselves
-    const isOwnShift = officer.name === getCurrentOfficerFormatted() || officer.name === user?.name;
-    if (!isOwnShift) return false;
-
-    // Cannot remove if shift is within 2 days (upcoming)
-    if (isShiftWithinDays(shiftDate, 2)) return false;
-
-    // Cannot remove if shift was more than 2 days ago (past)
-    if (isShiftPastRemovalWindow(shiftDate)) return false;
-
-    return true;
+  const canUserRemoveFromShift = (): boolean => {
+    // Only admins can remove officers from a shift. Regular officers cannot
+    // remove themselves (or anyone) once signed up — they must contact an admin.
+    return user?.role === 'admin';
   };
 
   const hasUserSignedUpForSlot = (date: Date, slotType: 'morning' | 'afternoon') => {
@@ -709,11 +683,21 @@ export default function SchedulePage() {
         const errorData = await response.text();
         // API returned error response
 
+        // Prefer the server's specific reason (sign-up window, capacity, etc.)
+        let serverMessage = '';
+        try {
+          serverMessage = JSON.parse(errorData)?.error ?? '';
+        } catch {
+          serverMessage = '';
+        }
+
         // Show user-friendly error message
-        if (response.status === 403) {
-          toast.error('Permission denied. Please check with your administrator.');
-        } else if (response.status === 401) {
+        if (response.status === 401) {
           toast.error('Authentication required. Please log in again.');
+        } else if (serverMessage) {
+          toast.error(serverMessage);
+        } else if (response.status === 403) {
+          toast.error('Permission denied. Please check with your administrator.');
         } else {
           toast.error('Failed to save schedule. Please try again.');
         }
@@ -736,6 +720,12 @@ export default function SchedulePage() {
     // Check if user can modify schedule
     if (!canUserModifySchedule()) {
       toast.error('Cannot modify past months\' schedules. Only current and future months can be edited.');
+      return;
+    }
+
+    // Enforce the assignment-based sign-up window (admins bypass it)
+    if (user?.role !== 'admin' && !signupWindow.canSignUp) {
+      toast.error(signupWindow.message);
       return;
     }
 
@@ -809,7 +799,8 @@ export default function SchedulePage() {
         currentOfficer,
         newTimeRanges,
         shiftStart, // shift start
-        shiftEnd  // shift end
+        shiftEnd,  // shift end
+        getMaxOfficersPerHour(slot.date)
       );
 
       if (!validation.valid) {
@@ -883,31 +874,11 @@ export default function SchedulePage() {
       return;
     }
 
-    // Check permissions
+    // Check permissions — only admins can remove officers from a shift.
     const isAdmin = user?.role === 'admin';
-    const isOwnShift = officerToRemove === getCurrentOfficerFormatted() || officerToRemove === user?.name;
-
-    // Check if user can modify schedule (past month restriction)
-    if (!isAdmin && isPastMonth()) {
-      toast.error('Cannot modify past months\' schedules. Only current and future months can be edited.');
-      return;
-    }
-
-    if (!isAdmin && !isOwnShift) {
-      toast.error('You can only remove yourself from shifts.');
-      return;
-    }
-
-    // Check 2-day restriction for non-admins (both future and past)
     if (!isAdmin) {
-      if (isShiftWithinDays(slot.date, 2)) {
-        toast.error('Cannot remove yourself from shifts within 2 days of the scheduled date.');
-        return;
-      }
-      if (isShiftPastRemovalWindow(slot.date)) {
-        toast.error('Cannot remove yourself from shifts more than 2 days after the scheduled date.');
-        return;
-      }
+      toast.error('Only an administrator can remove an officer from a shift. Please contact an admin.');
+      return;
     }
 
     const targetSlot = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
@@ -1041,7 +1012,8 @@ export default function SchedulePage() {
       officerName,
       newTimeRanges,
       shiftStart,
-      shiftEnd
+      shiftEnd,
+      getMaxOfficersPerHour(slot.date)
     );
 
     if (!validation.valid) {
@@ -1488,7 +1460,7 @@ export default function SchedulePage() {
       doc.setFontSize(9);
       doc.setFont('helvetica', 'italic');
       doc.setTextColor(100, 100, 100);
-      doc.text('Pay Rates: Sgt. and above = $65/hr | Below Sgt. = $60/hr', 20, paymentTableY + 10);
+      doc.text('Pay Rates: Sgt. and above = $105/hr | Below Sgt. = $75/hr', 20, paymentTableY + 10);
 
       // Reset text color
       doc.setTextColor(0, 0, 0);
@@ -1613,7 +1585,7 @@ export default function SchedulePage() {
             // Calculate payment with service charge
             const rank = extractRankFromOfficerName(officer.name);
             const baseRate = calculateOfficerPayRate(rank);
-            const billableRate = baseRate + 10; // Add $10/hour service charge
+            const billableRate = baseRate + 5; // Add $5/hour service charge
 
             if (!officerPayments[normalizedKey]) {
               officerPayments[normalizedKey] = {
@@ -1655,7 +1627,7 @@ export default function SchedulePage() {
             // Calculate payment with service charge
             const rank = extractRankFromOfficerName(officer.name);
             const baseRate = calculateOfficerPayRate(rank);
-            const billableRate = baseRate + 10; // Add $10/hour service charge
+            const billableRate = baseRate + 5; // Add $5/hour service charge
 
             if (!officerPayments[normalizedKey]) {
               officerPayments[normalizedKey] = {
@@ -2166,6 +2138,19 @@ export default function SchedulePage() {
             </div>
           </div>
 
+          {user?.role !== 'admin' && !isPastMonth() && !signupWindow.canSignUp && (
+            <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-200">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
+              <span>{signupWindow.message}</span>
+            </div>
+          )}
+          {user?.role !== 'admin' && signupWindow.canSignUp && signupWindow.reason === 'open' && (
+            <div className="mb-4 flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-950/40 dark:text-emerald-200">
+              <Calendar className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
+              <span>{signupWindow.message}</span>
+            </div>
+          )}
+
           {scheduleLoading ? (
             <ScheduleSkeleton />
           ) : loadError ? (
@@ -2276,7 +2261,7 @@ export default function SchedulePage() {
                                             <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
                                           )}
                                         </div>
-                                        {canUserRemoveFromShift(officer, slot.date) && (
+                                        {canUserRemoveFromShift() && (
                                           <AlertDialog>
                                             <AlertDialogTrigger asChild>
                                               <Button
@@ -2284,13 +2269,7 @@ export default function SchedulePage() {
                                                 variant="destructive"
                                                 className="h-6 w-6 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
                                                 disabled={loading}
-                                                title={
-                                                  isShiftWithinDays(slot.date, 2)
-                                                    ? 'Cannot remove - shift is within 2 days'
-                                                    : isShiftPastRemovalWindow(slot.date)
-                                                      ? 'Cannot remove - more than 2 days have passed since shift'
-                                                      : `Remove ${officer.name}`
-                                                }
+                                                title={`Remove ${officer.name}`}
                                               >
                                                 <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                               </Button>
@@ -2383,6 +2362,11 @@ export default function SchedulePage() {
                                     return <span className="text-xs sm:text-sm text-muted-foreground italic">Past month</span>;
                                   }
 
+                                  // Sign-up window not open for this user's assignment
+                                  if (!isAdmin && !canSelfSignUp && slotsAvailable && !userSignedUp) {
+                                    return <span className="text-xs sm:text-sm text-muted-foreground italic">Locked</span>;
+                                  }
+
                                   return (
                                     <div className="flex gap-1 sm:gap-2 justify-center">
                                       {userSignedUp ? (
@@ -2390,7 +2374,7 @@ export default function SchedulePage() {
                                           <Calendar className="h-3 w-3 sm:mr-1" />
                                           <span className="hidden sm:inline">Signed up</span>
                                         </span>
-                                      ) : slotsAvailable && canModify ? (
+                                      ) : slotsAvailable && canModify && canSelfSignUp ? (
                                         <HoursDialog
                                           originalTime={slot.morningSlot.time}
                                           maxBlockMinutes={blockMinutes ?? undefined}
@@ -2460,7 +2444,7 @@ export default function SchedulePage() {
                                             <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
                                           )}
                                         </div>
-                                        {canUserRemoveFromShift(officer, slot.date) && (
+                                        {canUserRemoveFromShift() && (
                                           <AlertDialog>
                                             <AlertDialogTrigger asChild>
                                               <Button
@@ -2468,13 +2452,7 @@ export default function SchedulePage() {
                                                 variant="destructive"
                                                 className="h-6 w-6 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
                                                 disabled={loading}
-                                                title={
-                                                  isShiftWithinDays(slot.date, 2)
-                                                    ? 'Cannot remove - shift is within 2 days'
-                                                    : isShiftPastRemovalWindow(slot.date)
-                                                      ? 'Cannot remove - more than 2 days have passed since shift'
-                                                      : `Remove ${officer.name}`
-                                                }
+                                                title={`Remove ${officer.name}`}
                                               >
                                                 <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                               </Button>
@@ -2567,6 +2545,11 @@ export default function SchedulePage() {
                                     return <span className="text-xs sm:text-sm text-muted-foreground italic">Past month</span>;
                                   }
 
+                                  // Sign-up window not open for this user's assignment
+                                  if (!isAdmin && !canSelfSignUp && slotsAvailable && !userSignedUp) {
+                                    return <span className="text-xs sm:text-sm text-muted-foreground italic">Locked</span>;
+                                  }
+
                                   return (
                                     <div className="flex gap-1 sm:gap-2 justify-center">
                                       {userSignedUp ? (
@@ -2574,7 +2557,7 @@ export default function SchedulePage() {
                                           <Calendar className="h-3 w-3 sm:mr-1" />
                                           <span className="hidden sm:inline">Signed up</span>
                                         </span>
-                                      ) : slotsAvailable && canModify ? (
+                                      ) : slotsAvailable && canModify && canSelfSignUp ? (
                                         <HoursDialog
                                           originalTime={slot.afternoonSlot.time}
                                           maxBlockMinutes={blockMinutes ?? undefined}

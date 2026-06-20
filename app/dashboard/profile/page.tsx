@@ -15,6 +15,7 @@ interface User {
   role: 'admin' | 'user';
   rank?: string;
   idNumber?: string;
+  assignment?: string;
   firebaseAuthUID?: string;
 }
 
@@ -193,6 +194,16 @@ export default function ProfilePage() {
                 <div>
                   <div className="font-medium">Rank</div>
                   <div className="text-sm text-muted-foreground">{user.rank}</div>
+                </div>
+              </div>
+            )}
+
+            {user.assignment && (
+              <div className="flex items-start gap-3">
+                <UserIcon className="w-5 h-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <div className="font-medium">Assignment</div>
+                  <div className="text-sm text-muted-foreground">{user.assignment}</div>
                 </div>
               </div>
             )}

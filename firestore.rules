@@ -28,6 +28,7 @@ service cloud.firestore {
                     && request.resource.data.email == resource.data.email
                     && request.resource.data.idNumber == resource.data.idNumber
                     && request.resource.data.rank == resource.data.rank
+                    && request.resource.data.get('assignment', null) == resource.data.get('assignment', null)
                     && request.resource.data.firebaseAuthUID == resource.data.firebaseAuthUID;
 
       // Admins can update any user (including role).

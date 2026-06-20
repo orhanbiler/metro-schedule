@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { validateApiAuth } from '@/lib/api-auth';
+import { validateScheduleSave } from '@/lib/schedule-validation';
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,8 +56,38 @@ export async function POST(request: NextRequest) {
     }
 
     const scheduleId = `${year}-${month}`;
+
+    // Re-check the sign-up window, ownership, and capacity server-side. The
+    // client enforces these too, but the API cannot trust the posted blob.
+    const [userDoc, existingDoc] = await Promise.all([
+      adminDb().collection('users').doc(user.uid).get(),
+      adminDb().collection('schedules').doc(scheduleId).get(),
+    ]);
+    const userData = userDoc.data() || {};
+    const existingSchedule = existingDoc.exists ? existingDoc.data()?.schedule ?? [] : [];
+
+    const validation = validateScheduleSave({
+      requester: {
+        uid: user.uid,
+        role: user.role,
+        idNumber: userData.idNumber,
+        name: userData.name,
+        assignment: userData.assignment,
+      },
+      month: Number(month),
+      year: Number(year),
+      incomingSchedule: schedule,
+      existingSchedule,
+    });
+
+    if (!validation.ok) {
+      return NextResponse.json(
+        { error: validation.error ?? 'Schedule change not allowed.' },
+        { status: validation.status ?? 400 }
+      );
+    }
+
     // Preparing to save schedule
-    
     const scheduleData = {
       month,
       year,
@@ -65,7 +96,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Saving schedule data to database
-    
+
     await adminDb().collection('schedules').doc(scheduleId).set(scheduleData, { merge: true });
 
     // Schedule saved successfully

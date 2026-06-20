@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { validateApiAuth } from '@/lib/api-auth';
+import { normalizeAssignment } from '@/lib/assignments';
 
 export async function POST(request: NextRequest) {
   try {
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
       role: userData?.role,
       rank: userData?.rank,
       idNumber: userData?.idNumber,
+      assignment: normalizeAssignment(userData?.assignment),
       firebaseAuthUID: userData?.firebaseAuthUID,
       updatedAt: userData?.updatedAt,
       lastSeenAt,

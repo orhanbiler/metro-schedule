@@ -118,28 +118,28 @@ export function extractRankFromOfficerName(officerName: string): string | null {
 }
 
 export function calculateOfficerPayRate(rank: string | null): number {
-  if (!rank) return 60; // Default to lower rate if rank unknown
-  
+  if (!rank) return 75; // Default to officer rate if rank unknown
+
   // Normalize rank for comparison
   const normalizedRank = rank.toLowerCase().trim();
-  
-  // Ranks that get $65/hour (Sergeant and above)
-  const higherPayRanks = [
-    'chief', 
-    'asst. chief', 
+
+  // Command staff (Sergeant and above) bill at $105/hour; everyone else $75/hour.
+  const commandStaffRanks = [
+    'chief',
+    'asst. chief',
     'assistant chief',
-    'captain', 
+    'captain',
     'capt.',
-    'lieutenant', 
+    'lieutenant',
     'lt.',
     'sergeant',
     'sgt.'
   ];
-  
-  // Check if the rank qualifies for higher pay
-  const getsHigherPay = higherPayRanks.some(higherRank => 
-    normalizedRank.includes(higherRank)
+
+  // Check if the rank qualifies for command-staff pay
+  const isCommandStaff = commandStaffRanks.some(commandRank =>
+    normalizedRank.includes(commandRank)
   );
-  
-  return getsHigherPay ? 65 : 60;
+
+  return isCommandStaff ? 105 : 75;
 }

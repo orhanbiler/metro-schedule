@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
+import type { Assignment } from '@/lib/assignments';
+
 export interface User {
   id: string;
   email: string;
@@ -12,6 +14,7 @@ export interface User {
   role: 'user' | 'admin';
   rank?: string;
   idNumber?: string;
+  assignment?: Assignment;
 }
 
 interface AuthContextType {

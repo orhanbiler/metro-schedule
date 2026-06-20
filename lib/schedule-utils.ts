@@ -45,6 +45,15 @@ const startOfDay = (value: Date): number => {
   return date.getTime();
 };
 
+/** Per-hour officer capacity. Mondays and Fridays allow a third officer. */
+export const DEFAULT_MAX_OFFICERS_PER_HOUR = 2;
+export const PEAK_MAX_OFFICERS_PER_HOUR = 3;
+
+export const getMaxOfficersPerHour = (slotDate: Date): number => {
+  const day = slotDate.getDay(); // 0 = Sunday … 1 = Monday … 5 = Friday
+  return day === 1 || day === 5 ? PEAK_MAX_OFFICERS_PER_HOUR : DEFAULT_MAX_OFFICERS_PER_HOUR;
+};
+
 export const usesUpdatedShiftPolicy = (slotDate: Date): boolean => {
   return startOfDay(slotDate) >= SHIFT_POLICY_EFFECTIVE_DATE.getTime();
 };
@@ -154,9 +163,10 @@ export const isRangeWithinShiftWindow = (
  * Get hourly availability for a shift
  */
 export function getHourlyAvailability(
-  officers: OfficerShift[], 
-  shiftStart: string, 
-  shiftEnd: string
+  officers: OfficerShift[],
+  shiftStart: string,
+  shiftEnd: string,
+  maxPerHour: number = DEFAULT_MAX_OFFICERS_PER_HOUR
 ): HourlyAvailability[] {
   const availability: HourlyAvailability[] = [];
   const startMinutes = timeToMinutes(shiftStart);
@@ -187,7 +197,7 @@ export function getHourlyAvailability(
       hour,
       officerCount: workingOfficers.length,
       officers: workingOfficers,
-      available: workingOfficers.length < 2
+      available: workingOfficers.length < maxPerHour
     });
   }
   
@@ -202,7 +212,8 @@ export function canAddOfficerShift(
   newOfficerName: string,
   newTimeRanges: TimeRange[],
   shiftStart: string,
-  shiftEnd: string
+  shiftEnd: string,
+  maxPerHour: number = DEFAULT_MAX_OFFICERS_PER_HOUR
 ): { valid: boolean; conflicts: string[] } {
   // Check minimum shift length (1 hour)
   for (const range of newTimeRanges) {
@@ -238,11 +249,11 @@ export function canAddOfficerShift(
   ];
   
   // Check hourly availability
-  const availability = getHourlyAvailability(tempOfficers, shiftStart, shiftEnd);
+  const availability = getHourlyAvailability(tempOfficers, shiftStart, shiftEnd, maxPerHour);
   const conflicts: string[] = [];
-  
+
   for (const slot of availability) {
-    if (slot.officerCount > 2) {
+    if (slot.officerCount > maxPerHour) {
       conflicts.push(`Too many officers at ${slot.hour} (${slot.officers.join(', ')})`);
     }
   }
@@ -266,9 +277,10 @@ export function formatTimeRanges(ranges: TimeRange[]): string {
 export function getAvailableTimeSlots(
   officers: OfficerShift[],
   shiftStart: string,
-  shiftEnd: string
+  shiftEnd: string,
+  maxPerHour: number = DEFAULT_MAX_OFFICERS_PER_HOUR
 ): string[] {
-  const availability = getHourlyAvailability(officers, shiftStart, shiftEnd);
+  const availability = getHourlyAvailability(officers, shiftStart, shiftEnd, maxPerHour);
   const availableSlots: string[] = [];
   
   let slotStart: string | null = null;

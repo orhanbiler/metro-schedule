@@ -8,6 +8,7 @@ import ProtectedRoute from '@/components/auth/protected-route';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { ChangelogDialog } from '@/components/ui/changelog-dialog';
+import { LiveClock } from '@/components/ui/live-clock';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -272,6 +273,7 @@ export default function DashboardLayout({
           )}
         </nav>
         <main className="mx-auto max-w-7xl px-2 py-3 sm:px-6 sm:py-6 lg:px-8">
+          <LiveClock />
           {children}
         </main>
       </div>

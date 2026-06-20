@@ -15,8 +15,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserListSkeleton, StatsCardSkeleton } from '@/components/schedule/schedule-skeleton';
 import { useAuth } from '@/lib/auth-context';
+import { ASSIGNMENTS, normalizeAssignment, type Assignment } from '@/lib/assignments';
 
 interface User {
   id: string;
@@ -24,6 +26,7 @@ interface User {
   name: string;
   idNumber?: string;
   rank?: string;
+  assignment?: Assignment;
   role: 'admin' | 'user';
   createdAt: string;
   updatedAt?: string;
@@ -168,6 +171,26 @@ export default function AdminPage() {
       toast.error('Failed to connect to server');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateUserAssignment = async (userId: string, assignment: Assignment) => {
+    // Optimistic update; roll back on failure
+    const previous = users;
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, assignment } : u)));
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, assignment }),
+      });
+      if (!response.ok) {
+        throw new Error('Request failed');
+      }
+      toast.success('Assignment updated');
+    } catch {
+      setUsers(previous);
+      toast.error('Failed to update assignment');
     }
   };
 
@@ -755,6 +778,7 @@ export default function AdminPage() {
                     <tr className="bg-navy-900 text-white">
                       <th className="text-left p-3 font-semibold whitespace-nowrap">User</th>
                       <th className="text-left p-3 font-semibold whitespace-nowrap">Role</th>
+                      <th className="text-left p-3 font-semibold whitespace-nowrap">Assignment</th>
                       <th className="text-left p-3 font-semibold whitespace-nowrap">Last online</th>
                       <th className="text-left p-3 font-semibold whitespace-nowrap">Joined</th>
                     </tr>
@@ -762,7 +786,7 @@ export default function AdminPage() {
                   <tbody>
                     {users.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="text-center p-8 text-muted-foreground">
+                        <td colSpan={5} className="text-center p-8 text-muted-foreground">
                           No users found
                         </td>
                       </tr>
@@ -784,6 +808,23 @@ export default function AdminPage() {
                             >
                               {user.role}
                             </Badge>
+                          </td>
+                          <td className="p-3 whitespace-nowrap">
+                            <Select
+                              value={normalizeAssignment(user.assignment)}
+                              onValueChange={(value) => updateUserAssignment(user.id, value as Assignment)}
+                            >
+                              <SelectTrigger className="h-8 w-[180px] text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ASSIGNMENTS.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="p-3 whitespace-nowrap">
                             {(() => {

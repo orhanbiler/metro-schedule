@@ -132,9 +132,10 @@ export default function OTSlipsPage() {
     const months = [];
     const today = new Date();
     
-    // Current month and past 2 months (so 3 total including current)
-    for (let i = 0; i < 3; i++) {
-      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    // Next month (officers sign up in advance), current month, and past 2
+    // months — newest first.
+    for (let i = 1; i >= -2; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
       months.push({
         key: `${date.getFullYear()}-${date.getMonth()}`,
         label: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
