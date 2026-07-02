@@ -8,6 +8,47 @@ To ensure code quality, run the following commands before committing:
 - `npm run lint` - Check for linting issues
 - `npm run typecheck` - Check for TypeScript type errors
 
+## [2026-07-02] - Per-Shift Capacity (Replaces Per-Hour Capacity)
+
+### Problem Identified
+Capacity was enforced PER HOUR (2 officers/hr Tue–Thu, 3 on Mon/Fri), which
+allowed e.g. 2 officers on 0600-0800 plus 2 different officers on 0800-1200 —
+4 officers in one morning shift. Policy change: no more than 2 distinct
+officers per morning shift and 2 per evening shift Tue–Thu (3 on Mon/Fri),
+regardless of whether their blocks overlap.
+
+### Solution Implemented
+1. **Capacity is now counted per shift** (`lib/schedule-utils.ts`)
+   - Constants/helpers renamed: `DEFAULT_MAX_OFFICERS_PER_SHIFT` (2),
+     `PEAK_MAX_OFFICERS_PER_SHIFT` (3, Mon/Fri),
+     `ADMIN_OVERRIDE_MAX_OFFICERS_PER_SHIFT` (3),
+     `getMaxOfficersPerShift`, `getEffectiveMaxOfficersPerShift`,
+     new `countDistinctOfficers`.
+   - `canAddOfficerShift` rejects a signup when the shift already has the max
+     number of DISTINCT officers; overlapping hours between officers are fine.
+     Window containment and 1-hour-minimum checks unchanged. The 4-hour max
+     block and 0600-1200 / 1400-2000 windows were already enforced and are
+     unchanged.
+   - `getHourlyAvailability` and the hourly slot math were removed;
+     `getAvailableTimeSlots` now returns the whole (remaining) window while
+     the shift has room, nothing when full.
+2. **Server validation** (`lib/schedule-validation.ts`): capacity violation =
+   distinct-officer count exceeds the per-shift limit AND grew vs. what was
+   stored (existing over-capacity data — old per-hour signups or admin
+   overrides — stays grandfathered). Admin override behavior carries over:
+   admins may place a 3rd officer on Tue–Thu; the hard ceiling is 3 everywhere.
+3. **Audit trail** (`lib/schedule-audit.ts`): `capacityOverride` now flags
+   entries where the shift's distinct-officer count exceeds the standard
+   per-shift limit.
+4. **UI**: schedule page availability/badges count per shift; admin stats page
+   uses the real per-shift capacity (was hardcoded 2) for uncovered-hours;
+   audit page wording updated.
+
+### Files Modified
+- `lib/schedule-utils.ts`, `lib/schedule-validation.ts`, `lib/schedule-audit.ts`
+- `app/dashboard/schedule/page.tsx`, `app/dashboard/page.tsx`,
+  `app/dashboard/admin/page.tsx`, `app/dashboard/admin/audit/page.tsx`
+
 ## [2026-07-02] - Admin Capacity Override & Schedule Audit Trail
 
 ### Problems Identified

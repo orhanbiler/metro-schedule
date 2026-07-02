@@ -1,5 +1,10 @@
 /**
- * Utility functions for managing schedule with hourly officer limits
+ * Utility functions for managing schedule with per-shift officer limits.
+ *
+ * Capacity is counted per SHIFT (morning / evening), not per hour: no more
+ * than N distinct officers may sign up for a shift, regardless of whether
+ * their blocks overlap. (Previously capacity was per hour, which allowed
+ * e.g. 2 officers on 0600-0800 plus 2 more on 0800-1200.)
  */
 
 export type ShiftType = 'morning' | 'afternoon';
@@ -12,13 +17,6 @@ export interface TimeRange {
 export interface OfficerShift {
   name: string;
   timeRanges: TimeRange[]; // Support for split shifts
-}
-
-export interface HourlyAvailability {
-  hour: string; // Format: "HHMM"
-  officerCount: number;
-  officers: string[];
-  available: boolean;
 }
 
 const policyDate = new Date('2025-11-19T00:00:00');
@@ -45,19 +43,19 @@ const startOfDay = (value: Date): number => {
   return date.getTime();
 };
 
-/** Per-hour officer capacity. Mondays and Fridays allow a third officer. */
-export const DEFAULT_MAX_OFFICERS_PER_HOUR = 2;
-export const PEAK_MAX_OFFICERS_PER_HOUR = 3;
+/** Per-shift officer capacity. Mondays and Fridays allow a third officer. */
+export const DEFAULT_MAX_OFFICERS_PER_SHIFT = 2;
+export const PEAK_MAX_OFFICERS_PER_SHIFT = 3;
 
 /**
  * Hard ceiling when an admin overrides the standard capacity (e.g. keeping a
  * 3rd officer on a Tue–Thu shift). Overrides can never stack beyond this.
  */
-export const ADMIN_OVERRIDE_MAX_OFFICERS_PER_HOUR = 3;
+export const ADMIN_OVERRIDE_MAX_OFFICERS_PER_SHIFT = 3;
 
-export const getMaxOfficersPerHour = (slotDate: Date): number => {
+export const getMaxOfficersPerShift = (slotDate: Date): number => {
   const day = slotDate.getDay(); // 0 = Sunday … 1 = Monday … 5 = Friday
-  return day === 1 || day === 5 ? PEAK_MAX_OFFICERS_PER_HOUR : DEFAULT_MAX_OFFICERS_PER_HOUR;
+  return day === 1 || day === 5 ? PEAK_MAX_OFFICERS_PER_SHIFT : DEFAULT_MAX_OFFICERS_PER_SHIFT;
 };
 
 /**
@@ -65,9 +63,14 @@ export const getMaxOfficersPerHour = (slotDate: Date): number => {
  * standard limit up to the override ceiling; everyone else gets the standard
  * limit for that day.
  */
-export const getEffectiveMaxOfficersPerHour = (slotDate: Date, isAdmin: boolean): number => {
-  const base = getMaxOfficersPerHour(slotDate);
-  return isAdmin ? Math.max(base, ADMIN_OVERRIDE_MAX_OFFICERS_PER_HOUR) : base;
+export const getEffectiveMaxOfficersPerShift = (slotDate: Date, isAdmin: boolean): number => {
+  const base = getMaxOfficersPerShift(slotDate);
+  return isAdmin ? Math.max(base, ADMIN_OVERRIDE_MAX_OFFICERS_PER_SHIFT) : base;
+};
+
+/** Number of distinct officers signed up (duplicate names counted once). */
+export const countDistinctOfficers = (officers: { name: string }[]): number => {
+  return new Set(officers.map((officer) => officer.name)).size;
 };
 
 export const usesUpdatedShiftPolicy = (slotDate: Date): boolean => {
@@ -176,51 +179,6 @@ export const isRangeWithinShiftWindow = (
 };
 
 /**
- * Get hourly availability for a shift
- */
-export function getHourlyAvailability(
-  officers: OfficerShift[],
-  shiftStart: string,
-  shiftEnd: string,
-  maxPerHour: number = DEFAULT_MAX_OFFICERS_PER_HOUR
-): HourlyAvailability[] {
-  const availability: HourlyAvailability[] = [];
-  const startMinutes = timeToMinutes(shiftStart);
-  const endMinutes = timeToMinutes(shiftEnd);
-  
-  // Create hourly slots
-  for (let minutes = startMinutes; minutes < endMinutes; minutes += 60) {
-    const hour = minutesToTime(minutes);
-    const hourEnd = minutes + 60;
-    
-    // Count officers working during this hour
-    const workingOfficers: string[] = [];
-    
-    for (const officer of officers) {
-      for (const range of officer.timeRanges) {
-        const rangeStart = timeToMinutes(range.start);
-        const rangeEnd = timeToMinutes(range.end);
-        
-        // Check if officer is working during this hour
-        if (rangeStart < hourEnd && rangeEnd > minutes) {
-          workingOfficers.push(officer.name);
-          break; // Officer counted, move to next officer
-        }
-      }
-    }
-    
-    availability.push({
-      hour,
-      officerCount: workingOfficers.length,
-      officers: workingOfficers,
-      available: workingOfficers.length < maxPerHour
-    });
-  }
-  
-  return availability;
-}
-
-/**
  * Validate if a new officer shift can be added
  */
 export function canAddOfficerShift(
@@ -229,55 +187,45 @@ export function canAddOfficerShift(
   newTimeRanges: TimeRange[],
   shiftStart: string,
   shiftEnd: string,
-  maxPerHour: number = DEFAULT_MAX_OFFICERS_PER_HOUR
+  maxPerShift: number = DEFAULT_MAX_OFFICERS_PER_SHIFT
 ): { valid: boolean; conflicts: string[] } {
   // Check minimum shift length (1 hour)
   for (const range of newTimeRanges) {
     const duration = timeToMinutes(range.end) - timeToMinutes(range.start);
     if (duration < 60) { // 1 hour = 60 minutes
-      return { 
-        valid: false, 
-        conflicts: ['Each shift block must be at least 1 hour long'] 
+      return {
+        valid: false,
+        conflicts: ['Each shift block must be at least 1 hour long']
       };
     }
   }
-  
+
   // Check if time ranges are within shift bounds
   const shiftStartMin = timeToMinutes(shiftStart);
   const shiftEndMin = timeToMinutes(shiftEnd);
-  
+
   for (const range of newTimeRanges) {
     const rangeStart = timeToMinutes(range.start);
     const rangeEnd = timeToMinutes(range.end);
-    
+
     if (rangeStart < shiftStartMin || rangeEnd > shiftEndMin) {
-      return { 
-        valid: false, 
-        conflicts: [`Time must be within shift hours (${shiftStart}-${shiftEnd})`] 
+      return {
+        valid: false,
+        conflicts: [`Time must be within shift hours (${shiftStart}-${shiftEnd})`]
       };
     }
   }
-  
-  // Create a temporary list with the new officer
-  const tempOfficers = [
-    ...existingOfficers,
-    { name: newOfficerName, timeRanges: newTimeRanges }
-  ];
-  
-  // Check hourly availability
-  const availability = getHourlyAvailability(tempOfficers, shiftStart, shiftEnd, maxPerHour);
-  const conflicts: string[] = [];
 
-  for (const slot of availability) {
-    if (slot.officerCount > maxPerHour) {
-      conflicts.push(`Too many officers at ${slot.hour} (${slot.officers.join(', ')})`);
-    }
+  // Per-shift capacity: count distinct officers, overlap doesn't matter.
+  const distinctNames = new Set(existingOfficers.map((officer) => officer.name));
+  if (!distinctNames.has(newOfficerName) && distinctNames.size >= maxPerShift) {
+    return {
+      valid: false,
+      conflicts: [`This shift is full. A maximum of ${maxPerShift} officers may work this shift.`]
+    };
   }
-  
-  return { 
-    valid: conflicts.length === 0, 
-    conflicts 
-  };
+
+  return { valid: true, conflicts: [] };
 }
 
 /**
@@ -288,38 +236,22 @@ export function formatTimeRanges(ranges: TimeRange[]): string {
 }
 
 /**
- * Get available time slots for a shift
+ * Get available time slots for a shift.
+ *
+ * With per-shift capacity, an incoming officer may pick any block inside the
+ * window (overlap with existing officers is fine), so the whole window is
+ * open while the shift has room and nothing is open once it is full.
  */
 export function getAvailableTimeSlots(
   officers: OfficerShift[],
   shiftStart: string,
   shiftEnd: string,
-  maxPerHour: number = DEFAULT_MAX_OFFICERS_PER_HOUR
+  maxPerShift: number = DEFAULT_MAX_OFFICERS_PER_SHIFT
 ): string[] {
-  const availability = getHourlyAvailability(officers, shiftStart, shiftEnd, maxPerHour);
-  const availableSlots: string[] = [];
-  
-  let slotStart: string | null = null;
-  
-  for (let i = 0; i < availability.length; i++) {
-    const current = availability[i];
-    const next = availability[i + 1];
-
-    if (current.available && !slotStart) {
-      slotStart = current.hour;
-    }
-
-    if (slotStart && (!current.available || !next)) {
-      // End of available slot
-      const endHour = !current.available 
-        ? current.hour 
-        : minutesToTime(timeToMinutes(current.hour) + 60);
-      availableSlots.push(`${slotStart}-${endHour}`);
-      slotStart = null;
-    }
+  if (timeToMinutes(shiftStart) >= timeToMinutes(shiftEnd)) {
+    return [];
   }
-  
-  return availableSlots;
+  return countDistinctOfficers(officers) < maxPerShift ? [`${shiftStart}-${shiftEnd}`] : [];
 }
 
 /**

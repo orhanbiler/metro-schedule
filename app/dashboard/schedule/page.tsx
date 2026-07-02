@@ -20,13 +20,13 @@ import { ScheduleSkeleton } from '@/components/schedule/schedule-skeleton';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import {
   parseTimeString,
-  getHourlyAvailability,
   canAddOfficerShift,
   getAvailableTimeSlots,
   getShiftDateBounds,
   getDefaultShiftWindow,
   getShiftMaxBlockMinutes,
-  getEffectiveMaxOfficersPerHour,
+  getEffectiveMaxOfficersPerShift,
+  countDistinctOfficers,
   usesUpdatedShiftPolicy,
   getTimeRangeDurationMinutes,
   isRangeWithinShiftWindow,
@@ -193,21 +193,13 @@ export default function SchedulePage() {
     }
 
     const effectiveShiftStart = minutesToHHMM(effectiveStartMinutes);
-    // Admins see override capacity (3/hr) so they can add a 3rd officer on Tue–Thu.
-    const maxPerHour = getEffectiveMaxOfficersPerHour(slot.date, user?.role === 'admin');
-    const hourlyAvailability = getHourlyAvailability(officerShifts, effectiveShiftStart, shiftEnd, maxPerHour);
-    const availableSlots = getAvailableTimeSlots(officerShifts, effectiveShiftStart, shiftEnd, maxPerHour);
-
-    const baseMax = hourlyAvailability.length > 0
-      ? hourlyAvailability.reduce(
-        (max, hour) => Math.max(max, Math.max(0, maxPerHour - hour.officerCount)),
-        0
-      )
-      : maxPerHour;
+    // Admins see override capacity (3/shift) so they can add a 3rd officer on Tue–Thu.
+    const maxPerShift = getEffectiveMaxOfficersPerShift(slot.date, user?.role === 'admin');
+    const availableSlots = getAvailableTimeSlots(officerShifts, effectiveShiftStart, shiftEnd, maxPerShift);
 
     return {
       availableSlots,
-      maxRemaining: Math.min(maxPerHour, baseMax),
+      maxRemaining: Math.max(0, maxPerShift - countDistinctOfficers(officerShifts)),
       status,
     };
   };
@@ -801,7 +793,7 @@ export default function SchedulePage() {
         newTimeRanges,
         shiftStart, // shift start
         shiftEnd,  // shift end
-        getEffectiveMaxOfficersPerHour(slot.date, user?.role === 'admin')
+        getEffectiveMaxOfficersPerShift(slot.date, user?.role === 'admin')
       );
 
       if (!validation.valid) {
@@ -824,7 +816,7 @@ export default function SchedulePage() {
               morningSlot: {
                 ...s.morningSlot,
                 officers: updatedOfficers,
-                available: true // Always true now since we check hourly availability
+                available: true // Always true now since capacity is checked per shift
               }
             };
           } else {
@@ -834,7 +826,7 @@ export default function SchedulePage() {
               afternoonSlot: {
                 ...s.afternoonSlot,
                 officers: updatedOfficers,
-                available: true // Always true now since we check hourly availability
+                available: true // Always true now since capacity is checked per shift
               }
             };
           }
@@ -900,7 +892,7 @@ export default function SchedulePage() {
               morningSlot: {
                 ...slot.morningSlot,
                 officers: updatedOfficers,
-                available: true // Always true now since we check hourly availability
+                available: true // Always true now since capacity is checked per shift
               }
             };
           } else {
@@ -910,7 +902,7 @@ export default function SchedulePage() {
               afternoonSlot: {
                 ...slot.afternoonSlot,
                 officers: updatedOfficers,
-                available: true // Always true now since we check hourly availability
+                available: true // Always true now since capacity is checked per shift
               }
             };
           }
@@ -1014,7 +1006,7 @@ export default function SchedulePage() {
       newTimeRanges,
       shiftStart,
       shiftEnd,
-      getEffectiveMaxOfficersPerHour(slot.date, user?.role === 'admin')
+      getEffectiveMaxOfficersPerShift(slot.date, user?.role === 'admin')
     );
 
     if (!validation.valid) {
@@ -1039,7 +1031,7 @@ export default function SchedulePage() {
               morningSlot: {
                 ...s.morningSlot,
                 officers: updatedOfficers,
-                available: true // Always true now since we check hourly availability
+                available: true // Always true now since capacity is checked per shift
               }
             };
           } else {
@@ -1049,7 +1041,7 @@ export default function SchedulePage() {
               afternoonSlot: {
                 ...s.afternoonSlot,
                 officers: updatedOfficers,
-                available: true // Always true now since we check hourly availability
+                available: true // Always true now since capacity is checked per shift
               }
             };
           }
