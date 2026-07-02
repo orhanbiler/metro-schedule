@@ -108,7 +108,7 @@ export default function ScheduleAuditPage() {
               </CardTitle>
               <CardDescription>
                 Time-stamped record of every sign-up, removal, and hours change. Entries marked
-                &ldquo;Capacity Override&rdquo; exceeded the standard per-hour limit.
+                &ldquo;Capacity Override&rdquo; exceeded the standard per-shift limit.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">

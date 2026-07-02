@@ -9,7 +9,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { isFirestoreInitialized } from '@/lib/firebase-utils';
 import { formatOfficerName } from '@/lib/utils';
-import { getShiftTimeOrDefault, getShiftStartHour } from '@/lib/schedule-utils';
+import { getShiftTimeOrDefault, getShiftStartHour, getMaxOfficersPerShift } from '@/lib/schedule-utils';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -390,8 +390,9 @@ export default function AdminPage() {
           const afternoonOfficers = day.afternoonSlot?.officers || [];
           const morningTime = getShiftTimeOrDefault(dayDate, 'morning', day.morningSlot?.time);
           const afternoonTime = getShiftTimeOrDefault(dayDate, 'afternoon', day.afternoonSlot?.time);
-          const maxMorning = 2; // Now we check hourly limits instead
-          const maxAfternoon = 2; // Now we check hourly limits instead
+          // Per-shift capacity: 2 officers Tue–Thu, 3 on Mon/Fri.
+          const maxMorning = getMaxOfficersPerShift(dayDate);
+          const maxAfternoon = maxMorning;
 
           // Count all filled slots for the entire month
           filledSlots += morningOfficers.length + afternoonOfficers.length;

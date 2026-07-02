@@ -11,7 +11,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { isFirestoreInitialized } from '@/lib/firebase-utils';
 import { useAuth } from '@/lib/auth-context';
-import { getShiftDateBounds, getShiftTimeOrDefault, getShiftStartHour, getMaxOfficersPerHour } from '@/lib/schedule-utils';
+import { getShiftDateBounds, getShiftTimeOrDefault, getShiftStartHour, getMaxOfficersPerShift } from '@/lib/schedule-utils';
 
 interface NextShiftInfo {
   id: string;
@@ -216,7 +216,7 @@ export default function DashboardPage() {
 
             const officers = slotData.officers || [];
             // Mondays and Fridays allow a third officer per shift.
-            const capacity = slotData.maxOfficers ?? getMaxOfficersPerHour(slotDate);
+            const capacity = slotData.maxOfficers ?? getMaxOfficersPerShift(slotDate);
             const spotsLeft = capacity - officers.length;
             const isOpen = spotsLeft > 0;
             const timeString = getShiftTimeOrDefault(

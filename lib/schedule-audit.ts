@@ -13,15 +13,13 @@
  */
 
 import {
-  getHourlyAvailability,
-  getMaxOfficersPerHour,
+  countDistinctOfficers,
+  getMaxOfficersPerShift,
   type ShiftType,
 } from '@/lib/schedule-utils';
 import {
   readOfficers,
   slotDateFromId,
-  shiftBounds,
-  toOfficerShifts,
   ownsEntry,
   SUB_SLOT_KEYS,
   type RawSlot,
@@ -54,7 +52,7 @@ export interface ScheduleAuditEntry {
   actorRole: string;
   /** True when the actor changed their own entry (vs. an admin acting on someone else). */
   selfAction: boolean;
-  /** True when this change pushed an hour past the STANDARD capacity for that day. */
+  /** True when this change pushed the shift past the STANDARD capacity for that day. */
   capacityOverride: boolean;
   month: number; // 0-indexed
   year: number;
@@ -69,24 +67,15 @@ function toIsoDay(date: Date): string {
 }
 
 /**
- * True when, after the save, some hour covered by this officer exceeds the
+ * True when, after the save, the shift's distinct-officer count exceeds the
  * standard (non-override) capacity for the day — i.e. the entry only exists
  * because an admin overrode the limit.
  */
 function usesCapacityOverride(
-  officer: NormalizedOfficer,
   newOfficers: NormalizedOfficer[],
-  sub: RawSlot['morningSlot'],
-  slotType: ShiftType,
   slotDate: Date
 ): boolean {
-  const standardLimit = getMaxOfficersPerHour(slotDate);
-  const { start, end } = shiftBounds(sub, slotType, slotDate);
-  const shifts = toOfficerShifts(newOfficers, sub, slotType, slotDate);
-  return getHourlyAvailability(shifts, start, end, standardLimit).some(
-    (hour) =>
-      hour.officerCount > standardLimit && hour.officers.includes(officer.name)
-  );
+  return countDistinctOfficers(newOfficers) > getMaxOfficersPerShift(slotDate);
 }
 
 export function buildScheduleAuditEntries(opts: {
@@ -145,7 +134,7 @@ export function buildScheduleAuditEntries(opts: {
           slotType,
           shiftDate,
           selfAction: ownsEntry(officer.name, { idNumber: actor.idNumber, name: actor.name }),
-          capacityOverride: usesCapacityOverride(officer, newOfficers, sub, slotType, slotDate),
+          capacityOverride: usesCapacityOverride(newOfficers, slotDate),
         };
         if (!oldByName.has(officer.name)) {
           entries.push({

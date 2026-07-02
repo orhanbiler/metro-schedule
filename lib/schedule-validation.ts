@@ -8,9 +8,10 @@
  *   - Additions must fall inside the officer's sign-up window (see
  *     getSignupWindowStatus); admins bypass the window.
  *   - Regular officers cannot touch past months at all.
- *   - Per-hour capacity (3 on Mon/Fri, otherwise 2) is enforced for regular
- *     officers; admins may override up to a hard ceiling of 3 per hour.
- *     Only NEW violations are rejected, so a previously granted override
+ *   - Per-shift capacity (3 distinct officers on Mon/Fri, otherwise 2) is
+ *     enforced for regular officers; admins may override up to a hard
+ *     ceiling of 3 per shift. Only NEW violations are rejected, so a
+ *     previously granted override (or data predating the per-shift rule)
  *     doesn't block later unrelated changes to the same shift.
  *
  * The window is evaluated in America/New_York so a server running in UTC
@@ -18,11 +19,8 @@
  */
 
 import {
-  parseTimeString,
-  getHourlyAvailability,
-  getEffectiveMaxOfficersPerHour,
-  getDefaultShiftWindow,
-  type ShiftType,
+  countDistinctOfficers,
+  getEffectiveMaxOfficersPerShift,
 } from '@/lib/schedule-utils';
 import { getSignupWindowStatus, normalizeAssignment } from '@/lib/assignments';
 
@@ -116,69 +114,21 @@ export function ownsEntry(
   return Boolean(requester.name) && name === requester.name;
 }
 
-export function shiftBounds(
-  sub: RawSubSlot | undefined,
-  slotType: ShiftType,
-  slotDate: Date
-): { start: string; end: string } {
-  const time =
-    typeof sub?.time === 'string' && sub.time.includes('-')
-      ? sub.time
-      : getDefaultShiftWindow(slotType, slotDate);
-  const ranges = parseTimeString(time);
-  let start = ranges[0]?.start ?? time.slice(0, 4);
-  let end = ranges[0]?.end ?? time.slice(5, 9);
-  for (const range of ranges) {
-    if (range.start < start) start = range.start;
-    if (range.end > end) end = range.end;
-  }
-  return { start, end };
-}
-
-/** Officers mapped to the OfficerShift shape used by the hourly capacity math. */
-export function toOfficerShifts(
-  officers: NormalizedOfficer[],
-  sub: RawSubSlot | undefined,
-  slotType: ShiftType,
-  slotDate: Date
-): { name: string; timeRanges: ReturnType<typeof parseTimeString> }[] {
-  const fallback = typeof sub?.time === 'string' ? sub.time : getDefaultShiftWindow(slotType, slotDate);
-  return officers.map((officer) => {
-    const ranges = parseTimeString(officer.hours || fallback);
-    return {
-      name: officer.name,
-      timeRanges: ranges.length > 0 ? ranges : parseTimeString(getDefaultShiftWindow(slotType, slotDate)),
-    };
-  });
-}
-
 /**
- * True when the save pushes some hour over `maxPerHour` AND that hour got more
- * crowded than it already was. Pre-existing over-capacity (a previously
- * granted admin override) is grandfathered so it doesn't block unrelated
- * changes to the same shift.
+ * True when the save pushes the shift's distinct-officer count over
+ * `maxPerShift` AND the shift got more crowded than it already was.
+ * Pre-existing over-capacity (a previously granted admin override, or data
+ * saved under the old per-hour rules) is grandfathered so it doesn't block
+ * unrelated changes to the same shift.
  */
 function introducesCapacityViolation(
   oldOfficers: NormalizedOfficer[],
   newOfficers: NormalizedOfficer[],
-  sub: RawSubSlot | undefined,
-  slotType: ShiftType,
-  slotDate: Date,
-  maxPerHour: number
+  maxPerShift: number
 ): boolean {
-  const { start, end } = shiftBounds(sub, slotType, slotDate);
-  const before = getHourlyAvailability(
-    toOfficerShifts(oldOfficers, sub, slotType, slotDate), start, end, maxPerHour
-  );
-  const after = getHourlyAvailability(
-    toOfficerShifts(newOfficers, sub, slotType, slotDate), start, end, maxPerHour
-  );
-  const beforeByHour = new Map(before.map((hour) => [hour.hour, hour.officerCount]));
-  return after.some(
-    (hour) =>
-      hour.officerCount > maxPerHour &&
-      hour.officerCount > (beforeByHour.get(hour.hour) ?? 0)
-  );
+  const before = countDistinctOfficers(oldOfficers);
+  const after = countDistinctOfficers(newOfficers);
+  return after > maxPerShift && after > before;
 }
 
 export function validateScheduleSave(opts: {
@@ -272,12 +222,12 @@ export function validateScheduleSave(opts: {
 
       if (gainedCoverage) {
         // Admins may exceed the standard capacity, but never the override ceiling.
-        const limit = getEffectiveMaxOfficersPerHour(slotDate, isAdmin);
-        if (introducesCapacityViolation(oldOfficers, newOfficers, sub, slotType, slotDate, limit)) {
+        const limit = getEffectiveMaxOfficersPerShift(slotDate, isAdmin);
+        if (introducesCapacityViolation(oldOfficers, newOfficers, limit)) {
           return {
             ok: false,
             status: 409,
-            error: `That shift is full. A maximum of ${limit} officers per hour are allowed.`,
+            error: `That shift is full. A maximum of ${limit} officers may work this shift.`,
           };
         }
       }
