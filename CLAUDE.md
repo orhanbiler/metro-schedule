@@ -8,6 +8,50 @@ To ensure code quality, run the following commands before committing:
 - `npm run lint` - Check for linting issues
 - `npm run typecheck` - Check for TypeScript type errors
 
+## [2026-07-02] - Admin Capacity Override & Schedule Audit Trail
+
+### Problems Identified
+1. Per-hour capacity (2 officers on Tue–Thu) was enforced for everyone,
+   including admins. When a 3rd officer worked a Wednesday as a one-off,
+   there was no way to record it in the system.
+2. There was no record of who signed up for or was removed from a shift.
+   When an officer claimed he had signed up but wasn't on the schedule,
+   admins had no way to verify what happened.
+
+### Solutions Implemented
+1. **Admin capacity override (hard ceiling of 3/hr)**
+   - `getEffectiveMaxOfficersPerHour(slotDate, isAdmin)` in
+     `lib/schedule-utils.ts`: admins may exceed the standard limit up to
+     `ADMIN_OVERRIDE_MAX_OFFICERS_PER_HOUR` (3); regular officers keep the
+     standard limit (3 Mon/Fri, 2 otherwise).
+   - Server validation (`lib/schedule-validation.ts`) now only rejects NEW
+     capacity violations, so a previously granted override doesn't block
+     unrelated later changes to the same shift. Regular officers still cannot
+     join an hour that is already at/over the standard limit.
+   - Client checks in `app/dashboard/schedule/page.tsx` use the effective
+     limit, so admins see and can assign the 3rd slot.
+
+2. **Schedule audit trail**
+   - `lib/schedule-audit.ts` diffs each save and emits entries
+     (signup / removal / hours_change) with timestamp, actor (uid, name, id,
+     role), affected officer, shift date/slot/hours, self-vs-admin flag, and a
+     `capacityOverride` flag when the change exceeded the standard limit.
+   - `app/api/schedule/route.ts` persists entries to the `scheduleAudit`
+     Firestore collection after every successful save (best-effort; failures
+     are logged, never fail the save). Clients cannot read/write the
+     collection directly (server-only via Admin SDK; catch-all deny rule).
+   - `app/api/admin/audit/route.ts`: admin-only GET, filtered by month/year
+     via a single `monthKey` field (no composite index needed).
+   - New page `/dashboard/admin/audit` with month navigation and name filter,
+     linked from Admin Tools. The log only covers changes made after this
+     feature was deployed.
+
+### Files Modified
+- `lib/schedule-utils.ts`, `lib/schedule-validation.ts`, `lib/schedule-audit.ts` (new)
+- `app/api/schedule/route.ts`, `app/api/admin/audit/route.ts` (new)
+- `app/dashboard/schedule/page.tsx`, `app/dashboard/admin/page.tsx`,
+  `app/dashboard/admin/audit/page.tsx` (new)
+
 ## [2026-06-20] - Date-Based Pay Rates (WMATA July 2026 Increase)
 
 ### Problem Identified

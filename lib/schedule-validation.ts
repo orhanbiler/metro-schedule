@@ -8,7 +8,10 @@
  *   - Additions must fall inside the officer's sign-up window (see
  *     getSignupWindowStatus); admins bypass the window.
  *   - Regular officers cannot touch past months at all.
- *   - Per-hour capacity (3 on Mon/Fri, otherwise 2) is enforced for everyone.
+ *   - Per-hour capacity (3 on Mon/Fri, otherwise 2) is enforced for regular
+ *     officers; admins may override up to a hard ceiling of 3 per hour.
+ *     Only NEW violations are rejected, so a previously granted override
+ *     doesn't block later unrelated changes to the same shift.
  *
  * The window is evaluated in America/New_York so a server running in UTC
  * agrees with what officers see locally near day/month boundaries.
@@ -17,7 +20,7 @@
 import {
   parseTimeString,
   getHourlyAvailability,
-  getMaxOfficersPerHour,
+  getEffectiveMaxOfficersPerHour,
   getDefaultShiftWindow,
   type ShiftType,
 } from '@/lib/schedule-utils';
@@ -41,22 +44,22 @@ interface RawOfficer {
   name?: unknown;
   customHours?: unknown;
 }
-interface RawSubSlot {
+export interface RawSubSlot {
   time?: unknown;
   officers?: unknown;
 }
-interface RawSlot {
+export interface RawSlot {
   id?: unknown;
   morningSlot?: RawSubSlot;
   afternoonSlot?: RawSubSlot;
 }
 
-interface NormalizedOfficer {
+export interface NormalizedOfficer {
   name: string;
   hours: string;
 }
 
-const SUB_SLOT_KEYS = {
+export const SUB_SLOT_KEYS = {
   morning: 'morningSlot',
   afternoon: 'afternoonSlot',
 } as const;
@@ -73,7 +76,7 @@ function easternNow(): Date {
   return new Date(read('year'), read('month') - 1, read('day'), 12, 0, 0, 0);
 }
 
-function readOfficers(sub: RawSubSlot | undefined): NormalizedOfficer[] {
+export function readOfficers(sub: RawSubSlot | undefined): NormalizedOfficer[] {
   if (!sub || !Array.isArray(sub.officers)) return [];
   const result: NormalizedOfficer[] = [];
   for (const raw of sub.officers as RawOfficer[]) {
@@ -88,7 +91,7 @@ function readOfficers(sub: RawSubSlot | undefined): NormalizedOfficer[] {
 }
 
 /** Reconstruct the calendar day from the slot id ("YYYY-M-D", month 0-indexed). */
-function slotDateFromId(id: unknown, fallbackYear: number, fallbackMonth: number): Date {
+export function slotDateFromId(id: unknown, fallbackYear: number, fallbackMonth: number): Date {
   if (typeof id === 'string') {
     const match = id.match(/^(\d+)-(\d+)-(\d+)$/);
     if (match) {
@@ -99,7 +102,10 @@ function slotDateFromId(id: unknown, fallbackYear: number, fallbackMonth: number
 }
 
 /** Officer names embed "#<idNumber>"; an officer owns only entries with their id. */
-function ownsEntry(name: string, requester: ScheduleSaveRequester): boolean {
+export function ownsEntry(
+  name: string,
+  requester: Pick<ScheduleSaveRequester, 'idNumber' | 'name'>
+): boolean {
   if (requester.idNumber) {
     const escaped = requester.idNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     if (new RegExp(`#${escaped}(?!\\d)`).test(name)) {
@@ -110,7 +116,7 @@ function ownsEntry(name: string, requester: ScheduleSaveRequester): boolean {
   return Boolean(requester.name) && name === requester.name;
 }
 
-function shiftBounds(
+export function shiftBounds(
   sub: RawSubSlot | undefined,
   slotType: ShiftType,
   slotDate: Date
@@ -129,24 +135,49 @@ function shiftBounds(
   return { start, end };
 }
 
-function exceedsCapacity(
+/** Officers mapped to the OfficerShift shape used by the hourly capacity math. */
+export function toOfficerShifts(
   officers: NormalizedOfficer[],
   sub: RawSubSlot | undefined,
   slotType: ShiftType,
   slotDate: Date
-): boolean {
-  const { start, end } = shiftBounds(sub, slotType, slotDate);
+): { name: string; timeRanges: ReturnType<typeof parseTimeString> }[] {
   const fallback = typeof sub?.time === 'string' ? sub.time : getDefaultShiftWindow(slotType, slotDate);
-  const officerShifts = officers.map((officer) => {
+  return officers.map((officer) => {
     const ranges = parseTimeString(officer.hours || fallback);
     return {
       name: officer.name,
       timeRanges: ranges.length > 0 ? ranges : parseTimeString(getDefaultShiftWindow(slotType, slotDate)),
     };
   });
-  const maxPerHour = getMaxOfficersPerHour(slotDate);
-  return getHourlyAvailability(officerShifts, start, end, maxPerHour).some(
-    (hour) => hour.officerCount > maxPerHour
+}
+
+/**
+ * True when the save pushes some hour over `maxPerHour` AND that hour got more
+ * crowded than it already was. Pre-existing over-capacity (a previously
+ * granted admin override) is grandfathered so it doesn't block unrelated
+ * changes to the same shift.
+ */
+function introducesCapacityViolation(
+  oldOfficers: NormalizedOfficer[],
+  newOfficers: NormalizedOfficer[],
+  sub: RawSubSlot | undefined,
+  slotType: ShiftType,
+  slotDate: Date,
+  maxPerHour: number
+): boolean {
+  const { start, end } = shiftBounds(sub, slotType, slotDate);
+  const before = getHourlyAvailability(
+    toOfficerShifts(oldOfficers, sub, slotType, slotDate), start, end, maxPerHour
+  );
+  const after = getHourlyAvailability(
+    toOfficerShifts(newOfficers, sub, slotType, slotDate), start, end, maxPerHour
+  );
+  const beforeByHour = new Map(before.map((hour) => [hour.hour, hour.officerCount]));
+  return after.some(
+    (hour) =>
+      hour.officerCount > maxPerHour &&
+      hour.officerCount > (beforeByHour.get(hour.hour) ?? 0)
   );
 }
 
@@ -239,13 +270,16 @@ export function validateScheduleSave(opts: {
         }
       }
 
-      if (gainedCoverage && exceedsCapacity(newOfficers, sub, slotType, slotDate)) {
-        const limit = getMaxOfficersPerHour(slotDate);
-        return {
-          ok: false,
-          status: 409,
-          error: `That shift is full. A maximum of ${limit} officers per hour are allowed.`,
-        };
+      if (gainedCoverage) {
+        // Admins may exceed the standard capacity, but never the override ceiling.
+        const limit = getEffectiveMaxOfficersPerHour(slotDate, isAdmin);
+        if (introducesCapacityViolation(oldOfficers, newOfficers, sub, slotType, slotDate, limit)) {
+          return {
+            ok: false,
+            status: 409,
+            error: `That shift is full. A maximum of ${limit} officers per hour are allowed.`,
+          };
+        }
       }
     }
   }

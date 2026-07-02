@@ -49,9 +49,25 @@ const startOfDay = (value: Date): number => {
 export const DEFAULT_MAX_OFFICERS_PER_HOUR = 2;
 export const PEAK_MAX_OFFICERS_PER_HOUR = 3;
 
+/**
+ * Hard ceiling when an admin overrides the standard capacity (e.g. keeping a
+ * 3rd officer on a Tue–Thu shift). Overrides can never stack beyond this.
+ */
+export const ADMIN_OVERRIDE_MAX_OFFICERS_PER_HOUR = 3;
+
 export const getMaxOfficersPerHour = (slotDate: Date): number => {
   const day = slotDate.getDay(); // 0 = Sunday … 1 = Monday … 5 = Friday
   return day === 1 || day === 5 ? PEAK_MAX_OFFICERS_PER_HOUR : DEFAULT_MAX_OFFICERS_PER_HOUR;
+};
+
+/**
+ * Capacity that applies to a specific requester: admins may exceed the
+ * standard limit up to the override ceiling; everyone else gets the standard
+ * limit for that day.
+ */
+export const getEffectiveMaxOfficersPerHour = (slotDate: Date, isAdmin: boolean): number => {
+  const base = getMaxOfficersPerHour(slotDate);
+  return isAdmin ? Math.max(base, ADMIN_OVERRIDE_MAX_OFFICERS_PER_HOUR) : base;
 };
 
 export const usesUpdatedShiftPolicy = (slotDate: Date): boolean => {
