@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Calendar, CheckCircle, Clock, Bell, Settings, Timer, Mail, Send, UserPlus } from 'lucide-react';
+import { Users, Calendar, CheckCircle, Clock, Bell, Settings, Timer, Mail, Send, UserPlus, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -667,6 +667,15 @@ export default function AdminPage() {
                 <div className="text-center">
                   <div className="font-semibold">Changelog Management</div>
                   <div className="text-sm text-muted-foreground">Create and manage app updates</div>
+                </div>
+              </Button>
+            </Link>
+            <Link href="/dashboard/admin/audit">
+              <Button variant="outline" className="w-full h-20 flex flex-col gap-2 hover:bg-accent">
+                <History className="h-6 w-6" />
+                <div className="text-center">
+                  <div className="font-semibold">Schedule Audit Log</div>
+                  <div className="text-sm text-muted-foreground">Who signed up or was removed, and when</div>
                 </div>
               </Button>
             </Link>
