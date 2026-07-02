@@ -26,7 +26,7 @@ import {
   getShiftDateBounds,
   getDefaultShiftWindow,
   getShiftMaxBlockMinutes,
-  getMaxOfficersPerHour,
+  getEffectiveMaxOfficersPerHour,
   usesUpdatedShiftPolicy,
   getTimeRangeDurationMinutes,
   isRangeWithinShiftWindow,
@@ -193,7 +193,8 @@ export default function SchedulePage() {
     }
 
     const effectiveShiftStart = minutesToHHMM(effectiveStartMinutes);
-    const maxPerHour = getMaxOfficersPerHour(slot.date);
+    // Admins see override capacity (3/hr) so they can add a 3rd officer on Tue–Thu.
+    const maxPerHour = getEffectiveMaxOfficersPerHour(slot.date, user?.role === 'admin');
     const hourlyAvailability = getHourlyAvailability(officerShifts, effectiveShiftStart, shiftEnd, maxPerHour);
     const availableSlots = getAvailableTimeSlots(officerShifts, effectiveShiftStart, shiftEnd, maxPerHour);
 
@@ -800,7 +801,7 @@ export default function SchedulePage() {
         newTimeRanges,
         shiftStart, // shift start
         shiftEnd,  // shift end
-        getMaxOfficersPerHour(slot.date)
+        getEffectiveMaxOfficersPerHour(slot.date, user?.role === 'admin')
       );
 
       if (!validation.valid) {
@@ -1006,14 +1007,14 @@ export default function SchedulePage() {
       timeRanges: parseTimeString(officer.customHours || targetSlot.time)
     }));
 
-    // Validate if the new shift can be added
+    // Validate if the new shift can be added (admins may use the override capacity)
     const validation = canAddOfficerShift(
       existingOfficerShifts,
       officerName,
       newTimeRanges,
       shiftStart,
       shiftEnd,
-      getMaxOfficersPerHour(slot.date)
+      getEffectiveMaxOfficersPerHour(slot.date, user?.role === 'admin')
     );
 
     if (!validation.valid) {

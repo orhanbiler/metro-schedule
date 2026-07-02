@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { validateApiAuth } from '@/lib/api-auth';
 import { validateScheduleSave } from '@/lib/schedule-validation';
+import { buildScheduleAuditEntries } from '@/lib/schedule-audit';
 
 export async function GET(request: NextRequest) {
   try {
@@ -98,6 +99,34 @@ export async function POST(request: NextRequest) {
     // Saving schedule data to database
 
     await adminDb().collection('schedules').doc(scheduleId).set(scheduleData, { merge: true });
+
+    // Record who changed what. Audit failures must not undo a successful
+    // save, so they are logged rather than surfaced to the client.
+    try {
+      const auditEntries = buildScheduleAuditEntries({
+        actor: {
+          uid: user.uid,
+          name: userData.name,
+          idNumber: userData.idNumber,
+          role: user.role,
+        },
+        month: Number(month),
+        year: Number(year),
+        incomingSchedule: schedule,
+        existingSchedule,
+        timestamp: new Date().toISOString(),
+      });
+      if (auditEntries.length > 0) {
+        const batch = adminDb().batch();
+        const auditCollection = adminDb().collection('scheduleAudit');
+        for (const entry of auditEntries) {
+          batch.set(auditCollection.doc(), entry);
+        }
+        await batch.commit();
+      }
+    } catch (auditError) {
+      console.error('Failed to write schedule audit entries:', auditError);
+    }
 
     // Schedule saved successfully
     return NextResponse.json({ success: true });
