@@ -25,6 +25,7 @@ import {
   getShiftDateBounds,
   getDefaultShiftWindow,
   getShiftMaxBlockMinutes,
+  getMaxOfficersPerShift,
   getEffectiveMaxOfficersPerShift,
   countDistinctOfficers,
   usesUpdatedShiftPolicy,
@@ -133,6 +134,7 @@ export default function SchedulePage() {
   ): {
     availableSlots: string[];
     maxRemaining: number;
+    assignRemaining: number;
     status: 'past' | 'ongoing' | 'upcoming';
   } => {
     const slotData = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
@@ -189,17 +191,23 @@ export default function SchedulePage() {
     }
 
     if (effectiveStartMinutes >= shiftEndMinutes) {
-      return { availableSlots: [], maxRemaining: 0, status };
+      return { availableSlots: [], maxRemaining: 0, assignRemaining: 0, status };
     }
 
     const effectiveShiftStart = minutesToHHMM(effectiveStartMinutes);
-    // Admins see override capacity (3/shift) so they can add a 3rd officer on Tue–Thu.
-    const maxPerShift = getEffectiveMaxOfficersPerShift(slot.date, user?.role === 'admin');
-    const availableSlots = getAvailableTimeSlots(officerShifts, effectiveShiftStart, shiftEnd, maxPerShift);
+    // Badges and availability text always reflect the STANDARD capacity, so
+    // admin override headroom is never advertised as ordinary open slots.
+    // `assignRemaining` carries the override capacity (admins only) and gates
+    // just the admin assign button.
+    const standardMax = getMaxOfficersPerShift(slot.date);
+    const overrideMax = getEffectiveMaxOfficersPerShift(slot.date, user?.role === 'admin');
+    const officerCount = countDistinctOfficers(officerShifts);
+    const availableSlots = getAvailableTimeSlots(officerShifts, effectiveShiftStart, shiftEnd, standardMax);
 
     return {
       availableSlots,
-      maxRemaining: Math.max(0, maxPerShift - countDistinctOfficers(officerShifts)),
+      maxRemaining: Math.max(0, standardMax - officerCount),
+      assignRemaining: Math.max(0, overrideMax - officerCount),
       status,
     };
   };
@@ -207,13 +215,14 @@ export default function SchedulePage() {
   const renderMobileShift = (
     slot: TimeSlot,
     slotType: 'morning' | 'afternoon',
-    summary: { availableSlots: string[]; maxRemaining: number; status: 'past' | 'ongoing' | 'upcoming' }
+    summary: { availableSlots: string[]; maxRemaining: number; assignRemaining: number; status: 'past' | 'ongoing' | 'upcoming' }
   ) => {
     const slotData = slotType === 'morning' ? slot.morningSlot : slot.afternoonSlot;
-    const { availableSlots, maxRemaining, status } = summary;
+    const { availableSlots, maxRemaining, assignRemaining, status } = summary;
     const hasAvailability = status !== 'past' && maxRemaining > 0 && availableSlots.length > 0;
-    // Admins can assign to past dates as long as there's capacity
-    const adminCanAssign = maxRemaining > 0 && availableSlots.length > 0;
+    // Admins can assign to past dates and use the override capacity, so the
+    // assign button keys off assignRemaining rather than the standard count.
+    const adminCanAssign = assignRemaining > 0;
     const userSignedUp = hasUserSignedUpForSlot(slot.date, slotType);
     const isAdmin = user?.role === 'admin';
     const canModify = canUserModifySchedule();
@@ -2240,8 +2249,8 @@ export default function SchedulePage() {
                                     morningSummary.status !== 'past' &&
                                     morningAvailableSlots.length > 0 &&
                                     morningRemainingCapacity > 0;
-                                  // Admins can assign to past dates as long as there's capacity
-                                  const adminCanAssign = morningAvailableSlots.length > 0 && morningRemainingCapacity > 0;
+                                  // Admins can assign to past dates and use the override capacity
+                                  const adminCanAssign = morningSummary.assignRemaining > 0;
                                   const isAdmin = user?.role === 'admin';
                                   const canModify = canUserModifySchedule();
                                   const blockMinutes = getShiftMaxBlockMinutes(slot.date);
@@ -2279,7 +2288,7 @@ export default function SchedulePage() {
                                     return <span className="text-xs sm:text-sm text-muted-foreground">Shift closed</span>;
                                   }
 
-                                  if (!slotsAvailable && !userSignedUp) {
+                                  if (!slotsAvailable && !userSignedUp && !(isAdmin && adminCanAssign)) {
                                     return <span className="text-xs sm:text-sm text-muted-foreground">Full</span>;
                                   }
 
@@ -2313,7 +2322,7 @@ export default function SchedulePage() {
                                           </Button>
                                         </HoursDialog>
                                       ) : null}
-                                      {isAdmin && slotsAvailable && (
+                                      {isAdmin && adminCanAssign && (
                                         <AdminAssignDialog
                                           users={allUsers}
                                           originalTime={slot.morningSlot.time}
@@ -2423,8 +2432,8 @@ export default function SchedulePage() {
                                     afternoonSummary.status !== 'past' &&
                                     afternoonAvailableSlots.length > 0 &&
                                     afternoonRemainingCapacity > 0;
-                                  // Admins can assign to past dates as long as there's capacity
-                                  const adminCanAssign = afternoonAvailableSlots.length > 0 && afternoonRemainingCapacity > 0;
+                                  // Admins can assign to past dates and use the override capacity
+                                  const adminCanAssign = afternoonSummary.assignRemaining > 0;
                                   const isAdmin = user?.role === 'admin';
                                   const canModify = canUserModifySchedule();
                                   const blockMinutes = getShiftMaxBlockMinutes(slot.date);
@@ -2462,7 +2471,7 @@ export default function SchedulePage() {
                                     return <span className="text-xs sm:text-sm text-muted-foreground">Shift closed</span>;
                                   }
 
-                                  if (!slotsAvailable && !userSignedUp) {
+                                  if (!slotsAvailable && !userSignedUp && !(isAdmin && adminCanAssign)) {
                                     return <span className="text-xs sm:text-sm text-muted-foreground">Full</span>;
                                   }
 
@@ -2496,7 +2505,7 @@ export default function SchedulePage() {
                                           </Button>
                                         </HoursDialog>
                                       ) : null}
-                                      {isAdmin && slotsAvailable && (
+                                      {isAdmin && adminCanAssign && (
                                         <AdminAssignDialog
                                           users={allUsers}
                                           originalTime={slot.afternoonSlot.time}
