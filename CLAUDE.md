@@ -8,6 +8,38 @@ To ensure code quality, run the following commands before committing:
 - `npm run lint` - Check for linting issues
 - `npm run typecheck` - Check for TypeScript type errors
 
+## [2026-07-03] - Month Lock (No In-Month Sign-Ups) & Rules Notice Popup
+
+### Changes
+1. **Current-month sign-ups are locked** (`lib/assignments.ts`): the sign-up
+   window for a month closes when that month begins (Eastern time). Officers
+   schedule their entire month during the advance window (20th Patrol / 25th
+   others, through the end of the prior month). Once the month starts,
+   remaining shifts are locked — no last-minute self sign-ups; only admins
+   can modify the schedule. Enforced client-side (banner + hidden sign-up
+   buttons via the existing `signupWindow` plumbing) and server-side
+   (`validateScheduleSave`). New `SignupWindowReason`: `month-locked`.
+2. **One-time rules notice popup** (`components/ui/rules-notice-dialog.tsx`,
+   mounted in the dashboard layout): shows after login until the user taps
+   "Got it". Acknowledgment stored per account in
+   `users/{uid}.acknowledgedNotices` via `app/api/user/notice-ack/route.ts`
+   (GET checks, POST records; requireAuth), with localStorage as a fast-path
+   cache. Mobile-friendly dialog (95vw cap, scrollable body). Closing via X
+   dismisses for the session only; it reappears next login until acknowledged.
+   Bump `NOTICE_KEY` to publish a future notice.
+
+### Files Modified
+- `lib/assignments.ts`
+- `components/ui/rules-notice-dialog.tsx` (new), `app/dashboard/layout.tsx`
+- `app/api/user/notice-ack/route.ts` (new)
+
+## [2026-07-03] - Full Schedule PDF: Coverage Summary Removed
+
+Removed the "Coverage Summary" table and "Overall Fill Rate" line from the end
+of the Full Schedule PDF (`generateFullSchedulePDF` in
+`app/dashboard/schedule/page.tsx`), along with the filled/unfilled counters
+that only fed it. The PDF now ends after the schedule table.
+
 ## [2026-07-03] - Admin Override Ceiling Raised to 4, 2-Hour Minimum Blocks, PWA Update Fix
 
 ### Problems Identified

@@ -8,6 +8,7 @@ import ProtectedRoute from '@/components/auth/protected-route';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { ChangelogDialog } from '@/components/ui/changelog-dialog';
+import { RulesNoticeDialog } from '@/components/ui/rules-notice-dialog';
 import { LiveClock } from '@/components/ui/live-clock';
 import {
   DropdownMenu,
@@ -276,6 +277,7 @@ export default function DashboardLayout({
           <LiveClock />
           {children}
         </main>
+        <RulesNoticeDialog />
       </div>
     </ProtectedRoute>
   );
