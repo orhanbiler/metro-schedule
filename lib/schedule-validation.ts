@@ -10,7 +10,7 @@
  *   - Regular officers cannot touch past months at all.
  *   - Per-shift capacity (3 distinct officers on Mon/Fri, otherwise 2) is
  *     enforced for regular officers; admins may override up to a hard
- *     ceiling of 3 per shift. Only NEW violations are rejected, so a
+ *     ceiling of 4 per shift. Only NEW violations are rejected, so a
  *     previously granted override (or data predating the per-shift rule)
  *     doesn't block later unrelated changes to the same shift.
  *

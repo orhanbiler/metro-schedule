@@ -1,4 +1,4 @@
-const CACHE_NAME = 'metro-schedule-v1';
+const CACHE_NAME = 'metro-schedule-v2';
 const STATIC_ASSETS = [
   '/',
   '/dashboard',
@@ -125,37 +125,51 @@ async function handleApiRequest(request) {
   }
 }
 
-// Handle static requests with cache-first strategy
+// Handle static requests. Pages (navigations) are network-first so new
+// deployments reach installed PWAs immediately; other static assets are
+// cache-first (Next.js fingerprints their URLs, so stale entries are never
+// served for a new build).
 async function handleStaticRequest(request) {
   const cache = await caches.open(CACHE_NAME);
-  
+
+  if (request.mode === 'navigate') {
+    try {
+      const networkResponse = await fetch(request);
+
+      if (networkResponse.ok) {
+        cache.put(request, networkResponse.clone());
+      }
+
+      return networkResponse;
+    } catch (error) {
+      // Offline: fall back to the cached page, then the app shell
+      const cachedPage = await cache.match(request);
+      if (cachedPage) {
+        return cachedPage;
+      }
+      const offlineResponse = await cache.match('/');
+      if (offlineResponse) {
+        return offlineResponse;
+      }
+      throw error;
+    }
+  }
+
   // Try cache first
   const cachedResponse = await cache.match(request);
   if (cachedResponse) {
     return cachedResponse;
   }
-  
-  try {
-    // Try network
-    const networkResponse = await fetch(request);
-    
-    // Cache successful responses
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
-    }
-    
-    return networkResponse;
-  } catch (error) {
-    // Return offline page for navigation requests
-    if (request.mode === 'navigate') {
-      const offlineResponse = await cache.match('/');
-      if (offlineResponse) {
-        return offlineResponse;
-      }
-    }
-    
-    throw error;
+
+  // Try network
+  const networkResponse = await fetch(request);
+
+  // Cache successful responses
+  if (networkResponse.ok) {
+    cache.put(request, networkResponse.clone());
   }
+
+  return networkResponse;
 }
 
 // Handle background sync for form submissions

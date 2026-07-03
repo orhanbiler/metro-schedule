@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, X } from 'lucide-react';
-import { addMinutesToTimeString } from '@/lib/schedule-utils';
+import { addMinutesToTimeString, MIN_SHIFT_BLOCK_MINUTES } from '@/lib/schedule-utils';
 
 interface HoursDialogProps {
   children: React.ReactNode;
@@ -42,7 +42,7 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel, maxBl
   const [originalStartRaw, originalEndRaw] = originalTime.split('-');
   const originalStart = sanitizeTime(originalStartRaw);
   const originalEnd = sanitizeTime(originalEndRaw);
-  const MIN_BLOCK_MINUTES = 60;
+  const MIN_BLOCK_MINUTES = MIN_SHIFT_BLOCK_MINUTES;
 
   const compareTimes = (a?: string, b?: string) => {
     if (!a && !b) return 0;
@@ -138,7 +138,8 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel, maxBl
       const maxEnd = computeMaxEndForStart(value) || originalEnd;
       setEndTime((prev) => {
         if (!prev) return maxEnd;
-        if (compareTimes(prev, value) <= 0) {
+        // Reset ends that fall below the minimum block for the new start
+        if (compareTimes(prev, addMinutesToTimeString(value, MIN_BLOCK_MINUTES)) < 0) {
           return maxEnd;
         }
         if (maxEnd && compareTimes(prev, maxEnd) > 0) {
@@ -281,6 +282,8 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel, maxBl
                             return !blockEnforced;
                           }
                           if (compareTimes(opt.value, effectiveStart) <= 0) return false;
+                          // Enforce the minimum block length in the picker itself
+                          if (compareTimes(opt.value, addMinutesToTimeString(effectiveStart, MIN_BLOCK_MINUTES)) < 0) return false;
                           if (blockEnforced) {
                             const limit = computeMaxEndForStart(effectiveStart) || originalEnd;
                             return !limit || compareTimes(opt.value, limit) <= 0;

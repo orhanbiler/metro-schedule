@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserPlus } from 'lucide-react';
 import { formatOfficerName } from '@/lib/utils';
-import { addMinutesToTimeString } from '@/lib/schedule-utils';
+import { addMinutesToTimeString, MIN_SHIFT_BLOCK_MINUTES } from '@/lib/schedule-utils';
 
 interface User {
   id: string;
@@ -53,7 +53,7 @@ export function AdminAssignDialog({
   const [useCustomHours, setUseCustomHours] = useState(blockEnforced);
   const [startTime, setStartTime] = useState(''); // HHMM
   const [endTime, setEndTime] = useState('');   // HHMM
-  const MIN_BLOCK_MINUTES = 60;
+  const MIN_BLOCK_MINUTES = MIN_SHIFT_BLOCK_MINUTES;
 
   const timeOptions = useMemo(() => {
     const options: { value: string; label: string }[] = [];
@@ -142,7 +142,8 @@ export function AdminAssignDialog({
       const maxEnd = computeMaxEndForStart(value) || shiftEnd;
       setEndTime((prev) => {
         if (!prev) return maxEnd || '';
-        if (compareTimes(prev, value) <= 0) {
+        // Reset ends that fall below the minimum block for the new start
+        if (compareTimes(prev, addMinutesToTimeString(value, MIN_BLOCK_MINUTES)) < 0) {
           return maxEnd || '';
         }
         if (maxEnd && compareTimes(prev, maxEnd) > 0) {
@@ -348,6 +349,8 @@ export function AdminAssignDialog({
                             return !blockEnforced;
                           }
                           if (compareTimes(opt.value, startReference) <= 0) return false;
+                          // Enforce the minimum block length in the picker itself
+                          if (compareTimes(opt.value, addMinutesToTimeString(startReference, MIN_BLOCK_MINUTES)) < 0) return false;
                           const withinShiftEnd = !shiftEnd || compareTimes(opt.value, shiftEnd) <= 0;
                           if (!withinShiftEnd) return false;
                           if (blockEnforced) {
