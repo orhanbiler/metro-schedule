@@ -85,6 +85,16 @@ export default function ScheduleAuditPage() {
       )
     : entries;
 
+  const hoursDisplay = (entry: AuditRow) =>
+    entry.action === 'hours_change'
+      ? `${entry.hoursBefore || '—'} → ${entry.hoursAfter || '—'}`
+      : entry.hoursAfter || entry.hoursBefore || '—';
+
+  const emptyMessage =
+    entries.length === 0
+      ? 'No schedule changes recorded for this month yet. The audit log captures changes made after it was introduced.'
+      : 'No entries match the current filter.';
+
   if (user && user.role !== 'admin') {
     return (
       <Card>
@@ -140,75 +150,115 @@ export default function ScheduleAuditPage() {
               ))}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <div className="min-w-[760px] rounded-lg border">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-navy-900 text-white">
-                      <th className="text-left p-3 font-semibold whitespace-nowrap">When</th>
-                      <th className="text-left p-3 font-semibold whitespace-nowrap">Action</th>
-                      <th className="text-left p-3 font-semibold whitespace-nowrap">Officer</th>
-                      <th className="text-left p-3 font-semibold whitespace-nowrap">Shift</th>
-                      <th className="text-left p-3 font-semibold whitespace-nowrap">Hours</th>
-                      <th className="text-left p-3 font-semibold whitespace-nowrap">Performed By</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="text-center p-8 text-muted-foreground">
-                          {entries.length === 0
-                            ? 'No schedule changes recorded for this month yet. The audit log captures changes made after it was introduced.'
-                            : 'No entries match the current filter.'}
-                        </td>
-                      </tr>
-                    ) : (
-                      filtered.map((entry, index) => {
-                        const meta = ACTION_META[entry.action] ?? ACTION_META.signup;
-                        return (
-                          <tr key={entry.id} className={`border-t hover:bg-muted/50 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}>
-                            <td className="p-3 whitespace-nowrap text-sm">{formatTimestamp(entry.timestamp)}</td>
-                            <td className="p-3 whitespace-nowrap">
-                              <div className="flex flex-col items-start gap-1">
-                                <Badge className={meta.className}>
-                                  <meta.Icon className="mr-1 h-3 w-3" />
-                                  {meta.label}
-                                </Badge>
-                                {entry.capacityOverride && (
-                                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                                    <ShieldAlert className="mr-1 h-3 w-3" />
-                                    Capacity Override
-                                  </Badge>
-                                )}
-                              </div>
-                            </td>
-                            <td className="p-3 whitespace-nowrap text-sm font-medium">{entry.officerName}</td>
-                            <td className="p-3 whitespace-nowrap text-sm">
-                              {formatShiftDate(entry.shiftDate)}
-                              <span className="ml-1 text-muted-foreground">
-                                ({entry.slotType === 'morning' ? 'Morning' : 'Afternoon'})
-                              </span>
-                            </td>
-                            <td className="p-3 whitespace-nowrap text-sm">
-                              {entry.action === 'hours_change'
-                                ? `${entry.hoursBefore || '—'} → ${entry.hoursAfter || '—'}`
-                                : entry.hoursAfter || entry.hoursBefore || '—'}
-                            </td>
-                            <td className="p-3 whitespace-nowrap text-sm">
-                              {entry.actorName}
-                              {entry.actorIdNumber ? ` #${entry.actorIdNumber}` : ''}
-                              <Badge variant="secondary" className="ml-2">
-                                {entry.selfAction ? 'Self' : entry.actorRole === 'admin' ? 'Admin' : 'Other'}
+            <>
+              {/* Mobile: stacked cards, no horizontal scrolling */}
+              <div className="space-y-2 px-3 pb-3 sm:px-0 md:hidden">
+                {filtered.length === 0 ? (
+                  <p className="p-6 text-center text-sm text-muted-foreground">{emptyMessage}</p>
+                ) : (
+                  filtered.map((entry) => {
+                    const meta = ACTION_META[entry.action] ?? ACTION_META.signup;
+                    return (
+                      <div key={entry.id} className="space-y-1.5 rounded-lg border p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Badge className={meta.className}>
+                              <meta.Icon className="mr-1 h-3 w-3" />
+                              {meta.label}
+                            </Badge>
+                            {entry.capacityOverride && (
+                              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                <ShieldAlert className="mr-1 h-3 w-3" />
+                                Override
                               </Badge>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                            )}
+                          </div>
+                          <span className="text-2xs text-muted-foreground">{formatTimestamp(entry.timestamp)}</span>
+                        </div>
+                        <div className="break-words text-sm font-medium">{entry.officerName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatShiftDate(entry.shiftDate)} · {entry.slotType === 'morning' ? 'Morning' : 'Afternoon'} · {hoursDisplay(entry)}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                          <span className="break-words">
+                            By {entry.actorName}
+                            {entry.actorIdNumber ? ` #${entry.actorIdNumber}` : ''}
+                          </span>
+                          <Badge variant="secondary" className="text-2xs">
+                            {entry.selfAction ? 'Self' : entry.actorRole === 'admin' ? 'Admin' : 'Other'}
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-            </div>
+
+              {/* Desktop: full table */}
+              <div className="hidden overflow-x-auto md:block">
+                <div className="min-w-[760px] rounded-lg border">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-navy-900 text-white">
+                        <th className="text-left p-3 font-semibold whitespace-nowrap">When</th>
+                        <th className="text-left p-3 font-semibold whitespace-nowrap">Action</th>
+                        <th className="text-left p-3 font-semibold whitespace-nowrap">Officer</th>
+                        <th className="text-left p-3 font-semibold whitespace-nowrap">Shift</th>
+                        <th className="text-left p-3 font-semibold whitespace-nowrap">Hours</th>
+                        <th className="text-left p-3 font-semibold whitespace-nowrap">Performed By</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="text-center p-8 text-muted-foreground">
+                            {emptyMessage}
+                          </td>
+                        </tr>
+                      ) : (
+                        filtered.map((entry, index) => {
+                          const meta = ACTION_META[entry.action] ?? ACTION_META.signup;
+                          return (
+                            <tr key={entry.id} className={`border-t hover:bg-muted/50 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}>
+                              <td className="p-3 whitespace-nowrap text-sm">{formatTimestamp(entry.timestamp)}</td>
+                              <td className="p-3 whitespace-nowrap">
+                                <div className="flex flex-col items-start gap-1">
+                                  <Badge className={meta.className}>
+                                    <meta.Icon className="mr-1 h-3 w-3" />
+                                    {meta.label}
+                                  </Badge>
+                                  {entry.capacityOverride && (
+                                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                      <ShieldAlert className="mr-1 h-3 w-3" />
+                                      Capacity Override
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3 whitespace-nowrap text-sm font-medium">{entry.officerName}</td>
+                              <td className="p-3 whitespace-nowrap text-sm">
+                                {formatShiftDate(entry.shiftDate)}
+                                <span className="ml-1 text-muted-foreground">
+                                  ({entry.slotType === 'morning' ? 'Morning' : 'Afternoon'})
+                                </span>
+                              </td>
+                              <td className="p-3 whitespace-nowrap text-sm">{hoursDisplay(entry)}</td>
+                              <td className="p-3 whitespace-nowrap text-sm">
+                                {entry.actorName}
+                                {entry.actorIdNumber ? ` #${entry.actorIdNumber}` : ''}
+                                <Badge variant="secondary" className="ml-2">
+                                  {entry.selfAction ? 'Self' : entry.actorRole === 'admin' ? 'Admin' : 'Other'}
+                                </Badge>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
