@@ -25,11 +25,11 @@ const RULES: { title: string; body: string }[] = [
   },
   {
     title: 'Sign up for your whole month in advance',
-    body: 'Sign-ups for the upcoming month open on the 20th for Patrol and the 25th for all other assignments, and close when the new month begins. Schedule everything you plan to work for that month during this window — once the month starts, all remaining open shifts are locked. Last-minute sign-ups (grabbing a shift a day or two before) are no longer allowed. Any change after the month begins must go through an administrator.',
+    body: 'Sign-ups for the upcoming month open on the 20th for Patrol and the 25th for all other assignments, and close when the new month begins. Schedule everything you plan to work for that month during this window — once the month starts, all remaining open shifts are locked. Last-minute sign-ups (grabbing a shift a day or two before) are no longer allowed. Any change after the month begins must go through the Deputy Chief.',
   },
   {
     title: 'Removals',
-    body: 'You can no longer remove yourself from a shift. If you can’t work, contact an administrator to be removed.',
+    body: 'You can no longer remove yourself from a shift. If you can’t work, contact the Deputy Chief to be removed.',
   },
   {
     title: 'Audit trail',
@@ -113,7 +113,7 @@ export function RulesNoticeDialog() {
             ))}
           </ul>
           <p className="mt-4 text-sm text-muted-foreground">
-            Questions? Contact the Deputy Chief.
+            Contact the Deputy Chief for scheduling questions.
           </p>
         </div>
         <DialogFooter>

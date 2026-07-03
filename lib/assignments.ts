@@ -93,7 +93,7 @@ export function getSignupWindowStatus(
     return {
       canSignUp: false,
       reason: 'month-locked',
-      message: `Sign-ups for ${targetMonthName} ${targetYear} closed when the month began. Contact an administrator if you need to be added to or removed from a shift.`,
+      message: `Sign-ups for ${targetMonthName} ${targetYear} closed when the month began. Contact the Deputy Chief if you need to be added to or removed from a shift.`,
     };
   }
 
