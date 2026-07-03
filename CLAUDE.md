@@ -8,6 +8,13 @@ To ensure code quality, run the following commands before committing:
 - `npm run lint` - Check for linting issues
 - `npm run typecheck` - Check for TypeScript type errors
 
+## [2026-07-03] - Full Schedule PDF: Coverage Summary Removed
+
+Removed the "Coverage Summary" table and "Overall Fill Rate" line from the end
+of the Full Schedule PDF (`generateFullSchedulePDF` in
+`app/dashboard/schedule/page.tsx`), along with the filled/unfilled counters
+that only fed it. The PDF now ends after the schedule table.
+
 ## [2026-07-03] - Admin Override Ceiling Raised to 4, 2-Hour Minimum Blocks, PWA Update Fix
 
 ### Problems Identified

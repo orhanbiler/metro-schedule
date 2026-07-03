@@ -1833,10 +1833,6 @@ export default function SchedulePage() {
         `${time.slice(0, 2)}:${time.slice(2, 4)}-${time.slice(5, 7)}:${time.slice(7, 9)}`;
 
       const tableData: Array<[string, string, string, string]> = [];
-      let morningFilled = 0;
-      let afternoonFilled = 0;
-      let morningUnfilled = 0;
-      let afternoonUnfilled = 0;
 
       schedule.forEach(slot => {
         const dayLabel = `${slot.dayName} ${formatDate(slot.date)}`;
@@ -1853,10 +1849,8 @@ export default function SchedulePage() {
               officer.name
             ]);
           });
-          morningFilled += 1;
         } else {
           tableData.push([dayLabel, 'Morning', morningTime, 'UNFILLED']);
-          morningUnfilled += 1;
         }
 
         const afternoonOfficers = slot.afternoonSlot.officers;
@@ -1871,10 +1865,8 @@ export default function SchedulePage() {
               officer.name
             ]);
           });
-          afternoonFilled += 1;
         } else {
           tableData.push(['', 'Afternoon', afternoonTime, 'UNFILLED']);
-          afternoonUnfilled += 1;
         }
       });
 
@@ -1924,71 +1916,6 @@ export default function SchedulePage() {
         tableLineWidth: 0.15,
         rowPageBreak: 'avoid',
       });
-
-      // @ts-expect-error jspdf-autotable adds lastAutoTable property
-      const finalY = doc.lastAutoTable?.finalY || 180;
-      const summaryY = finalY + 15;
-
-      let currentY: number;
-      if (summaryY > 240) {
-        doc.addPage();
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Coverage Summary', 20, 20);
-        currentY = 35;
-      } else {
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Coverage Summary', 20, summaryY);
-        currentY = summaryY + 10;
-      }
-
-      const totalMorning = morningFilled + morningUnfilled;
-      const totalAfternoon = afternoonFilled + afternoonUnfilled;
-      const totalSlots = totalMorning + totalAfternoon;
-      const totalFilled = morningFilled + afternoonFilled;
-      const totalUnfilled = morningUnfilled + afternoonUnfilled;
-      const fillRate = totalSlots > 0 ? ((totalFilled / totalSlots) * 100).toFixed(1) : '0.0';
-
-      autoTable(doc, {
-        head: [['SHIFT', 'FILLED', 'UNFILLED', 'TOTAL']],
-        body: [
-          ['Morning', `${morningFilled}`, `${morningUnfilled}`, `${totalMorning}`],
-          ['Afternoon', `${afternoonFilled}`, `${afternoonUnfilled}`, `${totalAfternoon}`],
-        ],
-        foot: [['TOTAL', `${totalFilled}`, `${totalUnfilled}`, `${totalSlots}`]],
-        startY: currentY,
-        margin: { left: 15, right: 15 },
-        styles: {
-          fontSize: 9,
-          cellPadding: 2,
-          font: 'helvetica',
-        },
-        headStyles: {
-          fillColor: [25, 35, 120],
-          textColor: 255,
-          fontStyle: 'bold',
-          halign: 'center',
-        },
-        columnStyles: {
-          0: { cellWidth: 40, halign: 'left', fontStyle: 'bold' },
-          1: { cellWidth: 35, halign: 'center' },
-          2: { cellWidth: 35, halign: 'center' },
-          3: { cellWidth: 35, halign: 'center' },
-        },
-        footStyles: {
-          fillColor: [240, 240, 240],
-          textColor: [0, 0, 0],
-          fontStyle: 'bold',
-        },
-      });
-
-      // @ts-expect-error jspdf-autotable adds lastAutoTable property
-      const summaryTableY = doc.lastAutoTable?.finalY || currentY + 30;
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 0, 0);
-      doc.text(`Overall Fill Rate: ${fillRate}%`, 20, summaryTableY + 10);
 
       doc.save(`metro-full-schedule-${monthNames[selectedMonth].toLowerCase()}-${selectedYear}.pdf`);
       toast.dismiss(toastId);
