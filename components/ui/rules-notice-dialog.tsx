@@ -12,7 +12,7 @@ import { useAuth } from '@/lib/auth-context';
  * across devices; localStorage is only a fast-path cache to avoid re-checking
  * the server on every page load. Bump NOTICE_KEY to announce a new notice.
  */
-const NOTICE_KEY = 'scheduling-rules-2026-07';
+const NOTICE_KEY = 'scheduling-rules-2026-07-v2';
 
 const RULES: { title: string; body: string }[] = [
   {
