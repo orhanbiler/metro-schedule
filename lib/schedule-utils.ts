@@ -48,10 +48,14 @@ export const DEFAULT_MAX_OFFICERS_PER_SHIFT = 2;
 export const PEAK_MAX_OFFICERS_PER_SHIFT = 3;
 
 /**
- * Hard ceiling when an admin overrides the standard capacity (e.g. keeping a
- * 3rd officer on a Tue–Thu shift). Overrides can never stack beyond this.
+ * Hard ceiling when an admin overrides the standard capacity for one-off
+ * situations (e.g. a 3rd officer on a Tue–Thu shift, or a 4th when it
+ * genuinely happened). Overrides can never stack beyond this.
  */
-export const ADMIN_OVERRIDE_MAX_OFFICERS_PER_SHIFT = 3;
+export const ADMIN_OVERRIDE_MAX_OFFICERS_PER_SHIFT = 4;
+
+/** Minimum length of a sign-up block. */
+export const MIN_SHIFT_BLOCK_MINUTES = 2 * 60;
 
 export const getMaxOfficersPerShift = (slotDate: Date): number => {
   const day = slotDate.getDay(); // 0 = Sunday … 1 = Monday … 5 = Friday
@@ -189,13 +193,13 @@ export function canAddOfficerShift(
   shiftEnd: string,
   maxPerShift: number = DEFAULT_MAX_OFFICERS_PER_SHIFT
 ): { valid: boolean; conflicts: string[] } {
-  // Check minimum shift length (1 hour)
+  // Check minimum shift length
   for (const range of newTimeRanges) {
     const duration = timeToMinutes(range.end) - timeToMinutes(range.start);
-    if (duration < 60) { // 1 hour = 60 minutes
+    if (duration < MIN_SHIFT_BLOCK_MINUTES) {
       return {
         valid: false,
-        conflicts: ['Each shift block must be at least 1 hour long']
+        conflicts: [`Each shift block must be at least ${MIN_SHIFT_BLOCK_MINUTES / 60} hours long`]
       };
     }
   }

@@ -8,6 +8,31 @@ To ensure code quality, run the following commands before committing:
 - `npm run lint` - Check for linting issues
 - `npm run typecheck` - Check for TypeScript type errors
 
+## [2026-07-03] - Admin Override Ceiling Raised to 4, 2-Hour Minimum Blocks, PWA Update Fix
+
+### Problems Identified
+1. The admin override ceiling was 3 officers per shift, but one-off situations
+   can require recording a 4th officer.
+2. Minimum sign-up block was 1 hour; policy requires 2 hours.
+3. The service worker served pages cache-first with no revalidation, so
+   installed PWAs kept running old builds indefinitely after deployments.
+
+### Solutions Implemented
+1. `ADMIN_OVERRIDE_MAX_OFFICERS_PER_SHIFT` raised 3 → 4 (admins only; standard
+   limits unchanged: 2 Tue–Thu, 3 Mon/Fri).
+2. New shared `MIN_SHIFT_BLOCK_MINUTES` (120) in `lib/schedule-utils.ts`,
+   enforced in `canAddOfficerShift`; the hours/assign dialogs hide start and
+   end times that would produce a block under 2 hours and reset a stale end
+   selection when the start moves.
+3. `public/sw.js`: navigations are now network-first (cache fallback when
+   offline); other static assets stay cache-first. `CACHE_NAME` bumped to
+   `metro-schedule-v2` so old page caches are purged on activation.
+
+### Files Modified
+- `lib/schedule-utils.ts`, `lib/schedule-validation.ts` (comment)
+- `components/schedule/hours-dialog.tsx`, `components/schedule/admin-assign-dialog.tsx`
+- `public/sw.js`
+
 ## [2026-07-02] - Per-Shift Capacity (Replaces Per-Hour Capacity)
 
 ### Problem Identified
