@@ -1773,17 +1773,6 @@ export default function SchedulePage() {
       doc.setFont('helvetica', 'bold');
       doc.text(`TOTAL BILLABLE AMOUNT: $${billableGrandTotal.toFixed(2)}`, 20, paymentTableY + 15);
 
-      // Billable rate note (base rates + service charge)
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(100, 100, 100);
-      doc.text(
-        `Billable Rates (incl. $${rateConfig.serviceCharge}/hr service charge): Sgt. and above = $${rateConfig.commandRate + rateConfig.serviceCharge}/hr | Below Sgt. = $${rateConfig.officerRate + rateConfig.serviceCharge}/hr`,
-        20,
-        paymentTableY + 25
-      );
-      doc.setTextColor(0, 0, 0);
-
       doc.save(`metro-schedule-billable-${monthNames[selectedMonth].toLowerCase()}-${selectedYear}.pdf`);
       toast.dismiss(toastId);
       toast.success('Billable PDF exported successfully!');
