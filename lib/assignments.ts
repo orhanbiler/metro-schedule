@@ -5,8 +5,11 @@
  *   - Days  1–19 of the current month: closed for everyone (regular users).
  *   - Days 20–24: open to PATROL only (Patrol has first priority).
  *   - Days 25–end of month: open to everyone (Patrol keeps its access).
- * The current month and any month beyond the following month are not
- * self-signable by regular users. Admins bypass all of these rules.
+ * The window closes when the target month begins: officers schedule their
+ * entire month in advance, and once a month starts its remaining shifts are
+ * LOCKED — no last-minute self sign-ups. The current month, past months, and
+ * months beyond the following month are not self-signable by regular users.
+ * Admins bypass all of these rules.
  */
 
 export const ASSIGNMENTS = [
@@ -45,6 +48,7 @@ export type SignupWindowReason =
   | 'before-window'     // following month, but before the 20th
   | 'patrol-priority'   // following month, days 20–24, user is non-Patrol
   | 'future-month'      // a month beyond the following month
+  | 'month-locked'      // the month already began; remaining shifts are locked
   | 'closed';           // a past month
 
 export interface SignupWindowStatus {
@@ -82,14 +86,14 @@ export function getSignupWindowStatus(
     };
   }
 
-  // Current month: any shift still open is first-come, first-served for
-  // everyone. Patrol priority only applied to the advance window, so once the
-  // month begins, remaining shifts are open to all assignments.
+  // Current month: the sign-up window closed when the month began. Officers
+  // schedule their entire month during the advance window; remaining shifts
+  // are locked and only an administrator can make changes.
   if (diff === 0) {
     return {
-      canSignUp: true,
-      reason: 'open',
-      message: `Sign-ups for ${targetMonthName} ${targetYear} are open — remaining shifts are first-come, first-served.`,
+      canSignUp: false,
+      reason: 'month-locked',
+      message: `Sign-ups for ${targetMonthName} ${targetYear} closed when the month began. Contact an administrator if you need to be added to or removed from a shift.`,
     };
   }
 
