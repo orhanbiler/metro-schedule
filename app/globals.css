@@ -20,8 +20,7 @@ html {
 /* Animated flag navbar title (Google-doodle style): the self-hosted waving
    flag GIF — tiled three-wide (mirrored center) so `cover` reveals most of
    the flag's height through the wide text strip without distortion — is
-   clipped through the letters. A faint light stroke keeps the star-field
-   portion legible against the navy navbar. */
+   clipped through the letters. */
 .flag-text {
   color: transparent;
   background-image: url('/flag.gif');
@@ -31,7 +30,6 @@ html {
   background-position: 50% 50%;
   -webkit-background-clip: text;
   background-clip: text;
-  -webkit-text-stroke: 0.75px rgba(255, 255, 255, 0.4);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
