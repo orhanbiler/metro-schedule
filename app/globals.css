@@ -27,7 +27,8 @@ html {
   color: transparent;
   background-image: url('https://media.giphy.com/media/3o7TKwhW6L2tpmFsqc/giphy.gif'), url('/flag.gif');
   background-repeat: no-repeat;
-  background-size: 100% 100%;
+  /* cover preserves the flag's aspect ratio (crops instead of stretching) */
+  background-size: cover;
   background-position: 50% 50%;
   -webkit-background-clip: text;
   background-clip: text;
