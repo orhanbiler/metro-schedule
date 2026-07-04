@@ -33,6 +33,29 @@ To ensure code quality, run the following commands before committing:
 - `components/ui/rules-notice-dialog.tsx` (new), `app/dashboard/layout.tsx`
 - `app/api/user/notice-ack/route.ts` (new)
 
+## [2026-07-04] - Day-Before Shift Reminder Emails
+
+### Feature
+A nightly Vercel Cron job (`vercel.json`, 22:00 UTC ≈ 5–6 PM Eastern) hits
+`GET /api/cron/shift-reminders`, which loads tomorrow's schedule (Eastern),
+resolves each signed-up officer to their account email via the `#idNumber`
+in the schedule entry, and sends one letterhead-style reminder per officer
+listing their shift block(s) (`lib/shift-reminders.ts`, Brevo transport).
+
+### Auth & testing
+- Cron authorized via the `CRON_SECRET` bearer token Vercel attaches when
+  that env var is set; admins may also invoke the route with their session.
+- `?dryRun=1` reports who would receive what without sending;
+  `?overrideEmail=x` sends every reminder to that address instead of the
+  officers. Admin Tools has a "Day-Before Shift Reminders" section with
+  Preview and Send-test-to-me buttons built on these.
+- `/api/cron/` added to the middleware's public API paths (the route does
+  its own auth).
+
+### Files
+- `lib/shift-reminders.ts` (new), `app/api/cron/shift-reminders/route.ts` (new)
+- `vercel.json` (new), `middleware.ts`, `app/dashboard/admin/page.tsx`
+
 ## [2026-07-03] - Full Schedule PDF: Coverage Summary Removed
 
 Removed the "Coverage Summary" table and "Overall Fill Rate" line from the end

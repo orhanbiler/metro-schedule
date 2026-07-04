@@ -50,12 +50,26 @@ function formatLastSeen(iso: string | null | undefined): { label: string; online
   return { label: new Date(then).toLocaleDateString(), online: false };
 }
 
+interface ReminderRunResult {
+  date: string;
+  count: number;
+  sent: number;
+  results: Array<{
+    officer: string;
+    email: string | null;
+    shifts: string[];
+    status: 'sent' | 'skipped-no-email' | 'failed' | 'dry-run';
+  }>;
+}
+
 export default function AdminPage() {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [testEmail, setTestEmail] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [reminderPreview, setReminderPreview] = useState<ReminderRunResult | null>(null);
+  const [runningReminders, setRunningReminders] = useState(false);
   const [signupDisabled, setSignupDisabled] = useState(false);
   const [savingSignupSetting, setSavingSignupSetting] = useState(false);
   const [scheduleStats, setScheduleStats] = useState({
@@ -525,6 +539,36 @@ export default function AdminPage() {
     });
   };
 
+  const runReminders = async (mode: 'preview' | 'send-to-me') => {
+    setRunningReminders(true);
+    try {
+      const params =
+        mode === 'preview'
+          ? 'dryRun=1'
+          : `overrideEmail=${encodeURIComponent(currentUser?.email || '')}`;
+      const response = await fetch(`/api/cron/shift-reminders?${params}`);
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || 'Reminder run failed');
+        return;
+      }
+      setReminderPreview(data);
+      if (mode === 'preview') {
+        toast.success(
+          data.count === 0
+            ? `No one is scheduled for ${data.date}.`
+            : `${data.count} reminder${data.count === 1 ? '' : 's'} would go out for ${data.date}.`
+        );
+      } else {
+        toast.success(`Sent ${data.sent} test reminder${data.sent === 1 ? '' : 's'} to ${currentUser?.email}.`);
+      }
+    } catch {
+      toast.error('Failed to run shift reminders');
+    } finally {
+      setRunningReminders(false);
+    }
+  };
+
   const sendTestEmail = async () => {
     if (!testEmail.trim()) {
       toast.error('Please enter an email address');
@@ -754,6 +798,65 @@ export default function AdminPage() {
                 )}
               </Button>
             </div>
+          </div>
+
+          {/* Shift Reminders */}
+          <div className="border-t pt-6 mt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Timer className="h-5 w-5" />
+              <h3 className="text-lg font-semibold">Day-Before Shift Reminders</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Every evening the system emails officers who are scheduled to work the next day.
+              Preview tomorrow&apos;s batch, or send the real emails to your own inbox to verify
+              them before they reach officers.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => runReminders('preview')} disabled={runningReminders}>
+                Preview tomorrow&apos;s reminders
+              </Button>
+              <Button onClick={() => runReminders('send-to-me')} disabled={runningReminders || !currentUser?.email}>
+                {runningReminders ? 'Working…' : `Send test to ${currentUser?.email || 'me'}`}
+              </Button>
+            </div>
+            {reminderPreview && (
+              <div className="mt-4 rounded-lg border p-3 text-sm">
+                <p className="font-semibold mb-2">
+                  {reminderPreview.date} — {reminderPreview.count}{' '}
+                  {reminderPreview.count === 1 ? 'officer' : 'officers'} scheduled
+                </p>
+                {reminderPreview.count === 0 ? (
+                  <p className="text-muted-foreground">No reminders would be sent.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {reminderPreview.results.map((r) => (
+                      <li key={r.officer} className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{r.officer}</span>
+                        <span className="text-muted-foreground">{r.shifts.join(' · ')}</span>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            r.status === 'failed' || (r.status !== 'dry-run' && !r.email)
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                              : ''
+                          }
+                        >
+                          {r.status === 'dry-run'
+                            ? r.email
+                              ? `would email ${r.email}`
+                              : 'no account email'
+                            : r.status === 'sent'
+                              ? `sent to ${r.email}`
+                              : r.status === 'skipped-no-email'
+                                ? 'no account email'
+                                : 'failed'}
+                        </Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
