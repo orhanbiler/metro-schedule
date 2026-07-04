@@ -7,8 +7,9 @@ export async function middleware(request: NextRequest) {
   const isProtectedPath = path.startsWith('/dashboard');
   const isApiPath = path.startsWith('/api');
   
-  // Skip middleware for public API routes
-  const publicApiPaths = ['/api/auth/signup', '/api/auth/sync-user', '/api/settings/signup-status', '/api/changelog/public'];
+  // Skip middleware for public API routes. /api/cron/* routes authenticate
+  // themselves (CRON_SECRET bearer token or an admin session).
+  const publicApiPaths = ['/api/auth/signup', '/api/auth/sync-user', '/api/settings/signup-status', '/api/changelog/public', '/api/cron/'];
   if (publicApiPaths.some(apiPath => path.startsWith(apiPath))) {
     return NextResponse.next();
   }
