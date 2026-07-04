@@ -1,56 +1,46 @@
-type PostmarkClient = {
-  sendEmail: (payload: {
-    From: string;
-    To: string;
-    Subject: string;
-    HtmlBody: string;
-    TextBody?: string;
-  }) => Promise<unknown>;
-};
+/**
+ * Email transport: Brevo transactional API (https://developers.brevo.com).
+ * Requires BREVO_API_KEY. The sender must be verified in Brevo
+ * (Senders & Domains); override the default with EMAIL_FROM.
+ */
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+const FROM_EMAIL = process.env.EMAIL_FROM || 'notifications@schedule.cheverlypd.com';
+const FROM_NAME = 'Cheverly PD Metro';
 
-let cachedClient: PostmarkClient | null = null;
-let clientPromise: Promise<PostmarkClient | null> | null = null;
+export interface SendEmailPayload {
+  to: string;
+  subject: string;
+  htmlBody: string;
+  textBody?: string;
+}
 
-async function loadPostmarkClient(): Promise<PostmarkClient | null> {
-  if (cachedClient) {
-    return cachedClient;
+/** Sends one transactional email through Brevo. Throws on API errors. */
+export async function sendEmail(payload: SendEmailPayload): Promise<void> {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    throw new Error('BREVO_API_KEY is not set. Email notifications are disabled.');
   }
 
-  if (!process.env.POSTMARK_SERVER_TOKEN) {
-    console.warn('POSTMARK_SERVER_TOKEN is not set. Email notifications are disabled.');
-    return null;
+  const response = await fetch(BREVO_API_URL, {
+    method: 'POST',
+    headers: {
+      'api-key': apiKey,
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: FROM_NAME, email: FROM_EMAIL },
+      to: [{ email: payload.to }],
+      subject: payload.subject,
+      htmlContent: payload.htmlBody,
+      textContent: payload.textBody,
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new Error(`Brevo API error ${response.status}: ${detail}`);
   }
-
-  if (!clientPromise) {
-    clientPromise = (async () => {
-      try {
-        const postmarkModule = (await import('postmark')) as {
-          Client?: new (token: string) => PostmarkClient;
-          ServerClient?: new (token: string) => PostmarkClient;
-        };
-
-        const ClientCtor = postmarkModule.Client ?? postmarkModule.ServerClient;
-
-        if (!ClientCtor) {
-          console.warn('Postmark client constructor not found. Email notifications are disabled.');
-          return null;
-        }
-
-        cachedClient = new ClientCtor(process.env.POSTMARK_SERVER_TOKEN!);
-        return cachedClient;
-      } catch (error) {
-        console.warn('Postmark package not available. Email notifications are disabled.', error);
-        return null;
-      }
-    })();
-  }
-
-  if (!clientPromise) {
-    return null;
-  }
-
-  cachedClient = await clientPromise;
-  return cachedClient;
 }
 
 export interface ChangelogNotificationData {
@@ -65,20 +55,12 @@ export async function sendChangelogNotification(
   data: ChangelogNotificationData
 ) {
   const typeLabel = getTypeLabel(data.type);
-  const client = await loadPostmarkClient();
 
-  if (!client) {
-    const error = new Error('Postmark client unavailable');
-    console.warn('Skipping changelog notification: Postmark client unavailable');
-    return { success: false, error };
-  }
-  
   try {
-    await client.sendEmail({
-      From: 'notifications@schedule.cheverlypd.com',
-      To: to,
-      Subject: `${typeLabel}: ${data.title} - Cheverly PD Metro`,
-      HtmlBody: `
+    await sendEmail({
+      to,
+      subject: `${typeLabel}: ${data.title} - Cheverly PD Metro`,
+      htmlBody: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -141,7 +123,7 @@ export async function sendChangelogNotification(
         </body>
         </html>
       `,
-      TextBody: `
+      textBody: `
 Cheverly PD Metro - What's New
 
 ${typeLabel}: ${data.title}
