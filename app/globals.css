@@ -98,10 +98,10 @@ html {
     --chart-4: oklch(0.7064 0.1822 151.7125);               /* Teal chart color */
     --chart-5: oklch(0.5919 0.2186 10.5826);                /* Red chart color */
     
-    /* Navbar (Professional Navy Blue) */
-    --navbar-bg: oklch(0.3000 0.1200 244.0000);             /* Professional navy */
+    /* Navbar (lighter blue in light theme; still dark enough for white text) */
+    --navbar-bg: oklch(0.4500 0.1100 244.0000);             /* Lighter professional blue */
     --navbar-text: oklch(1.0000 0 0);                       /* White text */
-    --navbar-hover: oklch(0.4000 0.1200 244.0000);          /* Lighter navy hover */
+    --navbar-hover: oklch(0.5500 0.1100 244.0000);          /* Hover a step lighter */
     
     /* Sidebar (if needed) */
     --sidebar: oklch(0.9784 0.0011 197.1387);               /* Light sidebar */
