@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
   if (isPublicPath && token && (path === '/login' || path === '/signup')) {
     // Note: We're not validating the token here for performance reasons
     // Invalid tokens will be caught when accessing protected routes
-    return NextResponse.redirect(new URL('/dashboard', request.nextUrl));
+    return NextResponse.redirect(new URL('/dashboard/schedule', request.nextUrl));
   }
 
   // Allow access to public paths

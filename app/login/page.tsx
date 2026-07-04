@@ -66,9 +66,9 @@ export default function LoginPage() {
       clearTimeout(timeout);
       // Only redirect if not currently logging in and not already redirecting
       if (user && !loading && !isRedirecting) {
-        // User is signed in and not currently logging in, redirect to dashboard
+        // User is signed in and not currently logging in — land on the schedule
         setIsRedirecting(true);
-        router.push('/dashboard');
+        router.push('/dashboard/schedule');
       }
       // Always stop checking auth after we get a response
       setCheckingAuth(false);

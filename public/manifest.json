@@ -2,7 +2,7 @@
   "name": "Cheverly PD Metro Schedule",
   "short_name": "CPD Metro",
   "description": "Metro schedule management system for Cheverly Police Department",
-  "start_url": "/",
+  "start_url": "/dashboard/schedule",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1e3a5f",
