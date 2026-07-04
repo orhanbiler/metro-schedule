@@ -70,6 +70,7 @@ export default function AdminPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [reminderPreview, setReminderPreview] = useState<ReminderRunResult | null>(null);
   const [runningReminders, setRunningReminders] = useState(false);
+  const [reminderDate, setReminderDate] = useState('');
   const [signupDisabled, setSignupDisabled] = useState(false);
   const [savingSignupSetting, setSavingSignupSetting] = useState(false);
   const [scheduleStats, setScheduleStats] = useState({
@@ -542,11 +543,16 @@ export default function AdminPage() {
   const runReminders = async (mode: 'preview' | 'send-to-me') => {
     setRunningReminders(true);
     try {
-      const params =
-        mode === 'preview'
-          ? 'dryRun=1'
-          : `overrideEmail=${encodeURIComponent(currentUser?.email || '')}`;
-      const response = await fetch(`/api/cron/shift-reminders?${params}`);
+      const params = new URLSearchParams();
+      if (mode === 'preview') {
+        params.set('dryRun', '1');
+      } else {
+        params.set('overrideEmail', currentUser?.email || '');
+      }
+      if (reminderDate) {
+        params.set('date', reminderDate);
+      }
+      const response = await fetch(`/api/cron/shift-reminders?${params.toString()}`);
       const data = await response.json();
       if (!response.ok) {
         toast.error(data.error || 'Reminder run failed');
@@ -811,9 +817,21 @@ export default function AdminPage() {
               Preview tomorrow&apos;s batch, or send the real emails to your own inbox to verify
               them before they reach officers.
             </p>
+            <div className="mb-3 max-w-xs">
+              <Label htmlFor="reminderDate" className="mb-1 block text-xs text-muted-foreground">
+                Test a specific date (optional — defaults to tomorrow)
+              </Label>
+              <Input
+                id="reminderDate"
+                type="date"
+                value={reminderDate}
+                onChange={(e) => setReminderDate(e.target.value)}
+                disabled={runningReminders}
+              />
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={() => runReminders('preview')} disabled={runningReminders}>
-                Preview tomorrow&apos;s reminders
+                {reminderDate ? 'Preview reminders' : 'Preview tomorrow’s reminders'}
               </Button>
               <Button onClick={() => runReminders('send-to-me')} disabled={runningReminders || !currentUser?.email}>
                 {runningReminders ? 'Working…' : `Send test to ${currentUser?.email || 'me'}`}

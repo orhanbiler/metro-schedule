@@ -48,6 +48,27 @@ export function easternTomorrow(): { year: number; monthIndex: number; day: numb
   };
 }
 
+/** Parse "YYYY-MM-DD" into a reminder target (for admin testing on a specific day). */
+export function targetFromDateString(
+  dateStr: string
+): { year: number; monthIndex: number; day: number; label: string } | null {
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0, 0);
+  if (Number.isNaN(date.getTime())) return null;
+  return {
+    year: date.getFullYear(),
+    monthIndex: date.getMonth(),
+    day: date.getDate(),
+    label: date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    }),
+  };
+}
+
 /** "0600-1000" or "06:00-10:00" → "06:00–10:00" */
 function displayHours(hours: string): string {
   const fmt = (t: string) => {
