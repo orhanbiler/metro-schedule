@@ -114,8 +114,7 @@ export default function DashboardLayout({
                   className="h-16 w-16 translate-y-1.5 object-contain drop-shadow-xl md:h-20 md:w-20 md:translate-y-2"
                 />
                 <span className="flag-text truncate text-2xl font-black tracking-tight sm:text-3xl">
-                  <span className="hidden lg:inline">Cheverly PD Metro</span>
-                  <span className="lg:hidden">Cheverly PD</span>
+                  Cheverly PD
                 </span>
               </Link>
 
