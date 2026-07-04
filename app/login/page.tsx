@@ -123,7 +123,7 @@ export default function LoginPage() {
       
       // Use window.location for more reliable redirect
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        window.location.href = '/dashboard/schedule';
       }, 100);
     } catch (err: unknown) {
       const firebaseError = err as { code?: string };
