@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiAuth } from '@/lib/api-auth';
-import { buildRemindersForDate, easternTomorrow, sendShiftReminder } from '@/lib/shift-reminders';
+import {
+  buildRemindersForDate,
+  easternTomorrow,
+  sendShiftReminder,
+  targetFromDateString,
+} from '@/lib/shift-reminders';
 
 /**
  * Day-before shift reminders. Invoked two ways:
@@ -28,9 +33,11 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const dryRun = searchParams.get('dryRun') === '1' || searchParams.get('dryRun') === 'true';
   const overrideEmail = searchParams.get('overrideEmail')?.trim() || null;
+  // ?date=YYYY-MM-DD lets admins test against any day (e.g. one with sign-ups)
+  const dateParam = searchParams.get('date');
 
   try {
-    const target = easternTomorrow();
+    const target = (dateParam && targetFromDateString(dateParam)) || easternTomorrow();
     const reminders = await buildRemindersForDate(target);
 
     const results: Array<{

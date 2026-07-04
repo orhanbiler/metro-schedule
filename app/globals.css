@@ -17,6 +17,39 @@ html {
   overscroll-behavior-y: contain;
 }
 
+/* Animated flag navbar title (Google-doodle style): the flag texture is
+   clipped through the letters and drifts slowly. A faint light stroke keeps
+   the star-field portion legible against the navy navbar. */
+.flag-text {
+  color: transparent;
+  background-image: url('/flag.png');
+  background-repeat: no-repeat;
+  background-size: 135% 125%;
+  background-position: 0% 35%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-stroke: 0.75px rgba(255, 255, 255, 0.4);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  animation: flag-wave 8s ease-in-out infinite;
+}
+
+@keyframes flag-wave {
+  0%,
+  100% {
+    background-position: 0% 35%;
+  }
+  50% {
+    background-position: 100% 65%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flag-text {
+    animation: none;
+  }
+}
+
 /* Fix for iOS status bar in PWA mode */
 @media screen and (display-mode: standalone) {
   body {
