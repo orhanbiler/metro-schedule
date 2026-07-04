@@ -113,7 +113,9 @@ export default function DashboardLayout({
                   // Oversized badge that hangs slightly below the navbar edge
                   className="h-16 w-16 translate-y-1.5 object-contain drop-shadow-xl md:h-20 md:w-20 md:translate-y-2"
                 />
-                <span className="flag-text truncate text-4xl font-black tracking-tight sm:text-5xl">
+                {/* Fluid size: as large as the screen allows (max 36px) so the
+                    title never truncates on narrow phones; 48px from sm up. */}
+                <span className="flag-text truncate text-[length:clamp(1.625rem,8.5vw,2.25rem)] font-black tracking-tight sm:text-5xl">
                   Cheverly PD
                 </span>
               </Link>
