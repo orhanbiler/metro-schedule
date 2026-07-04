@@ -44,13 +44,12 @@ export async function sendEmail(payload: SendEmailPayload): Promise<void> {
 }
 
 const APP_URL = 'https://schedule.cheverlypd.com';
-const LOGO_URL = `${APP_URL}/logo-email.png`;
 const NAVY = '#1e3a5f';
 
 /**
- * Shared, email-client-safe (table-based) layout: department patch and name
- * in a navy header, white content card, quiet footer. Pass the inner content
- * as HTML; keep inline styles only.
+ * Plain, letterhead-style layout: the department name over a navy rule, the
+ * content as simple text, a quiet one-line footer. No card, no images (email
+ * clients block remote images by default), no marketing chrome.
  */
 export function renderEmailLayout(contentHtml: string): string {
   return `<!DOCTYPE html>
@@ -59,28 +58,20 @@ export function renderEmailLayout(contentHtml: string): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background-color:#eef1f5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef1f5;">
+<body style="margin:0;padding:0;background-color:#ffffff;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
-      <td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border:1px solid #e2e6ea;border-radius:8px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;">
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
           <tr>
-            <td style="background-color:${NAVY};padding:28px 24px 22px;text-align:center;">
-              <img src="${LOGO_URL}" alt="Cheverly Police Department" width="72" height="72" style="display:block;margin:0 auto 12px;border:0;" />
-              <div style="color:#ffffff;font-size:17px;font-weight:bold;letter-spacing:1px;">CHEVERLY POLICE DEPARTMENT</div>
-              <div style="color:#aebdd2;font-size:12px;margin-top:5px;letter-spacing:2px;text-transform:uppercase;">Metro Overtime Schedule</div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:28px 32px;">
+            <td style="padding:32px 24px;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+              <div style="border-bottom:3px solid ${NAVY};padding-bottom:14px;margin-bottom:26px;">
+                <div style="font-size:16px;font-weight:bold;color:${NAVY};letter-spacing:1px;">CHEVERLY POLICE DEPARTMENT</div>
+                <div style="font-size:11px;color:#6b7280;letter-spacing:2px;text-transform:uppercase;margin-top:4px;">Metro Overtime Schedule</div>
+              </div>
               ${contentHtml}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:16px 24px;background-color:#f6f8fa;border-top:1px solid #e2e6ea;text-align:center;">
-              <div style="font-size:12px;color:#8a94a1;line-height:1.6;">
-                Cheverly Police Department &middot; Metro Overtime Schedule<br />
-                <a href="${APP_URL}" style="color:${NAVY};text-decoration:none;">schedule.cheverlypd.com</a>
+              <div style="border-top:1px solid #d7dce2;margin-top:30px;padding-top:12px;font-size:11px;color:#9aa3ad;">
+                Cheverly Police Department &middot; <a href="${APP_URL}" style="color:#9aa3ad;">schedule.cheverlypd.com</a>
               </div>
             </td>
           </tr>
@@ -92,15 +83,11 @@ export function renderEmailLayout(contentHtml: string): string {
 </html>`;
 }
 
-/** Navy call-to-action button, centered. */
+/** Plain navy text link, letter style — no button chrome. */
 export function renderEmailButton(label: string, href: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:8px auto 0;">
-    <tr>
-      <td style="background-color:${NAVY};border-radius:6px;">
-        <a href="${href}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;">${label}</a>
-      </td>
-    </tr>
-  </table>`;
+  return `<div style="margin-top:22px;font-size:14px;">
+    <a href="${href}" style="color:${NAVY};font-weight:bold;">${label} &rarr;</a>
+  </div>`;
 }
 
 export interface ChangelogNotificationData {
@@ -122,19 +109,15 @@ export async function sendChangelogNotification(
   });
 
   const content = `
-    <div style="font-size:11px;color:#8a94a1;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;">${typeLabel} &middot; ${dateLabel}</div>
-    <div style="font-size:20px;font-weight:bold;color:#1f2937;line-height:1.3;margin-bottom:18px;">${data.title}</div>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-      ${data.changes
-        .map(
-          (change) => `<tr>
-        <td valign="top" style="padding:4px 10px 4px 0;color:${NAVY};font-size:14px;">&bull;</td>
-        <td style="padding:4px 0;color:#374151;font-size:14px;line-height:1.6;">${change}</td>
-      </tr>`
-        )
-        .join('')}
-    </table>
-    ${renderEmailButton('Open the Schedule', `${APP_URL}/dashboard/schedule`)}
+    <div style="font-size:12px;color:#6b7280;margin-bottom:16px;">${dateLabel} &middot; ${typeLabel}</div>
+    <div style="font-size:18px;font-weight:bold;color:#111827;line-height:1.35;margin-bottom:14px;">${data.title}</div>
+    ${data.changes
+      .map(
+        (change) =>
+          `<div style="font-size:14px;color:#374151;line-height:1.7;margin-bottom:4px;">&ndash;&nbsp;&nbsp;${change}</div>`
+      )
+      .join('')}
+    ${renderEmailButton('Open the schedule', `${APP_URL}/dashboard/schedule`)}
   `;
 
   try {
