@@ -17,13 +17,15 @@ html {
   overscroll-behavior-y: contain;
 }
 
-/* Animated flag navbar title (Google-doodle style): an animated waving-flag
-   GIF is clipped through the letters — one flag spanning the whole phrase.
-   A faint light stroke keeps the star-field portion legible against the
-   navy navbar. */
+/* Animated flag navbar title (Google-doodle style): a waving-flag GIF is
+   clipped through the letters — one flag spanning the whole phrase. The
+   photographic Giphy flag is the top layer; the locally hosted /flag.gif
+   sits underneath as an automatic fallback if the remote GIF is blocked or
+   unavailable, so the letters never go invisible. A faint light stroke
+   keeps the star-field portion legible against the navy navbar. */
 .flag-text {
   color: transparent;
-  background-image: url('/flag.gif');
+  background-image: url('https://media.giphy.com/media/3o7TKwhW6L2tpmFsqc/giphy.gif'), url('/flag.gif');
   background-repeat: no-repeat;
   background-size: 100% 100%;
   background-position: 50% 50%;
