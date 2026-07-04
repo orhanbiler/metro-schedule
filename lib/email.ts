@@ -43,6 +43,66 @@ export async function sendEmail(payload: SendEmailPayload): Promise<void> {
   }
 }
 
+const APP_URL = 'https://schedule.cheverlypd.com';
+const LOGO_URL = `${APP_URL}/logo-email.png`;
+const NAVY = '#1e3a5f';
+
+/**
+ * Shared, email-client-safe (table-based) layout: department patch and name
+ * in a navy header, white content card, quiet footer. Pass the inner content
+ * as HTML; keep inline styles only.
+ */
+export function renderEmailLayout(contentHtml: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#eef1f5;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef1f5;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border:1px solid #e2e6ea;border-radius:8px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;">
+          <tr>
+            <td style="background-color:${NAVY};padding:28px 24px 22px;text-align:center;">
+              <img src="${LOGO_URL}" alt="Cheverly Police Department" width="72" height="72" style="display:block;margin:0 auto 12px;border:0;" />
+              <div style="color:#ffffff;font-size:17px;font-weight:bold;letter-spacing:1px;">CHEVERLY POLICE DEPARTMENT</div>
+              <div style="color:#aebdd2;font-size:12px;margin-top:5px;letter-spacing:2px;text-transform:uppercase;">Metro Overtime Schedule</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 32px;">
+              ${contentHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 24px;background-color:#f6f8fa;border-top:1px solid #e2e6ea;text-align:center;">
+              <div style="font-size:12px;color:#8a94a1;line-height:1.6;">
+                Cheverly Police Department &middot; Metro Overtime Schedule<br />
+                <a href="${APP_URL}" style="color:${NAVY};text-decoration:none;">schedule.cheverlypd.com</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/** Navy call-to-action button, centered. */
+export function renderEmailButton(label: string, href: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:8px auto 0;">
+    <tr>
+      <td style="background-color:${NAVY};border-radius:6px;">
+        <a href="${href}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;">${label}</a>
+      </td>
+    </tr>
+  </table>`;
+}
+
 export interface ChangelogNotificationData {
   title: string;
   changes: string[];
@@ -55,95 +115,45 @@ export async function sendChangelogNotification(
   data: ChangelogNotificationData
 ) {
   const typeLabel = getTypeLabel(data.type);
+  const dateLabel = new Date(data.date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  const content = `
+    <div style="font-size:11px;color:#8a94a1;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;">${typeLabel} &middot; ${dateLabel}</div>
+    <div style="font-size:20px;font-weight:bold;color:#1f2937;line-height:1.3;margin-bottom:18px;">${data.title}</div>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      ${data.changes
+        .map(
+          (change) => `<tr>
+        <td valign="top" style="padding:4px 10px 4px 0;color:${NAVY};font-size:14px;">&bull;</td>
+        <td style="padding:4px 0;color:#374151;font-size:14px;line-height:1.6;">${change}</td>
+      </tr>`
+        )
+        .join('')}
+    </table>
+    ${renderEmailButton('Open the Schedule', `${APP_URL}/dashboard/schedule`)}
+  `;
 
   try {
     await sendEmail({
       to,
-      subject: `${typeLabel}: ${data.title} - Cheverly PD Metro`,
-      htmlBody: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Cheverly PD Metro - What's New</title>
-        </head>
-        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
-          <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <!-- Header -->
-            <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 24px; text-align: center;">
-              <h1 style="margin: 0; font-size: 24px; font-weight: bold;">Cheverly PD Metro</h1>
-              <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 16px;">What's New</p>
-            </div>
-            
-            <!-- Content -->
-            <div style="padding: 24px;">
-              <div style="margin-bottom: 16px;">
-                <span style="display: inline-block; padding: 4px 12px; background-color: ${getTypeBadgeColor(data.type)}; color: white; border-radius: 16px; font-size: 12px; font-weight: bold; text-transform: uppercase;">
-                  ${typeLabel}
-                </span>
-              </div>
-              
-              <h2 style="margin: 0 0 16px 0; color: #1f2937; font-size: 20px; line-height: 1.2;">
-                ${data.title}
-              </h2>
-              
-              <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 14px;">
-                ${new Date(data.date).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </p>
-              
-              <div style="margin-bottom: 24px;">
-                <h3 style="margin: 0 0 12px 0; color: #374151; font-size: 16px;">Changes:</h3>
-                <ul style="margin: 0; padding-left: 20px; color: #4b5563; line-height: 1.6;">
-                  ${data.changes.map(change => `<li style="margin-bottom: 8px;">${change}</li>`).join('')}
-                </ul>
-              </div>
-              
-              <div style="text-align: center; padding-top: 24px; border-top: 1px solid #e5e7eb;">
-                <a href="https://schedule.cheverlypd.com/dashboard" 
-                   style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
-                  View in Application
-                </a>
-              </div>
-            </div>
-            
-            <!-- Footer -->
-            <div style="background-color: #f9fafb; padding: 16px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #6b7280; font-size: 12px;">
-                This notification was sent from Cheverly PD Metro Schedule System.
-                <br>
-                <a href="https://schedule.cheverlypd.com" style="color: #3b82f6;">schedule.cheverlypd.com</a>
-              </p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
+      subject: `${typeLabel}: ${data.title} — Cheverly PD Metro`,
+      htmlBody: renderEmailLayout(content),
       textBody: `
-Cheverly PD Metro - What's New
+CHEVERLY POLICE DEPARTMENT — Metro Overtime Schedule
 
-${typeLabel}: ${data.title}
-Date: ${new Date(data.date).toLocaleDateString('en-US', { 
-  year: 'numeric', 
-  month: 'long', 
-  day: 'numeric' 
-})}
+${typeLabel} — ${dateLabel}
+${data.title}
 
-Changes:
-${data.changes.map(change => `• ${change}`).join('\n')}
+${data.changes.map((change) => `• ${change}`).join('\n')}
 
-View the full update at: https://schedule.cheverlypd.com/dashboard
-
----
-This notification was sent from Cheverly PD Metro Schedule System.
-Visit: https://schedule.cheverlypd.com
+Open the schedule: ${APP_URL}/dashboard/schedule
       `.trim(),
     });
-    
+
     return { success: true };
   } catch (error) {
     console.error('Failed to send changelog notification:', error);
@@ -176,22 +186,3 @@ function getTypeLabel(type: string): string {
   }
 }
 
-function getTypeBadgeColor(type: string): string {
-  switch (type) {
-    case 'feature':
-    case 'update':
-    case 'ui':
-      return '#3b82f6'; // Blue
-    case 'improvement':
-    case 'maintenance':
-    case 'performance':
-      return '#6b7280'; // Gray
-    case 'fix':
-      return '#10b981'; // Green
-    case 'security':
-    case 'breaking':
-      return '#ef4444'; // Red
-    default:
-      return '#3b82f6'; // Blue
-  }
-}
