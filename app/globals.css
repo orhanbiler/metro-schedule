@@ -12,6 +12,9 @@
 /* Ensure proper scrolling on mobile */
 html {
   -webkit-overflow-scrolling: touch;
+  /* Disable the browser's native pull-to-refresh (Android Chrome reloads the
+     whole app) so the in-app pull-to-refresh is the only one. */
+  overscroll-behavior-y: contain;
 }
 
 /* Fix for iOS status bar in PWA mode */
