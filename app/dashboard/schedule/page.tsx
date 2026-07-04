@@ -13,7 +13,7 @@ import { HoursDialog } from '@/components/schedule/hours-dialog';
 import { AdminAssignDialog } from '@/components/schedule/admin-assign-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Download, Trash2, Plus, Calendar, DollarSign, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { Download, Trash2, Plus, Calendar, DollarSign, FileText, AlertCircle, RefreshCw, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatOfficerName, formatOfficerNameForDisplay, extractRankFromOfficerName, calculateOfficerPayRate, getPayRateConfig, cn } from '@/lib/utils';
 import { ScheduleSkeleton } from '@/components/schedule/schedule-skeleton';
@@ -1806,24 +1806,20 @@ export default function SchedulePage() {
           }}
         >
           <div
-            className="flex items-center justify-center pb-2"
+            className="flex items-center justify-center pb-3"
             style={{
-              opacity: Math.min(pullProgress / 80, 1),
-              transform: `scale(${Math.min(pullProgress / 100 + 0.3, 1)})`,
+              opacity: Math.min(pullProgress / 60, 1),
+              transform: `scale(${Math.min(pullProgress / 100 + 0.4, 1)})`,
             }}
           >
             {isRefreshing ? (
-              <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-300 rounded-full animate-spin"></div>
+              <div className="h-8 w-8 rounded-full border-[3px] border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-200 animate-spin"></div>
             ) : (
-              <div
-                className="text-gray-600 dark:text-gray-400 text-xs font-medium"
-                style={{
-                  transform: `translateY(${pullProgress >= 100 ? '0px' : '10px'})`,
-                  opacity: pullProgress / 100
-                }}
-              >
-                {pullProgress >= 100 ? '↓' : '⬇'}
-              </div>
+              // iOS-style arrow: flips upward once the pull is far enough to trigger
+              <ArrowDown
+                className="h-8 w-8 text-gray-500 transition-transform duration-200 dark:text-gray-300"
+                style={{ transform: `rotate(${pullProgress >= 100 ? 180 : 0}deg)` }}
+              />
             )}
           </div>
         </div>
