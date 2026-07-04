@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       changes: [
         'Added email notifications for changelog updates',
         'Created professional email templates with Cheverly PD Metro branding',
-        'Integrated with Postmark email service',
+        'Integrated with Brevo email service',
         'Added responsive design for mobile devices'
       ],
       type: 'feature',
@@ -37,9 +37,12 @@ export async function POST(request: NextRequest) {
         message: `Test email sent successfully to ${email}` 
       });
     } else {
-      return NextResponse.json({ 
+      // Surface the real reason (e.g. missing API key, unverified sender) so
+      // the admin can see it in the UI instead of a generic failure.
+      const details = result.error instanceof Error ? result.error.message : String(result.error);
+      return NextResponse.json({
         error: 'Failed to send test email',
-        details: result.error 
+        details,
       }, { status: 500 });
     }
   } catch (error) {
