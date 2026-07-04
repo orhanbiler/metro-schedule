@@ -547,7 +547,11 @@ export default function AdminPage() {
         toast.success(`Test email sent successfully to ${testEmail}`);
         setTestEmail('');
       } else {
-        toast.error(data.error || 'Failed to send test email');
+        // Show the real reason (missing API key, unverified sender, …)
+        const message = data.details
+          ? `${data.error || 'Failed to send test email'}: ${data.details}`
+          : data.error || 'Failed to send test email';
+        toast.error(message, { duration: 10000 });
       }
     } catch (error) {
       console.error('Error sending test email:', error);
