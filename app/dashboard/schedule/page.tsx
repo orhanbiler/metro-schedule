@@ -1794,13 +1794,14 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="space-y-6 relative" style={{ overscrollBehavior: 'contain' }}>
-      {/* iOS-style pull-to-refresh indicator */}
+    <>
+      {/* iOS-style pull-to-refresh indicator (outside the transformed
+          container so it stays fixed to the viewport) */}
       {(isPulling || isRefreshing) && (
         <div
           className="fixed top-0 left-0 right-0 z-50 flex items-end justify-center transition-all duration-200 ease-out"
           style={{
-            height: isPulling ? `${Math.min(pullDistance, 60)}px` : isRefreshing ? '60px' : '0px',
+            height: isPulling ? `${Math.min(pullDistance, 110)}px` : isRefreshing ? '60px' : '0px',
             paddingTop: 'env(safe-area-inset-top)',
           }}
         >
@@ -1828,6 +1829,17 @@ export default function SchedulePage() {
         </div>
       )}
 
+      <div
+        className="space-y-6 relative"
+        style={{
+          overscrollBehavior: 'contain',
+          // The schedule itself follows the finger while pulling, holds at the
+          // spinner height while refreshing, and springs back when released.
+          transform: `translateY(${isRefreshing ? 60 : pullDistance}px)`,
+          transition:
+            isPulling && !isRefreshing ? 'none' : 'transform 300ms cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
+      >
       <Card className="sm:mx-0 -mx-2">
         <CardHeader className="px-3 py-3 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
@@ -2382,6 +2394,7 @@ export default function SchedulePage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   );
 }

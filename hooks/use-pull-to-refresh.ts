@@ -32,10 +32,12 @@ export function usePullToRefresh({
     
     if (rawDistance > 0 && window.scrollY === 0) {
       e.preventDefault();
-      // Apply iOS-style rubber band damping effect
-      const dampingFactor = 0.4; // Reduced for more realistic feel
-      const dampedDistance = rawDistance * dampingFactor + (rawDistance > threshold ? (rawDistance - threshold) * 0.1 : 0);
-      setPullDistance(Math.min(dampedDistance, threshold * 1.2));
+      // iOS-style rubber band: tracks the finger closely at first, then eases
+      // off and asymptotically approaches maxPull, so the pull travels further
+      // and feels natural instead of stopping short.
+      const maxPull = threshold * 2.5;
+      const damped = maxPull * (1 - Math.exp(-rawDistance / (maxPull * 1.2)));
+      setPullDistance(Math.min(damped, maxPull));
       lastTouchTime.current = Date.now();
     }
   }, [isRefreshing, threshold]);
