@@ -113,7 +113,7 @@ export default function DashboardLayout({
                   // Oversized badge that hangs slightly below the navbar edge
                   className="h-16 w-16 translate-y-1.5 object-contain drop-shadow-xl md:h-20 md:w-20 md:translate-y-2"
                 />
-                <span className="flag-text truncate text-lg font-black tracking-tight sm:text-xl">
+                <span className="flag-text truncate text-2xl font-black tracking-tight sm:text-3xl">
                   <span className="hidden lg:inline">Cheverly PD Metro</span>
                   <span className="lg:hidden">Cheverly PD</span>
                 </span>
