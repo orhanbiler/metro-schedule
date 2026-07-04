@@ -161,6 +161,12 @@ export function ChangelogDialog() {
     }
   };
 
+  // The bell only appears when there are unseen updates. Keep it mounted
+  // while the dialog is open, since opening marks everything as read.
+  if (!hasUnread && !open) {
+    return null;
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
