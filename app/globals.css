@@ -30,6 +30,8 @@ html {
   background-position: 50% 50%;
   -webkit-background-clip: text;
   background-clip: text;
+  /* hairline outline so the star-field portion stays legible on the navy bar */
+  -webkit-text-stroke: 0.35px rgba(255, 255, 255, 0.3);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
