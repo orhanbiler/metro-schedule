@@ -106,11 +106,12 @@ export default function DashboardLayout({
                 <Image
                   src="/logo-cool.png"
                   alt="Cheverly Police Department"
-                  width={48}
-                  height={48}
+                  width={96}
+                  height={96}
                   quality={100}
                   priority
-                  className="h-11 w-11 rounded-md object-contain md:h-12 md:w-12"
+                  // Oversized badge that hangs slightly below the navbar edge
+                  className="h-16 w-16 translate-y-1.5 object-contain drop-shadow-xl md:h-20 md:w-20 md:translate-y-2"
                 />
                 <span className="truncate text-base font-bold text-white sm:text-lg">
                   <span className="hidden lg:inline">Cheverly PD Metro</span>

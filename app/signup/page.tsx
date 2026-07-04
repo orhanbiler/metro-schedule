@@ -71,8 +71,8 @@ export default function SignupPage() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       clearTimeout(timeout);
       if (user && !loading) {
-        // User is signed in and not currently signing up, redirect to dashboard
-        router.push('/dashboard');
+        // User is signed in and not currently signing up — land on the schedule
+        router.push('/dashboard/schedule');
       }
       // Always stop checking auth after we get a response
       setCheckingAuth(false);
@@ -205,8 +205,8 @@ export default function SignupPage() {
       
       toast.success('Account created successfully!');
       
-      // Explicitly redirect to dashboard
-      router.push('/dashboard');
+      // Explicitly land on the schedule
+      router.push('/dashboard/schedule');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Signup failed');
     } finally {
