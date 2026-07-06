@@ -8,6 +8,23 @@ To ensure code quality, run the following commands before committing:
 - `npm run lint` - Check for linting issues
 - `npm run typecheck` - Check for TypeScript type errors
 
+## [2026-07-05] - Navbar Logo Broken (Next.js 16 Image Quality)
+
+### Problem Identified
+The navbar badge logo did not render. Next.js 16 restricts `next/image`
+`quality` values to `images.qualities` (default `[75]`), so the logo's
+`quality={100}` request returned 400 Bad Request. It still appeared on mobile
+because the service worker had cached the larger (higher-DPR) image variants
+from before the Next 16 upgrade; desktop requested an uncached size and hit
+the 400.
+
+### Solution Implemented
+Added `images.qualities: [75, 100]` to `next.config.ts` so quality 100 is
+allowed again (only the navbar badge uses it).
+
+### Files Modified
+- `next.config.ts`
+
 ## [2026-07-03] - Month Lock (No In-Month Sign-Ups) & Rules Notice Popup
 
 ### Changes
