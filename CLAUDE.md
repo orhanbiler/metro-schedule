@@ -8,6 +8,20 @@ To ensure code quality, run the following commands before committing:
 - `npm run lint` - Check for linting issues
 - `npm run typecheck` - Check for TypeScript type errors
 
+## [2026-07-12] - Temporary Sign-Up Suspension Kill Switch
+
+### Change
+Added `SIGNUPS_SUSPENDED` flag to `lib/assignments.ts` (currently `true`).
+When set, `getSignupWindowStatus` short-circuits with a new
+`SignupWindowReason` of `suspended` for every month/assignment, which the
+existing plumbing turns into the schedule-page banner, hidden sign-up
+buttons, and a server-side 403 in `validateScheduleSave`. Admins are
+unaffected (they bypass the window everywhere). To lift the suspension, set
+the flag back to `false` and redeploy — no other changes needed.
+
+### Files Modified
+- `lib/assignments.ts`
+
 ## [2026-07-05] - Navbar Logo Broken (Next.js 16 Image Quality)
 
 ### Problem Identified

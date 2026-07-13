@@ -24,6 +24,13 @@ export type Assignment = (typeof ASSIGNMENTS)[number];
 /** Existing/unset users are treated as Patrol until an admin changes it. */
 export const DEFAULT_ASSIGNMENT: Assignment = 'Patrol';
 
+/**
+ * Emergency kill switch: when true, self sign-ups are suspended for ALL
+ * months and assignments (admins are unaffected — they bypass the window).
+ * Flip back to false and redeploy to restore normal window behavior.
+ */
+export const SIGNUPS_SUSPENDED = true;
+
 /** Day of the month Patrol's exclusive priority window opens. */
 export const PATROL_WINDOW_OPEN_DAY = 20;
 /** Day of the month sign-ups open to all other assignments. */
@@ -49,6 +56,7 @@ export type SignupWindowReason =
   | 'patrol-priority'   // following month, days 20–24, user is non-Patrol
   | 'future-month'      // a month beyond the following month
   | 'month-locked'      // the month already began; remaining shifts are locked
+  | 'suspended'         // sign-ups temporarily suspended department-wide
   | 'closed';           // a past month
 
 export interface SignupWindowStatus {
@@ -70,6 +78,15 @@ export function getSignupWindowStatus(
   targetYear: number,
   assignment: Assignment
 ): SignupWindowStatus {
+  if (SIGNUPS_SUSPENDED) {
+    return {
+      canSignUp: false,
+      reason: 'suspended',
+      message:
+        'Shift sign-ups are temporarily suspended. Contact the Deputy Chief with any questions.',
+    };
+  }
+
   const nowIdx = monthIndex(now.getFullYear(), now.getMonth());
   const targetIdx = monthIndex(targetYear, targetMonth);
   const diff = targetIdx - nowIdx;
