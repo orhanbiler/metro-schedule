@@ -2,6 +2,15 @@
 
 This file documents changes made by AI agents to the codebase.
 
+## [2026-09-07] - Simplified Navigation and Daily Signup
+
+### Improved
+- Remove the mobile hamburger and keep one bottom navigation bar. Place appearance, administration, and sign out in Profile settings.
+- Present each schedule date as one day card with both shifts and a single signup button. Choose the morning or afternoon shift inside the existing hours dialog.
+- Consolidate schedule PDF exports into one menu, simplify Home and OT slips, and apply a quieter blue/slate theme with clearer surface contrast.
+- Match loading placeholders to the new schedule layout and respect reduced-motion preferences.
+- Preserve scheduling handlers, assignment limits, signup suspension, permissions, authentication, and all PDF generators.
+
 ## [2026-09-07] - Mobile UI and Accessibility Improvements
 
 ### Improved

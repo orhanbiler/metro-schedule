@@ -5,13 +5,13 @@ import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
 
   return (
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+      onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
       className="h-11 w-11 rounded-full text-white hover:bg-white/10 hover:text-white"
     >
       <svg

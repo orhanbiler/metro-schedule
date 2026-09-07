@@ -20,7 +20,7 @@ export function LiveClock() {
   // Render a fixed-height placeholder before mount to avoid an SSR/CSR
   // hydration mismatch (server time !== client time) and layout shift.
   if (!now) {
-    return <div className="mb-3 h-[42px] rounded-lg border bg-muted/40 sm:mb-4" aria-hidden="true" />;
+    return <div className="mb-4 h-6 sm:mb-5" aria-hidden="true" />;
   }
 
   const dateLabel = now.toLocaleDateString('en-US', {
@@ -39,18 +39,13 @@ export function LiveClock() {
 
   return (
     <div
-      className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border bg-muted/40 px-3 py-2 text-xs sm:text-sm sm:mb-4"
+      className="mb-4 flex min-h-6 flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground sm:mb-5"
       role="status"
       aria-live="off"
     >
       <div className="flex min-w-0 items-center gap-2">
-        {/* Pulsing dot = liveness indicator: it stops if the app hangs. */}
-        <span className="relative hidden h-2.5 w-2.5 shrink-0 sm:flex" title="Live">
-          <span className="absolute inline-flex h-full w-full animate-ping motion-reduce:animate-none rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-        </span>
-        <Clock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <span className="truncate font-medium text-foreground">
+        <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span className="truncate">
           <span className="hidden sm:inline">{dateLabel}</span>
           <span className="sm:hidden">
             {now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -58,7 +53,7 @@ export function LiveClock() {
         </span>
       </div>
       <div className="flex items-center gap-2">
-        <span className="font-mono text-xs sm:text-base font-semibold tabular-nums tracking-tight text-foreground">
+        <span className="tabular-nums">
           {timeLabel}
         </span>
         <span className="text-xs text-muted-foreground">{tzAbbr}</span>

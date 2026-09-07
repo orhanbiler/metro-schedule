@@ -15,9 +15,11 @@ interface HoursDialogProps {
   onConfirm: (customHours: string) => void;
   onCancel: () => void;
   maxBlockMinutes?: number;
+  shiftSelector?: React.ReactNode;
+  confirmDisabled?: boolean;
 }
 
-export function HoursDialog({ children, originalTime, shiftLabel, onConfirm, onCancel, maxBlockMinutes }: HoursDialogProps) {
+export function HoursDialog({ children, originalTime, shiftLabel, onConfirm, onCancel, maxBlockMinutes, shiftSelector, confirmDisabled = false }: HoursDialogProps) {
   const fieldId = useId();
   const blockMinutes = maxBlockMinutes ?? null;
   const blockEnforced = blockMinutes !== null;
@@ -199,12 +201,12 @@ export function HoursDialog({ children, originalTime, shiftLabel, onConfirm, onC
         
         <div className="space-y-4 py-2">
           <div className="space-y-3">
-            <div className="rounded-md border p-3 bg-muted/30">
+            {shiftSelector ?? <div className="rounded-md border p-3 bg-muted/30">
               <Label className="text-xs sm:text-sm font-medium">Available Shift Window</Label>
               <p className="text-lg font-semibold mt-1">
                 {originalStart.slice(0, 2)}:{originalStart.slice(2)} - {originalEnd.slice(0, 2)}:{originalEnd.slice(2)}
               </p>
-            </div>
+            </div>}
 
             {!blockEnforced && (
               <div className="flex min-h-11 items-center gap-3">
@@ -318,7 +320,7 @@ export function HoursDialog({ children, originalTime, shiftLabel, onConfirm, onC
           </Button>
           <Button 
             onClick={handleConfirm}
-            disabled={useCustomHours && (!startTime || !endTime)}
+            disabled={confirmDisabled || (useCustomHours && (!startTime || !endTime))}
             className="min-h-[44px] sm:min-h-[36px] px-4 sm:px-3"
           >
             <Calendar className="h-4 w-4 mr-2" />

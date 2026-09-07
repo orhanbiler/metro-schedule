@@ -47,7 +47,7 @@ html {
   padding-right: env(safe-area-inset-right);
 }
 
-.schedule-shift {
+.schedule-day {
   scroll-margin-top: calc(5rem + env(safe-area-inset-top));
 }
 
@@ -55,61 +55,18 @@ html {
   .dashboard-content { padding-bottom: 2rem; }
 }
 
-/* The same schedule rows become day cards on phones. Actions and data
-   remain shared with the desktop table. Explicit table roles preserve
-   table navigation for assistive technology when display changes. */
-@media (max-width: 639px) {
-  .schedule-table,
-  .schedule-table > tbody {
-    display: block;
-  }
-
-  .schedule-shift {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    border: 1px solid var(--border);
-    background: var(--card);
-  }
-
-  .schedule-morning {
-    border-radius: 0.875rem 0.875rem 0 0;
-  }
-
-  .schedule-afternoon {
-    margin-bottom: 1rem;
-    border-top: 0;
-    border-radius: 0 0 0.875rem 0.875rem;
-  }
-
-  .schedule-shift > td {
-    display: block;
-    min-width: 0;
-  }
-
-  .schedule-shift > td:first-child {
-    border-bottom: 1px solid var(--border);
-    background: color-mix(in oklch, var(--muted) 35%, transparent);
-  }
-
-  .schedule-morning > td:first-child {
-    border-radius: 0.875rem 0.875rem 0 0;
-  }
-
-  .schedule-afternoon > td:first-child {
-    border-top: 1px solid var(--border);
-  }
-
-  .schedule-actions > span {
-    display: flex;
-    align-items: center;
-    min-height: 2rem;
-    font-size: 0.875rem;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 /* ========================================
    CHEVERLY PD METRO - MODERN THEME
-   Twitter-Inspired Design with OKLCH Colors
+   Calm blue and slate with clear surface contrast
    Single Source of Truth for All Styling
    ======================================== */
 
@@ -117,11 +74,11 @@ html {
   /* LIGHT THEME (Twitter-inspired with OKLCH) */
   :root {
     /* Core Layout */
-    --background: oklch(1.0000 0 0);                        /* Pure white */
+    --background: oklch(0.9800 0.0040 250);                        /* Pure white */
     --foreground: oklch(0.1884 0.0128 248.5103);            /* Dark blue-gray text */
     
     /* Cards & Surfaces */
-    --card: oklch(0.9784 0.0011 197.1387);                  /* Off-white cards */
+    --card: oklch(1.0000 0 0);                  /* White cards */
     --card-foreground: oklch(0.1884 0.0128 248.5103);       /* Dark text on cards */
     --popover: oklch(1.0000 0 0);                           /* White popover */
     --popover-foreground: oklch(0.1884 0.0128 248.5103);    /* Dark text in popover */
@@ -136,7 +93,7 @@ html {
     
     /* Muted/Subdued */
     --muted: oklch(0.9222 0.0013 286.3737);                 /* Subtle gray background */
-    --muted-foreground: oklch(0.1884 0.0128 248.5103);      /* Dark muted text */
+    --muted-foreground: oklch(0.4800 0.0250 250);      /* Slate supporting text */
     
     /* Accent Colors */
     --accent: oklch(0.9392 0.0166 250.8453);                /* Light accent background */
@@ -151,8 +108,8 @@ html {
     --warning-foreground: oklch(0.1884 0.0128 248.5103);    /* Dark text on warning */
     
     /* Form Elements */
-    --border: oklch(0.9317 0.0118 231.6594);                /* Light border */
-    --input: oklch(0.9809 0.0025 228.7836);                 /* Input background */
+    --border: oklch(0.9000 0.0120 250);                /* Light border */
+    --input: oklch(0.8600 0.0160 250);                 /* Form borders */
     --ring: oklch(0.6818 0.1584 243.3540);                  /* Focus ring */
     
     /* Charts & Data Visualization */
@@ -162,8 +119,8 @@ html {
     --chart-4: oklch(0.7064 0.1822 151.7125);               /* Teal chart color */
     --chart-5: oklch(0.5919 0.2186 10.5826);                /* Red chart color */
     
-    /* Navbar (lighter blue in light theme; still dark enough for white text) */
-    --navbar-bg: oklch(0.4500 0.1100 244.0000);             /* Lighter professional blue */
+    /* Navbar */
+    --navbar-bg: oklch(0.3000 0.0500 255);             /* Muted navy */
     --navbar-text: oklch(1.0000 0 0);                       /* White text */
     --navbar-hover: oklch(0.5500 0.1100 244.0000);          /* Hover a step lighter */
     
@@ -178,12 +135,12 @@ html {
     --sidebar-ring: oklch(0.6818 0.1584 243.3540);          /* Sidebar focus ring */
     
     /* Typography */
-    --font-sans: "Open Sans", sans-serif;
+    --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
     --font-serif: "Georgia", serif;
     --font-mono: "Menlo", monospace;
     
     /* Border Radius (Compact/Professional) */
-    --radius: 0.5rem;
+    --radius: 0.75rem;
     
     /* Shadow System (Subtle) */
     --shadow-2xs: 0px 1px 2px 0px oklch(0.1884 0.0128 248.5103 / 0.05);
@@ -199,18 +156,18 @@ html {
   /* DARK THEME (Modern Dark with OKLCH) */
   .dark {
     /* Core Layout */
-    --background: oklch(0 0 0);                              /* True black */
+    --background: oklch(0.1700 0.0160 255);                              /* Deep slate */
     --foreground: oklch(0.9328 0.0025 228.7857);             /* Off-white text */
     
     /* Cards & Surfaces */
     --card: oklch(0.2097 0.0080 274.5332);                   /* Dark blue-gray cards */
     --card-foreground: oklch(0.8853 0 0);                    /* Light text on cards */
-    --popover: oklch(0 0 0);                                 /* Black popover */
+    --popover: oklch(0.2300 0.0180 255);                                 /* Raised slate surface */
     --popover-foreground: oklch(0.9328 0.0025 228.7857);     /* Light text */
     
     /* Primary Brand */
-    --primary: oklch(0.6692 0.1607 245.0110);               /* Bright blue primary */
-    --primary-foreground: oklch(1.0000 0 0);                /* White text */
+    --primary: oklch(0.7300 0.1200 245);               /* Soft blue primary */
+    --primary-foreground: oklch(0.1800 0.0250 255);                /* Navy action labels */
     
     /* Secondary Colors */
     --secondary: oklch(0.9622 0.0035 219.5331);             /* Light secondary */
@@ -245,7 +202,7 @@ html {
     --chart-5: oklch(0.5919 0.2186 10.5826);
     
     /* Navbar (Consistent across themes) */
-    --navbar-bg: oklch(0.3000 0.1200 244.0000);             /* Same navy */
+    --navbar-bg: oklch(0.2300 0.0320 255);             /* Same navy */
     --navbar-text: oklch(1.0000 0 0);                       /* White text */
     --navbar-hover: oklch(0.4000 0.1200 244.0000);          /* Same hover */
     
@@ -260,12 +217,12 @@ html {
     --sidebar-ring: oklch(0.6818 0.1584 243.3540);          /* Focus ring */
     
     /* Typography (Same) */
-    --font-sans: "Open Sans", sans-serif;
+    --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
     --font-serif: "Georgia", serif;
     --font-mono: "Menlo", monospace;
     
     /* Border Radius (Same) */
-    --radius: 0.5rem;
+    --radius: 0.75rem;
     
     /* Shadow System (Darker) */
     --shadow-2xs: 0px 1px 2px 0px oklch(0 0 0 / 0.20);

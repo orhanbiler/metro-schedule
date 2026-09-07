@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { HoursDialog } from '@/components/schedule/hours-dialog';
+import { DaySignupDialog } from '@/components/schedule/day-signup-dialog';
 import { AdminAssignDialog } from '@/components/schedule/admin-assign-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Download, Trash2, Plus, Calendar, DollarSign, FileText, AlertCircle, RefreshCw, ArrowDown } from 'lucide-react';
+import { Download, Trash2, Calendar, DollarSign, FileText, AlertCircle, RefreshCw, ArrowDown, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatOfficerName, formatOfficerNameForDisplay, extractRankFromOfficerName, calculateOfficerPayRate, getPayRateConfig, cn } from '@/lib/utils';
 import { ScheduleSkeleton } from '@/components/schedule/schedule-skeleton';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
@@ -948,7 +949,7 @@ export default function SchedulePage() {
     }
 
     return (
-      <div className="text-sm sm:text-xs text-muted-foreground italic">
+      <div className="text-xs text-muted-foreground">
         Available:{' '}
         {computedSummary.availableSlots
           .map((slotRange) => (slotRange.includes(':') ? slotRange : displayTime(slotRange)))
@@ -1848,11 +1849,11 @@ export default function SchedulePage() {
             isPulling && !isRefreshing ? 'none' : 'transform 300ms cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       >
-      <Card className="border-0 bg-transparent shadow-none sm:border sm:bg-card sm:shadow-sm">
-        <CardHeader className="px-0 pb-4 pt-0 sm:p-6">
+      <Card className="border-0 bg-transparent shadow-none">
+        <CardHeader className="px-0 pb-5 pt-0">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-bold tracking-tight">
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                 Metro schedule
                 {isPastMonth() && user?.role !== 'admin' && (
                   <span className="mt-1 block text-sm font-medium text-amber-700 dark:text-amber-400">Past month · Read only</span>
@@ -1867,43 +1868,25 @@ export default function SchedulePage() {
               </CardDescription>
             </div>
             {user?.role === 'admin' && (
-              <div className="flex flex-wrap gap-2 sm:mt-0">
-                <Button
-                  onClick={generatePDF}
-                  variant="outline"
-                  size="sm"
-                  className="flex flex-1 items-center justify-center gap-2 text-sm sm:flex-none"
-                  disabled={loading}
-                >
-                  <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span>Export PDF</span>
-                </Button>
-                <Button
-                  onClick={generateBillablePDF}
-                  variant="outline"
-                  size="sm"
-                  className="flex flex-1 items-center justify-center gap-2 text-sm sm:flex-none"
-                  disabled={loading}
-                >
-                  <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span>Billable PDF</span>
-                </Button>
-                <Button
-                  onClick={generateFullSchedulePDF}
-                  variant="outline"
-                  size="sm"
-                  className="flex flex-1 items-center justify-center gap-2 text-sm sm:flex-none"
-                  disabled={loading}
-                >
-                  <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span>Full Schedule</span>
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 self-start" disabled={loading || scheduleLoading || Boolean(loadError)}>
+                    <Download className="h-4 w-4" aria-hidden="true" />
+                    Export
+                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={generatePDF}><Calendar className="mr-2 h-4 w-4" />Schedule PDF</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={generateBillablePDF}><DollarSign className="mr-2 h-4 w-4" />Billable PDF</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={generateFullSchedulePDF}><FileText className="mr-2 h-4 w-4" />Full schedule PDF</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </CardHeader>
-        <CardContent className="p-0 sm:p-6 sm:pt-0">
-          <div className="mb-4 grid grid-cols-2 gap-3 rounded-xl border bg-card p-3 sm:flex sm:flex-wrap sm:items-end sm:border-0 sm:bg-transparent sm:p-0">
+        <CardContent className="p-0">
+          <div className="mb-4 grid grid-cols-2 gap-3 rounded-xl border bg-card p-3 sm:flex sm:flex-wrap sm:items-center sm:p-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
               <Label htmlFor="schedule-month" className="text-sm">Month</Label>
               <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(Number(value))}>
@@ -1988,430 +1971,125 @@ export default function SchedulePage() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-6">
-              <div className="sm:overflow-hidden sm:rounded-lg sm:border">
-                <table className="schedule-table w-full" role="table" aria-label={`${monthNames[selectedMonth]} ${selectedYear} Metro schedule`}>
-                  <thead className="sr-only sm:not-sr-only" role="rowgroup">
-                    <tr className="bg-navy-900 text-white" role="row">
-                      <th scope="col" role="columnheader" className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Date/Time</th>
-                      <th scope="col" role="columnheader" className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Officer Name</th>
-                      <th scope="col" role="columnheader" className="text-center p-2 sm:p-2 font-semibold text-xs sm:text-sm">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody role="rowgroup">
-                    {schedule.length === 0 ? (
-                      <tr role="row">
-                        <td role="cell" colSpan={3} className="text-center p-4 sm:p-8 text-xs sm:text-sm text-muted-foreground">
-                          No shifts available for this month
-                        </td>
-                      </tr>
-                    ) : (
-                      schedule.map((slot) => {
-                        const slotDate = new Date(slot.date);
-                        const isToday = isSameDay(slotDate);
-                        const morningSummary = getShiftAvailabilitySummary(slot, 'morning');
-                        const afternoonSummary = getShiftAvailabilitySummary(slot, 'afternoon');
-                        const morningAvailableSlots = morningSummary.availableSlots;
-                        const afternoonAvailableSlots = afternoonSummary.availableSlots;
-                        const morningRemainingCapacity = morningSummary.maxRemaining;
-                        const afternoonRemainingCapacity = afternoonSummary.maxRemaining;
+            <div className="space-y-4" role="region" aria-label={`${monthNames[selectedMonth]} ${selectedYear} Metro schedule`}>
+              {schedule.length === 0 ? (
+                <div className="rounded-xl border border-dashed bg-card px-4 py-12 text-center text-sm text-muted-foreground">
+                  No shifts available for this month.
+                </div>
+              ) : schedule.map(slot => {
+                const isToday = isSameDay(slot.date);
+                const dayLabel = `${slot.dayName}, ${formatDate(slot.date)}`;
+                const shifts = (['morning', 'afternoon'] as const).map(type => ({
+                  type,
+                  label: type === 'morning' ? 'Morning' : 'Afternoon',
+                  data: type === 'morning' ? slot.morningSlot : slot.afternoonSlot,
+                  summary: getShiftAvailabilitySummary(slot, type),
+                  signedUp: hasUserSignedUpForSlot(slot.date, type),
+                }));
+                const signupOptions = canUserModifySchedule() && canSelfSignUp
+                  ? shifts.filter(shift => !shift.signedUp && shift.summary.status !== 'past' && shift.summary.availableSlots.length > 0 && shift.summary.maxRemaining > 0)
+                    .map(shift => ({ type: shift.type, label: shift.label, time: shift.data.time, available: shift.summary.maxRemaining }))
+                  : [];
 
+                return (
+                  <section
+                    key={slot.id}
+                    id={`schedule-day-${slot.id}`}
+                    tabIndex={-1}
+                    aria-labelledby={`schedule-heading-${slot.id}`}
+                    className={cn('schedule-day overflow-hidden rounded-xl border bg-card shadow-2xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary', isToday && 'border-primary/50')}
+                  >
+                    <div className={cn('flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-5', isToday ? 'bg-primary/5' : 'bg-muted/25')}>
+                      <h2 id={`schedule-heading-${slot.id}`} className="text-sm font-semibold sm:text-base">
+                        {slot.date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                      </h2>
+                      {isToday && <Badge variant="outline" className="border-primary/30 bg-card text-primary">Today</Badge>}
+                    </div>
+                    <div className="divide-y sm:grid sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                      {shifts.map(shift => {
+                        const { type, label, data, summary, signedUp } = shift;
+                        const adminCanAssign = user?.role === 'admin' && summary.assignRemaining > 0;
                         return (
-                          <React.Fragment key={slot.id}>
-                            <tr id={`schedule-day-${slot.id}`} tabIndex={-1} role="row" key={`${slot.id}-morning`} className={cn('schedule-shift schedule-morning border-t hover:bg-muted/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary', isToday && 'bg-primary/5')}>
-                              <td role="cell" className="p-3 sm:py-1.5 sm:px-2">
-                                {isToday && (
-                                  <Badge variant="outline" className="mb-1 hidden sm:inline-flex border-emerald-500 text-emerald-600">
-                                    Today
-                                  </Badge>
-                                )}
-                                <div className="font-semibold text-foreground text-sm">
-                                  <div className="sm:hidden flex flex-wrap items-center gap-2 mb-2 text-base">
-                                    {isToday && (
-                                      <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                                        Today
-                                      </span>
-                                    )}
-                                    {new Date(slot.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                  </div>
-                                  <div className="hidden sm:inline">{slot.dayName} {formatDate(slot.date)}</div>
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {displayTime(slot.morningSlot.time)}
-                                </div>
-                              </td>
-                              <td role="cell" className="p-3 sm:py-1.5 sm:px-2">
-                                <div className="mb-2 flex flex-wrap items-center gap-2 text-sm sm:text-xs uppercase tracking-wide text-muted-foreground">
-                                  Morning
-                                  <Badge
-                                    className={cn(
-                                      'text-xs normal-case',
-                                      morningSummary.status === 'past'
-                                        ? 'bg-muted text-muted-foreground'
-                                        : morningRemainingCapacity > 0
-                                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                                          : 'bg-muted text-muted-foreground'
-                                    )}
-                                  >
-                                    {morningSummary.status === 'past'
-                                      ? 'Closed'
-                                      : morningRemainingCapacity > 0
-                                        ? `${morningRemainingCapacity} open`
-                                        : 'Full'}
-                                  </Badge>
-                                </div>
-                                {slot.morningSlot.officers.length > 0 ? (
-                                  <div className="space-y-1">
-                                    {slot.morningSlot.officers.map((officer, index) => (
-                                      <div key={index} className="text-sm flex items-center justify-between gap-2 bg-muted/40 p-2 sm:p-1.5 rounded-md">
-                                        <div className="flex-1 min-w-0">
-                                          <span
-                                            className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block break-words text-sm`}
-                                            title={officer.name}
-                                          >
-                                            {formatOfficerNameForDisplay(officer.name)}
-                                          </span>
-                                          {officer.customHours && (
-                                            <div className="text-sm sm:text-xs text-muted-foreground break-words">Custom: {officer.customHours}</div>
-                                          )}
-                                        </div>
-                                        {canUserRemoveFromShift() && (
-                                          <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                              <Button
-                                                size="sm"
-                                                variant="destructive"
-                                                className="h-11 w-11 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
-                                                disabled={loading}
-                                                title={`Remove ${officer.name}`}
-                                                aria-label={`Remove ${officer.name} from shift`}
-                                              >
-                                                <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                                              </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                              <AlertDialogHeader>
-                                                <AlertDialogTitle>Remove {user?.role === 'admin' ? 'Officer' : 'Yourself'} from Shift</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                  Are you sure you want to remove <strong>{officer.name}</strong> from this shift on {slot.dayName} {formatDate(slot.date)}?
-                                                  <br /><br />
-                                                  {user?.role !== 'admin' && (
-                                                    <>Note: You cannot remove yourself from shifts within 2 days before or after the scheduled date.<br /><br /></>
-                                                  )}
-                                                  This action cannot be undone and will make the slot available for other officers to sign up.
-                                                </AlertDialogDescription>
-                                              </AlertDialogHeader>
-                                              <AlertDialogFooter>
-                                                <AlertDialogAction
-                                                  onClick={() => handleRemoveOfficer(slot.id, 'morning', officer.name)}
-                                                  disabled={loading}
-                                                  className="bg-red-600 hover:bg-red-700"
-                                                >
-                                                  {user?.role === 'admin' ? 'Remove Officer' : 'Remove Me'}
-                                                </AlertDialogAction>
-                                                <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-                                              </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                          </AlertDialog>
-                                        )}
-                                      </div>
-                                    ))}
-                                    {getAvailabilityDisplay(slot, 'morning', morningSummary)}
-                                  </div>
-                                ) : (
-                                  getAvailabilityDisplay(slot, 'morning', morningSummary)
-                                )}
-                              </td>
-                              <td role="cell" className="schedule-actions px-3 pb-3 sm:py-1.5 sm:px-2 sm:text-center">
-                                {(() => {
-                                  const userSignedUp = hasUserSignedUpForSlot(slot.date, 'morning');
-                                  const slotsAvailable =
-                                    morningSummary.status !== 'past' &&
-                                    morningAvailableSlots.length > 0 &&
-                                    morningRemainingCapacity > 0;
-                                  // Admins can assign to past dates and use the override capacity
-                                  const adminCanAssign = morningSummary.assignRemaining > 0;
-                                  const isAdmin = user?.role === 'admin';
-                                  const canModify = canUserModifySchedule();
-                                  const blockMinutes = getShiftMaxBlockMinutes(slot.date);
-
-                                  if (morningSummary.status === 'past') {
-                                    // For admins, show assign button even on past dates
-                                    if (isAdmin && adminCanAssign) {
-                                      return (
-                                        <div className="flex flex-wrap items-center gap-2 sm:justify-center">
-                                          {userSignedUp && (
-                                            <span className="text-sm text-muted-foreground flex items-center gap-1">
-                                              <Calendar className="h-4 w-4" />
-                                              <span>Completed</span>
-                                            </span>
-                                          )}
-                                          <AdminAssignDialog
-                                            users={allUsers}
-                                            originalTime={slot.morningSlot.time}
-                                            shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Morning`}
-                                            maxBlockMinutes={blockMinutes ?? undefined}
-                                            onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
-                                            disabled={loading}
-                                          />
-                                        </div>
-                                      );
-                                    }
-                                    if (userSignedUp) {
-                                      return (
-                                        <span className="text-sm text-muted-foreground flex items-center gap-1">
-                                          <Calendar className="h-4 w-4" />
-                                          <span className="hidden sm:inline">Shift completed</span>
-                                          <span className="sm:hidden">Completed</span>
-                                        </span>
-                                      );
-                                    }
-                                    return <span className="text-xs sm:text-sm text-muted-foreground">Shift closed</span>;
-                                  }
-
-                                  if (!slotsAvailable && !userSignedUp && !(isAdmin && adminCanAssign)) {
-                                    return <span className="text-xs sm:text-sm text-muted-foreground">Full</span>;
-                                  }
-
-                                  // Show message for past months for regular users
-                                  if (!isAdmin && !canModify && slotsAvailable && !userSignedUp) {
-                                    return <span className="text-xs sm:text-sm text-muted-foreground italic">Past month</span>;
-                                  }
-
-                                  // Sign-up window not open for this user's assignment
-                                  if (!isAdmin && !canSelfSignUp && slotsAvailable && !userSignedUp) {
-                                    return <span className="text-xs sm:text-sm text-muted-foreground italic">Locked</span>;
-                                  }
-
-                                  return (
-                                    <div className="flex flex-wrap items-center gap-2 sm:justify-center">
-                                      {userSignedUp ? (
-                                        <span className="text-sm text-muted-foreground flex items-center gap-1">
-                                          <Calendar className="h-4 w-4" />
-                                          <span className="font-medium text-primary">Signed up</span>
-                                        </span>
-                                      ) : slotsAvailable && canModify && canSelfSignUp ? (
-                                        <HoursDialog
-                                          originalTime={slot.morningSlot.time}
-                                          shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Morning`}
-                                          maxBlockMinutes={blockMinutes ?? undefined}
-                                          onConfirm={(customHours) => handleSignUp(slot.id, 'morning', customHours)}
-                                          onCancel={() => { }}
-                                        >
-                                          <Button size="sm" disabled={loading} className="h-11 flex-1 gap-2 px-4 sm:h-9 sm:flex-none sm:px-3" title="Sign up for this shift">
-                                            <Plus className="h-4 w-4" />
-                                            <span>Sign up</span>
-                                          </Button>
-                                        </HoursDialog>
-                                      ) : null}
-                                      {isAdmin && adminCanAssign && (
-                                        <AdminAssignDialog
-                                          users={allUsers}
-                                          originalTime={slot.morningSlot.time}
-                                          shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Morning`}
-                                          maxBlockMinutes={blockMinutes ?? undefined}
-                                          onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
-                                          disabled={loading}
-                                        />
-                                      )}
+                          <div key={type} className="min-w-0 space-y-3 p-4 sm:p-5">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <h3 className="text-sm font-semibold">{label}</h3>
+                                <p className="mt-0.5 text-sm tabular-nums text-muted-foreground">{displayTime(data.time)}</p>
+                              </div>
+                              <Badge variant="outline" className={cn('shrink-0 font-medium',
+                                signedUp ? 'border-primary/20 bg-primary/5 text-primary'
+                                  : summary.status !== 'past' && summary.maxRemaining > 0 ? 'border-emerald-600/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground',
+                              )}>
+                                {signedUp ? (summary.status === 'past' ? 'Completed' : 'Signed up')
+                                  : summary.status === 'past' ? 'Closed'
+                                  : summary.maxRemaining > 0 ? `${summary.maxRemaining} open` : 'Full'}
+                              </Badge>
+                            </div>
+                            {data.officers.length > 0 ? (
+                              <div className="space-y-2">
+                                {data.officers.map((officer, index) => (
+                                  <div key={`${officer.name}-${index}`} className="flex items-center justify-between gap-2 rounded-lg bg-muted/35 px-3 py-2">
+                                    <div className="min-w-0 text-sm">
+                                      <p className={cn('break-words font-medium', (officer.name === getCurrentOfficerFormatted() || officer.name === user?.name) && 'text-primary')}>
+                                        {formatOfficerNameForDisplay(officer.name)}
+                                      </p>
+                                      {officer.customHours && <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">{officer.customHours}</p>}
                                     </div>
-                                  );
-                                })()}
-
-                              </td>
-                            </tr>
-                            <tr role="row" key={`${slot.id}-afternoon`} className={cn('schedule-shift schedule-afternoon border-t bg-muted/30 hover:bg-muted/50', isToday && 'bg-primary/10')}>
-                              <td role="cell" className="p-3 sm:py-1.5 sm:px-2">
-                                <div className="text-sm text-muted-foreground sm:ml-4">
-                                  <span className="hidden sm:inline">and/or</span> {displayTime(slot.afternoonSlot.time)}
-                                </div>
-                              </td>
-                              <td role="cell" className="p-3 sm:py-1.5 sm:px-2">
-                                <div className="mb-2 flex flex-wrap items-center gap-2 text-sm sm:text-xs uppercase tracking-wide text-muted-foreground">
-                                  Afternoon
-                                  <Badge
-                                    className={cn(
-                                      'text-xs normal-case',
-                                      afternoonSummary.status === 'past'
-                                        ? 'bg-muted text-muted-foreground'
-                                        : afternoonRemainingCapacity > 0
-                                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                                          : 'bg-muted text-muted-foreground'
-                                    )}
-                                  >
-                                    {afternoonSummary.status === 'past'
-                                      ? 'Closed'
-                                      : afternoonRemainingCapacity > 0
-                                        ? `${afternoonRemainingCapacity} open`
-                                        : 'Full'}
-                                  </Badge>
-                                </div>
-                                {slot.afternoonSlot.officers.length > 0 ? (
-                                  <div className="space-y-1">
-                                    {slot.afternoonSlot.officers.map((officer, index) => (
-                                      <div key={index} className="text-sm flex items-center justify-between gap-2 bg-muted/40 p-2 sm:p-1.5 rounded-md">
-                                        <div className="flex-1 min-w-0">
-                                          <span
-                                            className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block break-words text-sm`}
-                                            title={officer.name}
-                                          >
-                                            {formatOfficerNameForDisplay(officer.name)}
-                                          </span>
-                                          {officer.customHours && (
-                                            <div className="text-sm sm:text-xs text-muted-foreground break-words">Custom: {officer.customHours}</div>
-                                          )}
-                                        </div>
-                                        {canUserRemoveFromShift() && (
-                                          <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                              <Button
-                                                size="sm"
-                                                variant="destructive"
-                                                className="h-11 w-11 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
-                                                disabled={loading}
-                                                title={`Remove ${officer.name}`}
-                                                aria-label={`Remove ${officer.name} from shift`}
-                                              >
-                                                <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                                              </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                              <AlertDialogHeader>
-                                                <AlertDialogTitle>Remove {user?.role === 'admin' ? 'Officer' : 'Yourself'} from Shift</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                  Are you sure you want to remove <strong>{officer.name}</strong> from this afternoon shift on {slot.dayName} {formatDate(slot.date)}?
-                                                  <br /><br />
-                                                  {user?.role !== 'admin' && (
-                                                    <>Note: You cannot remove yourself from shifts within 2 days before or after the scheduled date.<br /><br /></>
-                                                  )}
-                                                  This action cannot be undone and will make the slot available for other officers to sign up.
-                                                </AlertDialogDescription>
-                                              </AlertDialogHeader>
-                                              <AlertDialogFooter>
-                                                <AlertDialogAction
-                                                  onClick={() => handleRemoveOfficer(slot.id, 'afternoon', officer.name)}
-                                                  disabled={loading}
-                                                  className="bg-red-600 hover:bg-red-700"
-                                                >
-                                                  {user?.role === 'admin' ? 'Remove Officer' : 'Remove Me'}
-                                                </AlertDialogAction>
-                                                <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-                                              </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                          </AlertDialog>
-                                        )}
-                                      </div>
-                                    ))}
-                                    {getAvailabilityDisplay(slot, 'afternoon', afternoonSummary)}
-                                  </div>
-                                ) : (
-                                  getAvailabilityDisplay(slot, 'afternoon', afternoonSummary)
-                                )}
-                              </td>
-                              <td role="cell" className="schedule-actions px-3 pb-3 sm:py-1.5 sm:px-2 sm:text-center">
-                                {(() => {
-                                  const userSignedUp = hasUserSignedUpForSlot(slot.date, 'afternoon');
-                                  const slotsAvailable =
-                                    afternoonSummary.status !== 'past' &&
-                                    afternoonAvailableSlots.length > 0 &&
-                                    afternoonRemainingCapacity > 0;
-                                  // Admins can assign to past dates and use the override capacity
-                                  const adminCanAssign = afternoonSummary.assignRemaining > 0;
-                                  const isAdmin = user?.role === 'admin';
-                                  const canModify = canUserModifySchedule();
-                                  const blockMinutes = getShiftMaxBlockMinutes(slot.date);
-
-                                  if (afternoonSummary.status === 'past') {
-                                    // For admins, show assign button even on past dates
-                                    if (isAdmin && adminCanAssign) {
-                                      return (
-                                        <div className="flex flex-wrap items-center gap-2 sm:justify-center">
-                                          {userSignedUp && (
-                                            <span className="text-sm text-muted-foreground flex items-center gap-1">
-                                              <Calendar className="h-4 w-4" />
-                                              <span>Completed</span>
-                                            </span>
-                                          )}
-                                          <AdminAssignDialog
-                                            users={allUsers}
-                                            originalTime={slot.afternoonSlot.time}
-                                            shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Afternoon`}
-                                            maxBlockMinutes={blockMinutes ?? undefined}
-                                            onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
-                                            disabled={loading}
-                                          />
-                                        </div>
-                                      );
-                                    }
-                                    if (userSignedUp) {
-                                      return (
-                                        <span className="text-sm text-muted-foreground flex items-center gap-1">
-                                          <Calendar className="h-4 w-4" />
-                                          <span className="hidden sm:inline">Shift completed</span>
-                                          <span className="sm:hidden">Completed</span>
-                                        </span>
-                                      );
-                                    }
-                                    return <span className="text-xs sm:text-sm text-muted-foreground">Shift closed</span>;
-                                  }
-
-                                  if (!slotsAvailable && !userSignedUp && !(isAdmin && adminCanAssign)) {
-                                    return <span className="text-xs sm:text-sm text-muted-foreground">Full</span>;
-                                  }
-
-                                  // Show message for past months for regular users
-                                  if (!isAdmin && !canModify && slotsAvailable && !userSignedUp) {
-                                    return <span className="text-xs sm:text-sm text-muted-foreground italic">Past month</span>;
-                                  }
-
-                                  // Sign-up window not open for this user's assignment
-                                  if (!isAdmin && !canSelfSignUp && slotsAvailable && !userSignedUp) {
-                                    return <span className="text-xs sm:text-sm text-muted-foreground italic">Locked</span>;
-                                  }
-
-                                  return (
-                                    <div className="flex flex-wrap items-center gap-2 sm:justify-center">
-                                      {userSignedUp ? (
-                                        <span className="text-sm text-muted-foreground flex items-center gap-1">
-                                          <Calendar className="h-4 w-4" />
-                                          <span className="font-medium text-primary">Signed up</span>
-                                        </span>
-                                      ) : slotsAvailable && canModify && canSelfSignUp ? (
-                                        <HoursDialog
-                                          originalTime={slot.afternoonSlot.time}
-                                          shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Afternoon`}
-                                          maxBlockMinutes={blockMinutes ?? undefined}
-                                          onConfirm={(customHours) => handleSignUp(slot.id, 'afternoon', customHours)}
-                                          onCancel={() => { }}
-                                        >
-                                          <Button size="sm" disabled={loading} className="h-11 flex-1 gap-2 px-4 sm:h-9 sm:flex-none sm:px-3" title="Sign up for this shift">
-                                            <Plus className="h-4 w-4" />
-                                            <span>Sign up</span>
+                                    {canUserRemoveFromShift() && (
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button size="icon" variant="ghost" disabled={loading} className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Remove ${officer.name} from ${label.toLowerCase()} shift`}>
+                                            <Trash2 className="h-4 w-4" aria-hidden="true" />
                                           </Button>
-                                        </HoursDialog>
-                                      ) : null}
-                                      {isAdmin && adminCanAssign && (
-                                        <AdminAssignDialog
-                                          users={allUsers}
-                                          originalTime={slot.afternoonSlot.time}
-                                          shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Afternoon`}
-                                          maxBlockMinutes={blockMinutes ?? undefined}
-                                          onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
-                                          disabled={loading}
-                                        />
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </td>
-                            </tr>
-                          </React.Fragment>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Remove officer from shift?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              Remove {officer.name} from the {label.toLowerCase()} shift on {dayLabel}? This will make the slot available for another officer.
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleRemoveOfficer(slot.id, type, officer.name)} disabled={loading} className="bg-red-600 hover:bg-red-700">Remove officer</AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : <p className="text-sm text-muted-foreground">No officers assigned</p>}
+                            {summary.status !== 'past' && summary.availableSlots.length > 0 && data.officers.length > 0 && getAvailabilityDisplay(slot, type, summary)}
+                            {adminCanAssign && (
+                              <AdminAssignDialog
+                                users={allUsers}
+                                originalTime={data.time}
+                                shiftLabel={`${dayLabel} · ${label}`}
+                                maxBlockMinutes={getShiftMaxBlockMinutes(slot.date) ?? undefined}
+                                onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, type, officerName, customHours)}
+                                disabled={loading}
+                              />
+                            )}
+                          </div>
                         );
-                      })
+                      })}
+                    </div>
+                    {signupOptions.length > 0 && (
+                      <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                        <p className="text-xs text-muted-foreground">Choose your shift and hours.</p>
+                        <DaySignupDialog
+                          options={signupOptions}
+                          dayLabel={dayLabel}
+                          maxBlockMinutes={getShiftMaxBlockMinutes(slot.date) ?? undefined}
+                          disabled={loading}
+                          onConfirm={(type, hours) => handleSignUp(slot.id, type, hours)}
+                        />
+                      </div>
                     )}
-                  </tbody>
-                </table>
-              </div>
+                  </section>
+                );
+              })}
             </div>
           )}
         </CardContent>

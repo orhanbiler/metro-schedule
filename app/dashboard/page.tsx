@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarCheck2, Clock3, Percent, Users, AlertTriangle, FileText, ArrowRight } from 'lucide-react';
+import { CalendarCheck2, AlertTriangle, FileText, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -309,184 +309,136 @@ export default function DashboardPage() {
   }, [scheduleStats.filledSlots, scheduleStats.totalSlots]);
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="text-2xl">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0 space-y-2">
+          <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl">
             {user?.name ? (
               `Welcome, ${user.name}`
             ) : (
               <span className="flex items-center gap-2">
                 Welcome,
-                <Skeleton className="inline-block h-6 w-32 align-middle" />
+                <Skeleton className="inline-block h-7 w-32 align-middle" />
               </span>
             )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-          <p className="text-muted-foreground">
-            Your Metro shifts, coverage, and overtime forms in one place.
+          </h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            Your Metro shifts and overtime, all in one place.
           </p>
-          <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
-            <Button asChild className="gap-2">
-              <Link href="/dashboard/schedule">View schedule <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
-            </Button>
-            <Button asChild variant="outline" className="gap-2">
-              <Link href="/dashboard/ot-slips"><FileText className="h-4 w-4" aria-hidden="true" /> Create OT slip</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+          <Button asChild className="gap-1.5 px-3 sm:gap-2 sm:px-4">
+            <Link href="/dashboard/schedule">View schedule <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+          </Button>
+          <Button asChild variant="outline" className="gap-1.5 px-3 sm:gap-2 sm:px-4">
+            <Link href="/dashboard/ot-slips"><FileText className="h-4 w-4" aria-hidden="true" /> Create OT slip</Link>
+          </Button>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader className="space-y-1 p-4 sm:p-6">
-          <CardTitle className="text-base font-semibold">Metro Coverage Snapshot</CardTitle>
-          <CardDescription>Live scheduling health for the rest of this month</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-          {statsLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-lg border bg-muted/20 p-4 space-y-3">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-3 w-full" />
+      <section aria-labelledby="coverage-heading" className="space-y-4">
+        <div>
+          <h2 id="coverage-heading" className="text-base font-semibold">This month’s coverage</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Remaining shifts from today through the end of the month.</p>
+        </div>
+        {statsLoading ? (
+          <Card>
+            <CardContent className="grid grid-cols-3 gap-4 p-4 sm:p-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="space-y-3">
+                  <Skeleton className="h-4 w-16 sm:w-24" />
+                  <Skeleton className="h-9 w-12" />
                 </div>
               ))}
-            </div>
-          ) : statsError ? (
-            <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/20 p-8 text-center">
-              <AlertTriangle className="h-6 w-6 text-amber-600" />
+            </CardContent>
+          </Card>
+        ) : statsError ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center gap-3 p-6 text-center sm:p-8">
+              <AlertTriangle className="h-6 w-6 text-amber-600" aria-hidden="true" />
               <p className="text-sm text-muted-foreground">
-                Couldn&apos;t load the coverage snapshot. Please try again.
+                Couldn&apos;t load coverage. Please try again.
               </p>
               <Button variant="outline" size="sm" onClick={() => calculateScheduleStats()}>
                 Retry
               </Button>
-            </div>
-          ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border bg-muted/20 p-4">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>Fill rate</span>
-                <Percent className="h-4 w-4" />
-              </div>
-              <p className="mt-2 text-2xl font-semibold text-primary">{fillRate}%</p>
-              <div className="mt-3 h-2 w-full rounded-full bg-muted" aria-hidden>
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${Math.min(fillRate, 100)}%` }}
-                />
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {scheduleStats.filledSlots} of {scheduleStats.totalSlots} upcoming shifts staffed
-              </p>
-            </div>
-            <div className="rounded-lg border bg-muted/20 p-4">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>Open slots</span>
-                <Clock3 className="h-4 w-4" />
-              </div>
-              <p className="mt-2 text-2xl font-semibold text-green-600">{scheduleStats.availableSlots}</p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Remaining overtime opportunities this month
-              </p>
-            </div>
-            <div className="rounded-lg border bg-muted/20 p-4">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>Officers participating</span>
-                <Users className="h-4 w-4" />
-              </div>
-              <p className="mt-2 text-2xl font-semibold">{scheduleStats.thisMonthUsers}</p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Unique officers scheduled from today forward
-              </p>
-            </div>
-            <div className="rounded-lg border bg-muted/20 p-4">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>Next open shift</span>
-                <CalendarCheck2 className="h-4 w-4" />
-              </div>
-              {scheduleStats.nextShift ? (
-                <div className="mt-2 space-y-1 text-sm">
-                  <p className="text-lg font-semibold text-foreground">
-                    {scheduleStats.nextShift.dayName}
-                    <span className="ml-2 text-sm font-medium text-muted-foreground">
-                      {scheduleStats.nextShift.dateLabel}
-                    </span>
-                  </p>
-                  <p className="text-muted-foreground">{scheduleStats.nextShift.slotLabel}</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Card>
+              <CardContent className="p-0">
+                <dl className="grid grid-cols-3 divide-x px-1 py-5 sm:px-2 sm:py-6">
+                  <div className="min-w-0 px-3 sm:px-5">
+                    <dt className="text-xs text-muted-foreground sm:text-sm">Open slots</dt>
+                    <dd className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-primary sm:text-4xl">{scheduleStats.availableSlots}</dd>
+                  </div>
+                  <div className="min-w-0 px-3 sm:px-5">
+                    <dt className="text-xs text-muted-foreground sm:text-sm">Fill rate</dt>
+                    <dd className="mt-2 text-2xl font-semibold tabular-nums tracking-tight sm:text-4xl">{fillRate}%</dd>
+                  </div>
+                  <div className="min-w-0 px-3 sm:px-5">
+                    <dt className="text-xs text-muted-foreground sm:text-sm">Officers</dt>
+                    <dd className="mt-2 text-2xl font-semibold tabular-nums tracking-tight sm:text-4xl">{scheduleStats.thisMonthUsers}</dd>
+                  </div>
+                </dl>
+                <div className="space-y-2 border-t px-4 py-4 sm:px-6">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${Math.min(fillRate, 100)}%` }}
+                    />
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    {scheduleStats.nextShift.openSpots} spots left • {scheduleStats.nextShift.assignedCount}/{scheduleStats.nextShift.capacity} filled
+                    {scheduleStats.filledSlots} of {scheduleStats.totalSlots} upcoming slots staffed
                   </p>
-                  {scheduleStats.nextShift.status === 'ongoing' && (
-                    <p className="text-xs text-muted-foreground">
-                      Currently on duty: {scheduleStats.nextShift.assignedCount}{' '}
-                      {scheduleStats.nextShift.assignedCount === 1 ? 'officer' : 'officers'}
-                    </p>
-                  )}
-                  {(scheduleStats.nextShift.isToday || scheduleStats.nextShift.status === 'ongoing') && (
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      {scheduleStats.nextShift.isToday && (
-                        <Badge variant="outline" className="w-fit border-emerald-600 text-emerald-600">
-                          Today
-                        </Badge>
-                      )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="flex gap-3 p-4 sm:gap-4 sm:p-6">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <CalendarCheck2 className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-medium text-muted-foreground">Next open shift</h3>
+                  {scheduleStats.nextShift ? (
+                    <div className="mt-2 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-lg font-semibold tracking-tight">
+                          {scheduleStats.nextShift.dayName}, {scheduleStats.nextShift.dateLabel}
+                        </p>
+                        {scheduleStats.nextShift.isToday && (
+                          <Badge variant="secondary">Today</Badge>
+                        )}
+                        {scheduleStats.nextShift.status === 'ongoing' && (
+                          <Badge variant="outline" className="border-primary/20 text-primary">In progress</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{scheduleStats.nextShift.slotLabel}</p>
+                      <p className="text-sm">
+                        <span className="font-medium">{scheduleStats.nextShift.openSpots} spots left</span>
+                        <span className="text-muted-foreground"> · {scheduleStats.nextShift.assignedCount}/{scheduleStats.nextShift.capacity} filled</span>
+                      </p>
                       {scheduleStats.nextShift.status === 'ongoing' && (
-                        <Badge variant="outline" className="w-fit border-sky-500 text-sky-600">
-                          In progress
-                        </Badge>
+                        <p className="text-xs text-muted-foreground">
+                          Currently on duty: {scheduleStats.nextShift.assignedCount}{' '}
+                          {scheduleStats.nextShift.assignedCount === 1 ? 'officer' : 'officers'}
+                        </p>
                       )}
                     </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      No upcoming open shifts to show. Check the schedule for availability.
+                    </p>
                   )}
                 </div>
-              ) : (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Every shift is staffed—check back as new overtime hits the board.
-                </p>
-              )}
-            </div>
-          </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="p-4 sm:p-6">
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-          <div className="space-y-3">
-            <Link
-              href="/dashboard/schedule"
-              className="flex items-center justify-between gap-3 p-4 rounded-lg border hover:bg-accent hover:text-accent-foreground transition-colors"
-            >
-              <div>
-                <div className="font-medium">View Schedule</div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Check available overtime opportunities
-                </div>
-              </div>
-              <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">
-                <Users className="h-3 w-3 mr-1" />
-                Schedule
-              </Badge>
-            </Link>
-            <Link
-              href="/dashboard/profile"
-              className="flex items-center justify-between gap-3 p-4 rounded-lg border hover:bg-accent hover:text-accent-foreground transition-colors"
-            >
-              <div>
-                <div className="font-medium">Update Profile</div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Manage your account settings
-                </div>
-              </div>
-              <Badge variant="outline" className="shrink-0">Profile</Badge>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </section>
     </div>
   );
 }

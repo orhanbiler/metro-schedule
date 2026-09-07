@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Calendar, Clock, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Calendar, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatOfficerName } from '@/lib/utils';
 
@@ -508,217 +508,177 @@ export default function OTSlipsPage() {
   // Month Selection View
   if (!selectedMonth) {
     return (
-      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-        <Card>
-          <CardHeader className="p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1">
-                <CardTitle className="text-xl sm:text-2xl">Compensation Request Forms</CardTitle>
-                <CardDescription className="text-sm">
-                  Select a month to view your worked shifts and generate OT slips
-                </CardDescription>
-              </div>
-              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground flex-shrink-0" />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6 px-4 pb-4 sm:px-6 sm:pb-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Select Month</h3>
-              <p className="text-sm text-muted-foreground">
-                Choose a month to view your worked shifts. You can generate compensation forms for any shifts you worked.
-              </p>
-              
-              <div className="grid gap-4">
-                {availableMonths.map((month) => (
-                  <button
-                    type="button"
-                    key={month.key}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border bg-background p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-accent"
-                    onClick={() => setSelectedMonth(month.key)}
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-base font-semibold">{month.label}</span>
-                      <span className="mt-1 block text-sm text-muted-foreground">View shifts and create OT slips</span>
-                    </span>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 sm:p-4">
-              <h4 className="text-xs sm:text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">How it works:</h4>
-              <ul className="text-xs sm:text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                <li>• Select a month to view your scheduled shifts</li>
-                <li>• Only months with potential overtime shifts are shown</li>
-                <li>• Generate official compensation forms for any worked shifts</li>
-                <li>• Forms match the department&apos;s official template</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="mx-auto max-w-4xl space-y-6 sm:space-y-8">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">OT slips</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            Choose a month, then a shift to download your compensation form.
+          </p>
+        </div>
+
+        <section aria-labelledby="month-heading" className="space-y-3">
+          <h2 id="month-heading" className="text-base font-semibold">Choose a month</h2>
+          <Card className="overflow-hidden">
+            <CardContent className="divide-y p-0">
+              {availableMonths.map((month) => (
+                <button
+                  type="button"
+                  key={month.key}
+                  className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-accent focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-accent sm:gap-4 sm:p-5"
+                  onClick={() => setSelectedMonth(month.key)}
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                    <Calendar className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1 text-base font-medium">{month.label}</span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                </button>
+              ))}
+            </CardContent>
+          </Card>
+          <p className="text-sm text-muted-foreground">
+            Forms use the department&apos;s official template, with your scheduled hours filled in.
+          </p>
+        </section>
       </div>
     );
   }
 
   // Shifts View for Selected Month
   const selectedMonthData = availableMonths.find(m => m.key === selectedMonth);
-  
+
   return (
-    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-      <Card>
-        <CardHeader className="p-4 sm:p-6">
-          <div className="space-y-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedMonth('');
-                setSelectedShift(null);
-              }}
-              className="flex items-center gap-2 -ml-2"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span className="text-sm">Back to Months</span>
-            </Button>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1">
-                <CardTitle className="text-lg sm:text-2xl">
-                  {selectedMonthData?.label}
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Generate compensation request forms for your worked shifts
-                </CardDescription>
-              </div>
-              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground flex-shrink-0" />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6 px-4 pb-4 sm:px-6 sm:pb-6">
-          {/* Worked Shifts for Selected Month */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
-                Your Worked Shifts
-              </h3>
-              {!scheduleLoading && consolidatedShifts.length > 0 && (
-                <div className="text-xs sm:text-sm text-muted-foreground">
-                  <span className="block sm:inline">{consolidatedShifts.length} day{consolidatedShifts.length !== 1 ? 's' : ''} worked</span>
-                  <span className="hidden sm:inline"> • </span>
-                  <span className="block sm:inline">{consolidatedShifts.reduce((total, day) => total + parseFloat(day.totalHours || '0'), 0).toFixed(1)} total hours</span>
-                </div>
-              )}
-            </div>
-            
-            {scheduleLoading ? (
-              <div className="text-center py-6 sm:py-8">
-                <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-2">Loading your worked shifts...</p>
-              </div>
-            ) : consolidatedShifts.length === 0 ? (
-              <div className="text-center py-6 sm:py-8 border rounded-lg bg-muted/20">
-                <AlertCircle className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm sm:text-base text-muted-foreground">No worked shifts found for {selectedMonthData?.label}.</p>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  Make sure you were assigned to shifts in this month&apos;s schedule.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedMonth('');
-                    setConsolidatedShifts([]);
-                  }}
-                  className="mt-4"
-                >
-                  Try Another Month
-                </Button>
-              </div>
-            ) : (
-              <div className="grid gap-3">
-                {consolidatedShifts.map((dayShift, index) => (
-                  <button
-                    type="button"
-                    key={`${dayShift.date}-${index}`}
-                    disabled={loading}
-                    className="w-full rounded-xl border bg-card p-4 text-left transition-colors hover:bg-muted/50 active:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-60"
-                    onClick={() => {
-                      setSelectedShift(dayShift);
-                      generateOTSlipPDF(dayShift);
-                    }}
-                  >
-                    <span className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="min-w-0 flex-1 space-y-1">
-                        <span className="block text-base font-semibold">
-                          {parseLocalDate(dayShift.date).toLocaleDateString('en-US', {
-                            weekday: 'short', month: 'short', day: 'numeric'
-                          })}
-                        </span>
-                        <span className="block text-sm text-muted-foreground">
-                          {dayShift.shifts.map((shift, idx) => (
-                            <span key={idx} className="block">
-                              {shift.timeSlot === 'morning' ? 'Morning' : 'Afternoon'}: {formatTime12Hour(shift.startTime)} – {formatTime12Hour(shift.endTime)} ({shift.hours} hrs)
-                            </span>
-                          ))}
-                        </span>
-                      </span>
-                      <span className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
-                        <span className="text-base font-semibold">{dayShift.totalHours} hrs</span>
-                        <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium">
-                          <Download className="h-4 w-4" aria-hidden="true" />
-                          {loading && selectedShift?.date === dayShift.date ? 'Generating…' : 'Generate OT slip'}
-                        </span>
-                      </span>
+    <div className="mx-auto max-w-4xl space-y-6 sm:space-y-8">
+      <div className="space-y-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setSelectedMonth('');
+            setSelectedShift(null);
+          }}
+          className="-ml-3 gap-1.5 text-muted-foreground"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          All months
+        </Button>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{selectedMonthData?.label}</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">Select a shift to download its OT slip.</p>
+        </div>
+      </div>
+
+      <section aria-labelledby="shifts-heading" className="space-y-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h2 id="shifts-heading" className="text-base font-semibold">Your worked shifts</h2>
+          {!scheduleLoading && consolidatedShifts.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {consolidatedShifts.length} day{consolidatedShifts.length !== 1 ? 's' : ''} · {consolidatedShifts.reduce((total, day) => total + parseFloat(day.totalHours || '0'), 0).toFixed(1)} hours
+            </p>
+          )}
+        </div>
+
+        {scheduleLoading ? (
+          <Card>
+            <CardContent className="p-8 text-center" role="status">
+              <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" aria-hidden="true" />
+              <p className="mt-3 text-sm text-muted-foreground">Loading your worked shifts…</p>
+            </CardContent>
+          </Card>
+        ) : consolidatedShifts.length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center sm:p-10">
+              <AlertCircle className="mx-auto mb-3 h-8 w-8 text-muted-foreground" aria-hidden="true" />
+              <p className="font-medium">No worked shifts found</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Shifts assigned to you in {selectedMonthData?.label} will appear here.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedMonth('');
+                  setConsolidatedShifts([]);
+                }}
+                className="mt-5"
+              >
+                Choose another month
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-3">
+            {consolidatedShifts.map((dayShift, index) => (
+              <button
+                type="button"
+                key={`${dayShift.date}-${index}`}
+                disabled={loading}
+                className="w-full rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/30 hover:bg-accent/50 active:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 sm:p-5"
+                onClick={() => {
+                  setSelectedShift(dayShift);
+                  generateOTSlipPDF(dayShift);
+                }}
+              >
+                <span className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="min-w-0 flex-1 space-y-2">
+                    <span className="block text-base font-semibold">
+                      {parseLocalDate(dayShift.date).toLocaleDateString('en-US', {
+                        weekday: 'short', month: 'short', day: 'numeric'
+                      })}
                     </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          
-          {/* Officer Information Display */}
-          <div className="rounded-lg bg-muted p-3 sm:p-4 space-y-2">
-            <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground">Officer Information</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
-              <div className="truncate">
-                <span className="font-medium">Name: </span>
-                <span className="text-muted-foreground">
-                  {user?.rank && user?.idNumber 
-                    ? formatOfficerName(user.name, user.rank, user.idNumber)
-                    : user?.name}
+                    <span className="block text-sm leading-relaxed text-muted-foreground">
+                      {dayShift.shifts.map((shift, idx) => (
+                        <span key={idx} className="block">
+                          {shift.timeSlot === 'morning' ? 'Morning' : 'Afternoon'}: {formatTime12Hour(shift.startTime)} – {formatTime12Hour(shift.endTime)} ({shift.hours} hrs)
+                        </span>
+                      ))}
+                    </span>
+                  </span>
+                  <span className="flex flex-wrap items-center justify-between gap-3 border-t pt-3 sm:flex-col sm:items-end sm:gap-2 sm:border-0 sm:pt-0">
+                    <span className="text-sm font-medium tabular-nums">{dayShift.totalHours} hrs total</span>
+                    <span className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary sm:min-h-0">
+                      <Download className="h-4 w-4" aria-hidden="true" />
+                      {loading && selectedShift?.date === dayShift.date ? 'Generating…' : 'Download OT slip'}
+                    </span>
+                  </span>
                 </span>
-              </div>
-              <div>
-                <span className="font-medium">Badge #: </span>
-                <span className="text-muted-foreground">{user?.idNumber || 'N/A'}</span>
-              </div>
-              <div>
-                <span className="font-medium">Rank: </span>
-                <span className="text-muted-foreground">{user?.rank || 'N/A'}</span>
-              </div>
-            </div>
+              </button>
+            ))}
           </div>
-          
-        </CardContent>
-      </Card>
-      
-      {/* Instructions Card */}
-      <Card>
-        <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="text-base sm:text-lg">Instructions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-xs sm:text-sm text-muted-foreground">
-          <p>• Select a month to view your worked shifts from that period</p>
-          <p>• Hours and times are automatically pulled from your actual scheduled shifts</p>
-          <p>• Click &quot;Generate OT Slip&quot; for any shift to create a compensation form</p>
-          <p>• All metro shifts are automatically marked as Off-Duty work</p>
-          <p>• The system generates official Compensation/Overtime Request Forms</p>
-          <p>• Generated PDF matches the department&apos;s official form template (Rev. 07/06/2023)</p>
-          <p>• Print and sign the form, then submit to your supervisor</p>
-          <p>• Location is automatically filled with Metro station address</p>
-        </CardContent>
-      </Card>
+        )}
+      </section>
+
+      <div className="space-y-4 border-t pt-5">
+        <div>
+          <h2 className="text-sm font-medium">Officer details on your form</h2>
+          <dl className="mt-3 grid gap-x-5 gap-y-3 text-sm sm:grid-cols-3">
+            <div className="min-w-0">
+              <dt className="text-xs text-muted-foreground">Name</dt>
+              <dd className="mt-1 break-words">
+                {user?.rank && user?.idNumber
+                  ? formatOfficerName(user.name, user.rank, user.idNumber)
+                  : user?.name}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Badge number</dt>
+              <dd className="mt-1 break-words">{user?.idNumber || 'N/A'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Rank</dt>
+              <dd className="mt-1 break-words">{user?.rank || 'N/A'}</dd>
+            </div>
+          </dl>
+        </div>
+        <p className="text-sm text-muted-foreground">Print and sign your form, then submit it to your supervisor.</p>
+        <details className="text-sm text-muted-foreground">
+          <summary className="w-fit cursor-pointer rounded-md py-3 font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">About your OT form</summary>
+          <p className="mt-1 leading-relaxed">
+            Hours and times come from your scheduled shifts. Metro shifts are marked as Off-Duty work,
+            with the station address filled in. The PDF follows the department&apos;s official
+            Compensation/Overtime Request Form (Rev. 07/06/2023).
+          </p>
+        </details>
+      </div>
     </div>
   );
 }

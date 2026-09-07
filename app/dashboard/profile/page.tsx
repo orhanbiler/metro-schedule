@@ -3,10 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { User as UserIcon, Mail, Calendar, Clock, Shield } from 'lucide-react';
+import { User as UserIcon, Mail, Calendar, Clock, Shield, LogOut, Palette, ArrowUpRight } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { useTheme } from 'next-themes';
+import { useAuth } from '@/lib/auth-context';
 import { formatOfficerName } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface User {
   id: string;
@@ -20,6 +25,8 @@ interface User {
 }
 
 export default function ProfilePage() {
+  const { logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastOnline, setLastOnline] = useState<string>('');
@@ -106,9 +113,13 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Profile & settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Your account details and app preferences.</p>
+      </div>
       {/* Profile Header */}
-      <div className="flex items-start gap-3 sm:gap-6">
+      <div className="flex items-start gap-3 rounded-xl border bg-card p-4 sm:gap-5 sm:p-6">
         <div className="h-14 w-14 shrink-0 sm:h-20 sm:w-20 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
           <Image
             src="/media/avatar/police-avatar-no-bg.png"
@@ -119,9 +130,9 @@ export default function ProfilePage() {
           />
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="break-words text-xl font-bold text-foreground sm:text-3xl">
+          <h2 className="break-words text-xl font-semibold text-foreground sm:text-2xl">
             {user.rank && user.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user.name}
-          </h1>
+          </h2>
           <p className="break-words text-sm text-muted-foreground mt-1">{user.email}</p>
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <Badge 
@@ -139,11 +150,50 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      <Card>
+        <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-2">
+          <CardTitle className="text-lg">App settings</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div className="flex items-center gap-3">
+              <Palette className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              <label htmlFor="profile-appearance" className="text-sm font-medium">Appearance</label>
+            </div>
+            <Select value={theme ?? 'light'} onValueChange={setTheme}>
+              <SelectTrigger id="profile-appearance" className="h-11 w-36" aria-label="Appearance">
+                <SelectValue placeholder="Choose theme" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="light">Light</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+                <SelectItem value="system">System</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+            {user.role === 'admin' && (
+              <Button asChild variant="outline" className="h-11 gap-2">
+                <Link href="/dashboard/admin">
+                  <Shield className="h-4 w-4" aria-hidden="true" />
+                  Administration
+                  <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </Button>
+            )}
+            <Button onClick={logout} variant="outline" className="h-11 gap-2 text-destructive hover:bg-destructive/5 hover:text-destructive">
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              Sign out
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Account Information */}
         <Card>
           <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="flex items-center gap-2 text-xl">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <UserIcon className="w-5 h-5" />
               Account Information
             </CardTitle>
@@ -213,7 +263,7 @@ export default function ProfilePage() {
         {/* Activity Information */}
         <Card>
           <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="flex items-center gap-2 text-xl">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <Clock className="w-5 h-5" />
               Activity Information
             </CardTitle>

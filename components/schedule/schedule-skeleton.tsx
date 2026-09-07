@@ -3,61 +3,20 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export function ScheduleSkeleton() {
   return (
-    <div className="space-y-4">
-      {/* Header Skeleton */}
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-        <div>
-          <Skeleton className="h-8 w-48 mb-2" />
-          <Skeleton className="h-4 w-48 sm:w-64" />
+    <div className="space-y-4" role="status" aria-label="Loading schedule">
+      {[1, 2, 3].map(day => (
+        <div key={day} className="overflow-hidden rounded-xl border bg-card" aria-hidden="true">
+          <div className="border-b bg-muted/25 px-4 py-3"><Skeleton className="h-5 w-40" /></div>
+          <div className="divide-y sm:grid sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+            {[1, 2].map(shift => (
+              <div key={shift} className="space-y-3 p-4 sm:p-5">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </div>
         </div>
-        <Skeleton className="h-10 w-32" />
-      </div>
-
-      {/* Schedule Cards Skeleton */}
-      {[1, 2, 3, 4, 5].map((day) => (
-        <Card key={day} className="overflow-hidden">
-          <CardHeader className="pb-3 sm:pb-3">
-            <div className="flex flex-wrap justify-between items-center gap-2">
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div>
-                  <Skeleton className="h-5 w-24 mb-1" />
-                  <Skeleton className="h-4 w-32" />
-                </div>
-              </div>
-              <Skeleton className="h-6 w-20 rounded-full" />
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 sm:pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Morning Slot Skeleton */}
-              <div className="space-y-2 p-3 rounded-lg bg-muted/30">
-                <div className="flex justify-between items-center mb-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-16" />
-                </div>
-                <div className="space-y-1">
-                  <Skeleton className="h-3 w-32" />
-                  <Skeleton className="h-3 w-28" />
-                </div>
-                <Skeleton className="h-8 w-full mt-2" />
-              </div>
-              
-              {/* Afternoon Slot Skeleton */}
-              <div className="space-y-2 p-3 rounded-lg bg-muted/30">
-                <div className="flex justify-between items-center mb-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-16" />
-                </div>
-                <div className="space-y-1">
-                  <Skeleton className="h-3 w-32" />
-                  <Skeleton className="h-3 w-28" />
-                </div>
-                <Skeleton className="h-8 w-full mt-2" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       ))}
     </div>
   );
