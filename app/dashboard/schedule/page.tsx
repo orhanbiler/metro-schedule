@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import { isFirestoreInitialized } from '@/lib/firebase-utils';
 import { useAuth, type User } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { HoursDialog } from '@/components/schedule/hours-dialog';
@@ -940,15 +940,15 @@ export default function SchedulePage() {
     const computedSummary = summary ?? getShiftAvailabilitySummary(slot, slotType);
 
     if (computedSummary.status === 'past') {
-      return <span className="text-2xs sm:text-sm text-muted-foreground">Shift closed</span>;
+      return <span className="hidden text-sm text-muted-foreground sm:inline">Shift closed</span>;
     }
 
     if (computedSummary.availableSlots.length === 0) {
-      return <span className="text-2xs sm:text-sm text-muted-foreground">No slots available</span>;
+      return <span className="hidden text-sm text-muted-foreground sm:inline">No slots available</span>;
     }
 
     return (
-      <div className="text-2xs sm:text-xs text-muted-foreground italic">
+      <div className="text-sm sm:text-xs text-muted-foreground italic">
         Available:{' '}
         {computedSummary.availableSlots
           .map((slotRange) => (slotRange.includes(':') ? slotRange : displayTime(slotRange)))
@@ -1793,6 +1793,18 @@ export default function SchedulePage() {
     return `${time.slice(0, 2)}:${time.slice(2, 4)}-${time.slice(5, 7)}:${time.slice(7, 9)}`;
   };
 
+  // A navigation shortcut only; the full month remains visible and unchanged.
+  const nextScheduledDay = schedule.find((slot) => slot.date >= today);
+  const jumpToNextDay = () => {
+    if (!nextScheduledDay) return;
+    const row = document.getElementById(`schedule-day-${nextScheduledDay.id}`);
+    row?.focus({ preventScroll: true });
+    row?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+      block: 'start',
+    });
+  };
+
   return (
     <>
       {/* iOS-style pull-to-refresh indicator (outside the transformed
@@ -1836,31 +1848,31 @@ export default function SchedulePage() {
             isPulling && !isRefreshing ? 'none' : 'transform 300ms cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       >
-      <Card className="sm:mx-0 -mx-2">
-        <CardHeader className="px-3 py-3 sm:p-6">
+      <Card className="border-0 bg-transparent shadow-none sm:border sm:bg-card sm:shadow-sm">
+        <CardHeader className="px-0 pb-4 pt-0 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-            <div className="flex-1">
-              <CardTitle className="text-xl sm:text-2xl font-bold">
-                Metro Sign Up Schedule - {monthNames[selectedMonth]} {selectedYear}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-bold tracking-tight">
+                Metro schedule
                 {isPastMonth() && user?.role !== 'admin' && (
-                  <span className="ml-3 text-sm font-normal text-orange-600">(Read-only - Past Month)</span>
+                  <span className="mt-1 block text-sm font-medium text-amber-700 dark:text-amber-400">Past month · Read only</span>
                 )}
-              </CardTitle>
+              </h1>
               <CardDescription>
                 {isPastMonth() && user?.role !== 'admin' ? (
                   <span className="text-orange-600">This is a past month&apos;s schedule. Modifications are not allowed.</span>
                 ) : (
-                  'Sign up for available overtime shifts at Cheverly Metro Station'
+                  'View coverage and choose your overtime shifts.'
                 )}
               </CardDescription>
             </div>
             {user?.role === 'admin' && (
-              <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-0">
+              <div className="flex flex-wrap gap-2 sm:mt-0">
                 <Button
                   onClick={generatePDF}
                   variant="outline"
                   size="sm"
-                  className="flex items-center justify-center gap-2 text-xs sm:text-sm"
+                  className="flex flex-1 items-center justify-center gap-2 text-sm sm:flex-none"
                   disabled={loading}
                 >
                   <Download className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -1870,7 +1882,7 @@ export default function SchedulePage() {
                   onClick={generateBillablePDF}
                   variant="outline"
                   size="sm"
-                  className="flex items-center justify-center gap-2 text-xs sm:text-sm"
+                  className="flex flex-1 items-center justify-center gap-2 text-sm sm:flex-none"
                   disabled={loading}
                 >
                   <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -1880,7 +1892,7 @@ export default function SchedulePage() {
                   onClick={generateFullSchedulePDF}
                   variant="outline"
                   size="sm"
-                  className="flex items-center justify-center gap-2 text-xs sm:text-sm"
+                  className="flex flex-1 items-center justify-center gap-2 text-sm sm:flex-none"
                   disabled={loading}
                 >
                   <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -1890,12 +1902,12 @@ export default function SchedulePage() {
             )}
           </div>
         </CardHeader>
-        <CardContent className="px-3 pb-3 sm:p-6 pt-0 sm:pt-0">
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 mb-6">
+        <CardContent className="p-0 sm:p-6 sm:pt-0">
+          <div className="mb-4 grid grid-cols-2 gap-3 rounded-xl border bg-card p-3 sm:flex sm:flex-wrap sm:items-end sm:border-0 sm:bg-transparent sm:p-0">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-              <Label className="text-xs sm:text-sm">Month:</Label>
+              <Label htmlFor="schedule-month" className="text-sm">Month</Label>
               <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(Number(value))}>
-                <SelectTrigger className="w-full sm:w-40 h-9 text-sm">
+                <SelectTrigger id="schedule-month" className="w-full sm:w-40">
                   <SelectValue placeholder={monthNames[selectedMonth]} />
                 </SelectTrigger>
                 <SelectContent 
@@ -1913,9 +1925,9 @@ export default function SchedulePage() {
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-              <Label className="text-xs sm:text-sm">Year:</Label>
+              <Label htmlFor="schedule-year" className="text-sm">Year</Label>
               <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(Number(value))}>
-                <SelectTrigger className="w-full sm:w-28 h-9 text-sm">
+                <SelectTrigger id="schedule-year" className="w-full sm:w-28">
                   <SelectValue placeholder={selectedYear.toString()} />
                 </SelectTrigger>
                 <SelectContent 
@@ -1932,6 +1944,13 @@ export default function SchedulePage() {
               </Select>
             </div>
           </div>
+
+          {!scheduleLoading && !loadError && nextScheduledDay && (
+            <Button variant="outline" size="sm" onClick={jumpToNextDay} className="mb-4 w-full gap-2 sm:w-auto">
+              <ArrowDown className="h-4 w-4" aria-hidden="true" />
+              {isSameDay(nextScheduledDay.date) ? 'Jump to today' : 'Jump to next scheduled day'}
+            </Button>
+          )}
 
           {user?.role !== 'admin' && !isPastMonth() && !signupWindow.canSignUp && (
             <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-200">
@@ -1970,19 +1989,19 @@ export default function SchedulePage() {
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="border rounded-md overflow-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-navy-900 text-white">
-                      <th className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Date/Time</th>
-                      <th className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Officer Name</th>
-                      <th className="text-center p-2 sm:p-2 font-semibold text-xs sm:text-sm">Action</th>
+              <div className="sm:overflow-hidden sm:rounded-lg sm:border">
+                <table className="schedule-table w-full" role="table" aria-label={`${monthNames[selectedMonth]} ${selectedYear} Metro schedule`}>
+                  <thead className="sr-only sm:not-sr-only" role="rowgroup">
+                    <tr className="bg-navy-900 text-white" role="row">
+                      <th scope="col" role="columnheader" className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Date/Time</th>
+                      <th scope="col" role="columnheader" className="text-left p-1.5 sm:p-2 font-semibold text-xs sm:text-sm">Officer Name</th>
+                      <th scope="col" role="columnheader" className="text-center p-2 sm:p-2 font-semibold text-xs sm:text-sm">Action</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody role="rowgroup">
                     {schedule.length === 0 ? (
-                      <tr>
-                        <td colSpan={3} className="text-center p-4 sm:p-8 text-xs sm:text-sm text-muted-foreground">
+                      <tr role="row">
+                        <td role="cell" colSpan={3} className="text-center p-4 sm:p-8 text-xs sm:text-sm text-muted-foreground">
                           No shifts available for this month
                         </td>
                       </tr>
@@ -1999,38 +2018,38 @@ export default function SchedulePage() {
 
                         return (
                           <React.Fragment key={slot.id}>
-                            <tr key={`${slot.id}-morning`} className={cn('border-t hover:bg-muted/50', isToday && 'bg-primary/5')}>
-                              <td className="p-1.5 sm:py-1.5 sm:px-2">
+                            <tr id={`schedule-day-${slot.id}`} tabIndex={-1} role="row" key={`${slot.id}-morning`} className={cn('schedule-shift schedule-morning border-t hover:bg-muted/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary', isToday && 'bg-primary/5')}>
+                              <td role="cell" className="p-3 sm:py-1.5 sm:px-2">
                                 {isToday && (
                                   <Badge variant="outline" className="mb-1 hidden sm:inline-flex border-emerald-500 text-emerald-600">
                                     Today
                                   </Badge>
                                 )}
-                                <div className="font-semibold text-foreground text-2xs sm:text-sm">
-                                  <div className="sm:hidden flex items-center gap-2">
+                                <div className="font-semibold text-foreground text-sm">
+                                  <div className="sm:hidden flex flex-wrap items-center gap-2 mb-2 text-base">
                                     {isToday && (
-                                      <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
+                                      <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-600">
                                         Today
                                       </span>
                                     )}
-                                    {new Date(slot.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
+                                    {new Date(slot.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                                   </div>
                                   <div className="hidden sm:inline">{slot.dayName} {formatDate(slot.date)}</div>
                                 </div>
-                                <div className="text-2xs sm:text-sm text-muted-foreground">
+                                <div className="text-sm text-muted-foreground">
                                   {displayTime(slot.morningSlot.time)}
                                 </div>
                               </td>
-                              <td className="p-1.5 sm:py-1.5 sm:px-2">
-                                <div className="mb-1 flex items-center gap-2 text-2xs sm:text-xs uppercase tracking-wide text-muted-foreground">
+                              <td role="cell" className="p-3 sm:py-1.5 sm:px-2">
+                                <div className="mb-2 flex flex-wrap items-center gap-2 text-sm sm:text-xs uppercase tracking-wide text-muted-foreground">
                                   Morning
                                   <Badge
                                     className={cn(
-                                      'text-2xs',
+                                      'text-xs normal-case',
                                       morningSummary.status === 'past'
                                         ? 'bg-muted text-muted-foreground'
                                         : morningRemainingCapacity > 0
-                                          ? 'bg-emerald-500/20 text-emerald-700'
+                                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
                                           : 'bg-muted text-muted-foreground'
                                     )}
                                   >
@@ -2044,16 +2063,16 @@ export default function SchedulePage() {
                                 {slot.morningSlot.officers.length > 0 ? (
                                   <div className="space-y-1">
                                     {slot.morningSlot.officers.map((officer, index) => (
-                                      <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-1 sm:gap-2 bg-muted/30 p-1 sm:p-1.5 rounded-md">
+                                      <div key={index} className="text-sm flex items-center justify-between gap-2 bg-muted/40 p-2 sm:p-1.5 rounded-md">
                                         <div className="flex-1 min-w-0">
                                           <span
-                                            className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}
+                                            className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block break-words text-sm`}
                                             title={officer.name}
                                           >
                                             {formatOfficerNameForDisplay(officer.name)}
                                           </span>
                                           {officer.customHours && (
-                                            <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
+                                            <div className="text-sm sm:text-xs text-muted-foreground break-words">Custom: {officer.customHours}</div>
                                           )}
                                         </div>
                                         {canUserRemoveFromShift() && (
@@ -2062,11 +2081,12 @@ export default function SchedulePage() {
                                               <Button
                                                 size="sm"
                                                 variant="destructive"
-                                                className="h-6 w-6 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
+                                                className="h-11 w-11 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
                                                 disabled={loading}
                                                 title={`Remove ${officer.name}`}
+                                                aria-label={`Remove ${officer.name} from shift`}
                                               >
-                                                <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                                <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                                               </Button>
                                             </AlertDialogTrigger>
                                             <AlertDialogContent>
@@ -2102,7 +2122,7 @@ export default function SchedulePage() {
                                   getAvailabilityDisplay(slot, 'morning', morningSummary)
                                 )}
                               </td>
-                              <td className="p-1.5 sm:py-1.5 sm:px-2 text-center">
+                              <td role="cell" className="schedule-actions px-3 pb-3 sm:py-1.5 sm:px-2 sm:text-center">
                                 {(() => {
                                   const userSignedUp = hasUserSignedUpForSlot(slot.date, 'morning');
                                   const slotsAvailable =
@@ -2119,16 +2139,17 @@ export default function SchedulePage() {
                                     // For admins, show assign button even on past dates
                                     if (isAdmin && adminCanAssign) {
                                       return (
-                                        <div className="flex gap-1 sm:gap-2 justify-center">
+                                        <div className="flex flex-wrap items-center gap-2 sm:justify-center">
                                           {userSignedUp && (
-                                            <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
-                                              <Calendar className="h-3 w-3 sm:mr-1" />
-                                              <span className="hidden sm:inline">Completed</span>
+                                            <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                              <Calendar className="h-4 w-4" />
+                                              <span>Completed</span>
                                             </span>
                                           )}
                                           <AdminAssignDialog
                                             users={allUsers}
                                             originalTime={slot.morningSlot.time}
+                                            shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Morning`}
                                             maxBlockMinutes={blockMinutes ?? undefined}
                                             onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
                                             disabled={loading}
@@ -2138,8 +2159,8 @@ export default function SchedulePage() {
                                     }
                                     if (userSignedUp) {
                                       return (
-                                        <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
-                                          <Calendar className="h-3 w-3 sm:mr-1" />
+                                        <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                          <Calendar className="h-4 w-4" />
                                           <span className="hidden sm:inline">Shift completed</span>
                                           <span className="sm:hidden">Completed</span>
                                         </span>
@@ -2163,22 +2184,23 @@ export default function SchedulePage() {
                                   }
 
                                   return (
-                                    <div className="flex gap-1 sm:gap-2 justify-center">
+                                    <div className="flex flex-wrap items-center gap-2 sm:justify-center">
                                       {userSignedUp ? (
-                                        <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
-                                          <Calendar className="h-3 w-3 sm:mr-1" />
-                                          <span className="hidden sm:inline">Signed up</span>
+                                        <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                          <Calendar className="h-4 w-4" />
+                                          <span className="font-medium text-primary">Signed up</span>
                                         </span>
                                       ) : slotsAvailable && canModify && canSelfSignUp ? (
                                         <HoursDialog
                                           originalTime={slot.morningSlot.time}
+                                          shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Morning`}
                                           maxBlockMinutes={blockMinutes ?? undefined}
                                           onConfirm={(customHours) => handleSignUp(slot.id, 'morning', customHours)}
                                           onCancel={() => { }}
                                         >
-                                          <Button size="sm" disabled={loading} className="h-6 w-6 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
-                                            <Plus className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                                            <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
+                                          <Button size="sm" disabled={loading} className="h-11 flex-1 gap-2 px-4 sm:h-9 sm:flex-none sm:px-3" title="Sign up for this shift">
+                                            <Plus className="h-4 w-4" />
+                                            <span>Sign up</span>
                                           </Button>
                                         </HoursDialog>
                                       ) : null}
@@ -2186,6 +2208,7 @@ export default function SchedulePage() {
                                         <AdminAssignDialog
                                           users={allUsers}
                                           originalTime={slot.morningSlot.time}
+                                          shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Morning`}
                                           maxBlockMinutes={blockMinutes ?? undefined}
                                           onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'morning', officerName, customHours)}
                                           disabled={loading}
@@ -2197,23 +2220,22 @@ export default function SchedulePage() {
 
                               </td>
                             </tr>
-                            <tr key={`${slot.id}-afternoon`} className={cn('border-t bg-muted/30 hover:bg-muted/50', isToday && 'bg-primary/10')}>
-                              <td className="p-1.5 sm:py-1.5 sm:px-2">
-                                <div className="text-2xs sm:text-sm text-muted-foreground ml-2 sm:ml-4">
-                                  <span className="sm:hidden">or</span>
+                            <tr role="row" key={`${slot.id}-afternoon`} className={cn('schedule-shift schedule-afternoon border-t bg-muted/30 hover:bg-muted/50', isToday && 'bg-primary/10')}>
+                              <td role="cell" className="p-3 sm:py-1.5 sm:px-2">
+                                <div className="text-sm text-muted-foreground sm:ml-4">
                                   <span className="hidden sm:inline">and/or</span> {displayTime(slot.afternoonSlot.time)}
                                 </div>
                               </td>
-                              <td className="p-1.5 sm:py-1.5 sm:px-2">
-                                <div className="mb-1 flex items-center gap-2 text-2xs sm:text-xs uppercase tracking-wide text-muted-foreground">
+                              <td role="cell" className="p-3 sm:py-1.5 sm:px-2">
+                                <div className="mb-2 flex flex-wrap items-center gap-2 text-sm sm:text-xs uppercase tracking-wide text-muted-foreground">
                                   Afternoon
                                   <Badge
                                     className={cn(
-                                      'text-2xs',
+                                      'text-xs normal-case',
                                       afternoonSummary.status === 'past'
                                         ? 'bg-muted text-muted-foreground'
                                         : afternoonRemainingCapacity > 0
-                                          ? 'bg-emerald-500/20 text-emerald-700'
+                                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
                                           : 'bg-muted text-muted-foreground'
                                     )}
                                   >
@@ -2227,16 +2249,16 @@ export default function SchedulePage() {
                                 {slot.afternoonSlot.officers.length > 0 ? (
                                   <div className="space-y-1">
                                     {slot.afternoonSlot.officers.map((officer, index) => (
-                                      <div key={index} className="text-2xs sm:text-sm flex items-center justify-between gap-1 sm:gap-2 bg-muted/30 p-1 sm:p-1.5 rounded-md">
+                                      <div key={index} className="text-sm flex items-center justify-between gap-2 bg-muted/40 p-2 sm:p-1.5 rounded-md">
                                         <div className="flex-1 min-w-0">
                                           <span
-                                            className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block text-2xs sm:text-sm truncate`}
+                                            className={`${officer.name === getCurrentOfficerFormatted() || officer.name === user?.name ? 'font-semibold text-primary' : ''} block break-words text-sm`}
                                             title={officer.name}
                                           >
                                             {formatOfficerNameForDisplay(officer.name)}
                                           </span>
                                           {officer.customHours && (
-                                            <div className="text-2xs sm:text-xs text-muted-foreground truncate">Custom: {officer.customHours}</div>
+                                            <div className="text-sm sm:text-xs text-muted-foreground break-words">Custom: {officer.customHours}</div>
                                           )}
                                         </div>
                                         {canUserRemoveFromShift() && (
@@ -2245,11 +2267,12 @@ export default function SchedulePage() {
                                               <Button
                                                 size="sm"
                                                 variant="destructive"
-                                                className="h-6 w-6 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
+                                                className="h-11 w-11 sm:h-7 sm:w-7 p-0 ml-1 sm:ml-2 flex-shrink-0 rounded-md"
                                                 disabled={loading}
                                                 title={`Remove ${officer.name}`}
+                                                aria-label={`Remove ${officer.name} from shift`}
                                               >
-                                                <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                                <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                                               </Button>
                                             </AlertDialogTrigger>
                                             <AlertDialogContent>
@@ -2285,7 +2308,7 @@ export default function SchedulePage() {
                                   getAvailabilityDisplay(slot, 'afternoon', afternoonSummary)
                                 )}
                               </td>
-                              <td className="p-1.5 sm:py-1.5 sm:px-2 text-center">
+                              <td role="cell" className="schedule-actions px-3 pb-3 sm:py-1.5 sm:px-2 sm:text-center">
                                 {(() => {
                                   const userSignedUp = hasUserSignedUpForSlot(slot.date, 'afternoon');
                                   const slotsAvailable =
@@ -2302,16 +2325,17 @@ export default function SchedulePage() {
                                     // For admins, show assign button even on past dates
                                     if (isAdmin && adminCanAssign) {
                                       return (
-                                        <div className="flex gap-1 sm:gap-2 justify-center">
+                                        <div className="flex flex-wrap items-center gap-2 sm:justify-center">
                                           {userSignedUp && (
-                                            <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
-                                              <Calendar className="h-3 w-3 sm:mr-1" />
-                                              <span className="hidden sm:inline">Completed</span>
+                                            <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                              <Calendar className="h-4 w-4" />
+                                              <span>Completed</span>
                                             </span>
                                           )}
                                           <AdminAssignDialog
                                             users={allUsers}
                                             originalTime={slot.afternoonSlot.time}
+                                            shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Afternoon`}
                                             maxBlockMinutes={blockMinutes ?? undefined}
                                             onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
                                             disabled={loading}
@@ -2321,8 +2345,8 @@ export default function SchedulePage() {
                                     }
                                     if (userSignedUp) {
                                       return (
-                                        <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
-                                          <Calendar className="h-3 w-3 sm:mr-1" />
+                                        <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                          <Calendar className="h-4 w-4" />
                                           <span className="hidden sm:inline">Shift completed</span>
                                           <span className="sm:hidden">Completed</span>
                                         </span>
@@ -2346,22 +2370,23 @@ export default function SchedulePage() {
                                   }
 
                                   return (
-                                    <div className="flex gap-1 sm:gap-2 justify-center">
+                                    <div className="flex flex-wrap items-center gap-2 sm:justify-center">
                                       {userSignedUp ? (
-                                        <span className="text-xs sm:text-sm text-muted-foreground flex items-center">
-                                          <Calendar className="h-3 w-3 sm:mr-1" />
-                                          <span className="hidden sm:inline">Signed up</span>
+                                        <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                          <Calendar className="h-4 w-4" />
+                                          <span className="font-medium text-primary">Signed up</span>
                                         </span>
                                       ) : slotsAvailable && canModify && canSelfSignUp ? (
                                         <HoursDialog
                                           originalTime={slot.afternoonSlot.time}
+                                          shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Afternoon`}
                                           maxBlockMinutes={blockMinutes ?? undefined}
                                           onConfirm={(customHours) => handleSignUp(slot.id, 'afternoon', customHours)}
                                           onCancel={() => { }}
                                         >
-                                          <Button size="sm" disabled={loading} className="h-6 w-6 sm:h-9 sm:w-auto sm:px-3 p-0 sm:p-2" title="Sign up for this shift">
-                                            <Plus className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                                            <span className="hidden sm:inline text-xs sm:text-sm">Sign Up</span>
+                                          <Button size="sm" disabled={loading} className="h-11 flex-1 gap-2 px-4 sm:h-9 sm:flex-none sm:px-3" title="Sign up for this shift">
+                                            <Plus className="h-4 w-4" />
+                                            <span>Sign up</span>
                                           </Button>
                                         </HoursDialog>
                                       ) : null}
@@ -2369,6 +2394,7 @@ export default function SchedulePage() {
                                         <AdminAssignDialog
                                           users={allUsers}
                                           originalTime={slot.afternoonSlot.time}
+                                          shiftLabel={`${slot.dayName}, ${formatDate(slot.date)} · Afternoon`}
                                           maxBlockMinutes={blockMinutes ?? undefined}
                                           onConfirm={(officerName, customHours) => handleAdminAssign(slot.id, 'afternoon', officerName, customHours)}
                                           disabled={loading}

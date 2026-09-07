@@ -2,6 +2,15 @@
 
 This file documents changes made by AI agents to the codebase.
 
+## [2026-09-07] - Mobile UI and Accessibility Improvements
+
+### Improved
+- Display the existing schedule rows as readable day cards on phones, with larger officer names, labeled signup/assignment actions, and a shortcut to today's scheduled shifts.
+- Add persistent mobile navigation for Home, Schedule, OT Slips, and Profile, with space for the phone's home indicator.
+- Enlarge mobile touch targets, label time and month selectors, enable pinch-to-zoom, and keep dialogs within the visible viewport.
+- Make OT month and shift cards keyboard accessible, streamline mobile spacing, and prevent long profile details from overflowing.
+- Preserve scheduling rules, permissions, authentication, data persistence, and PDF generation logic.
+
 ## [2025-10-23] - Billable PDF Duplicate Officer Entry Fix
 
 ### Fixed

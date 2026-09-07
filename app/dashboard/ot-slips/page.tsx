@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Calendar, Clock, AlertCircle, ChevronLeft } from 'lucide-react';
+import { Download, Calendar, Clock, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatOfficerName } from '@/lib/utils';
 
@@ -508,9 +508,9 @@ export default function OTSlipsPage() {
   // Month Selection View
   if (!selectedMonth) {
     return (
-      <div className="container max-w-4xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
         <Card>
-          <CardHeader>
+          <CardHeader className="p-4 sm:p-6">
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1">
                 <CardTitle className="text-xl sm:text-2xl">Compensation Request Forms</CardTitle>
@@ -521,7 +521,7 @@ export default function OTSlipsPage() {
               <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground flex-shrink-0" />
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 px-4 pb-4 sm:px-6 sm:pb-6">
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Select Month</h3>
               <p className="text-sm text-muted-foreground">
@@ -530,26 +530,18 @@ export default function OTSlipsPage() {
               
               <div className="grid gap-4">
                 {availableMonths.map((month) => (
-                  <Card
+                  <button
+                    type="button"
                     key={month.key}
-                    className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border bg-background p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-accent"
                     onClick={() => setSelectedMonth(month.key)}
                   >
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex-1">
-                          <h4 className="text-base sm:text-lg font-medium">{month.label}</h4>
-                          <p className="text-xs sm:text-sm text-muted-foreground">
-                            View worked shifts and generate OT slips
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1 sm:gap-2 text-primary">
-                          <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-                          <span className="text-xs sm:text-sm font-medium hidden sm:inline">Select</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    <span className="min-w-0">
+                      <span className="block text-base font-semibold">{month.label}</span>
+                      <span className="mt-1 block text-sm text-muted-foreground">View shifts and create OT slips</span>
+                    </span>
+                    <ChevronRight className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                  </button>
                 ))}
               </div>
             </div>
@@ -573,9 +565,9 @@ export default function OTSlipsPage() {
   const selectedMonthData = availableMonths.find(m => m.key === selectedMonth);
   
   return (
-    <div className="container max-w-4xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4 sm:p-6">
           <div className="space-y-4">
             <Button
               variant="ghost"
@@ -602,7 +594,7 @@ export default function OTSlipsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 px-4 pb-4 sm:px-6 sm:pb-6">
           {/* Worked Shifts for Selected Month */}
           <div className="space-y-4">
             <div className="space-y-2">
@@ -645,64 +637,40 @@ export default function OTSlipsPage() {
             ) : (
               <div className="grid gap-3">
                 {consolidatedShifts.map((dayShift, index) => (
-                  <div
+                  <button
+                    type="button"
                     key={`${dayShift.date}-${index}`}
-                    className="p-3 sm:p-4 border rounded-lg bg-card hover:bg-muted/50 active:bg-muted/70 transition-colors cursor-pointer touch-manipulation"
+                    disabled={loading}
+                    className="w-full rounded-xl border bg-card p-4 text-left transition-colors hover:bg-muted/50 active:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-60"
                     onClick={() => {
-                      if (!loading) {
-                        setSelectedShift(dayShift);
-                        generateOTSlipPDF(dayShift);
-                      }
+                      setSelectedShift(dayShift);
+                      generateOTSlipPDF(dayShift);
                     }}
                   >
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                      <div className="space-y-1 flex-1">
-                        <div className="font-medium text-sm sm:text-base">
+                    <span className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="min-w-0 flex-1 space-y-1">
+                        <span className="block text-base font-semibold">
                           {parseLocalDate(dayShift.date).toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric'
+                            weekday: 'short', month: 'short', day: 'numeric'
                           })}
-                        </div>
-                        <div className="text-xs sm:text-sm text-muted-foreground">
+                        </span>
+                        <span className="block text-sm text-muted-foreground">
                           {dayShift.shifts.map((shift, idx) => (
-                            <div key={idx}>
-                              {shift.timeSlot === 'morning' ? 'Morning' : 'Afternoon'}: {formatTime12Hour(shift.startTime)} - {formatTime12Hour(shift.endTime)} ({shift.hours} hrs)
-                            </div>
+                            <span key={idx} className="block">
+                              {shift.timeSlot === 'morning' ? 'Morning' : 'Afternoon'}: {formatTime12Hour(shift.startTime)} – {formatTime12Hour(shift.endTime)} ({shift.hours} hrs)
+                            </span>
                           ))}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between sm:justify-end gap-3">
-                        <div className="text-left sm:text-right">
-                          <div className="font-medium text-base sm:text-lg">{dayShift.totalHours} hrs</div>
-                        </div>
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedShift(dayShift);
-                            generateOTSlipPDF(dayShift);
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-3 sm:px-4"
-                          disabled={loading}
-                        >
-                          <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-                          <span className="hidden sm:inline">
-                            {loading && selectedShift?.date === dayShift.date 
-                              ? 'Generating...' 
-                              : 'Generate OT Slip'}
-                          </span>
-                          <span className="sm:hidden">
-                            {loading && selectedShift?.date === dayShift.date 
-                              ? '...' 
-                              : 'Generate'}
-                          </span>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                        </span>
+                      </span>
+                      <span className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+                        <span className="text-base font-semibold">{dayShift.totalHours} hrs</span>
+                        <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border bg-background px-3 text-sm font-medium">
+                          <Download className="h-4 w-4" aria-hidden="true" />
+                          {loading && selectedShift?.date === dayShift.date ? 'Generating…' : 'Generate OT slip'}
+                        </span>
+                      </span>
+                    </span>
+                  </button>
                 ))}
               </div>
             )}
@@ -737,7 +705,7 @@ export default function OTSlipsPage() {
       
       {/* Instructions Card */}
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4 sm:p-6">
           <CardTitle className="text-base sm:text-lg">Instructions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-xs sm:text-sm text-muted-foreground">

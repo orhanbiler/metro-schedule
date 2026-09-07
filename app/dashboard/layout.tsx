@@ -89,8 +89,12 @@ export default function DashboardLayout({
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-background focus:px-4 focus:py-3 focus:text-foreground focus:shadow-lg">
+          Skip to content
+        </a>
         <nav
+          aria-label="Main navigation"
           className="sticky top-0 z-50 bg-navbar shadow-lg supports-[backdrop-filter]:bg-navbar/90 supports-[backdrop-filter]:backdrop-blur-md"
           style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
@@ -110,14 +114,16 @@ export default function DashboardLayout({
                   height={96}
                   quality={100}
                   priority
-                  // Oversized badge that hangs slightly below the navbar edge
-                  className="h-16 w-16 translate-y-1.5 object-contain drop-shadow-xl md:h-20 md:w-20 md:translate-y-2"
+                  // Keep the badge compact on phones and oversized on desktop.
+                  className="h-11 w-11 shrink-0 object-contain drop-shadow-xl md:h-20 md:w-20 md:translate-y-2"
                 />
-                {/* Fluid size (max 36px on phones, 48px from sm up); phones show
-                    the shorter "Cheverly" so the title never gets cut off. */}
-                <span className="flag-text truncate text-[length:clamp(1.625rem,8.5vw,2.25rem)] font-black tracking-tight sm:text-5xl">
-                  <span className="hidden sm:inline">Cheverly PD</span>
-                  <span className="sm:hidden">Cheverly</span>
+                {/* A compact, readable brand on phones; animated title on desktop. */}
+                <span className="hidden flag-text truncate text-3xl font-black tracking-tight md:inline xl:text-5xl">
+                  Cheverly PD
+                </span>
+                <span className="min-w-0 text-white md:hidden">
+                  <span className="block text-base font-bold leading-tight">Cheverly PD</span>
+                  <span className="block text-xs text-white/70">Metro detail</span>
                 </span>
               </Link>
 
@@ -195,7 +201,6 @@ export default function DashboardLayout({
               {/* Mobile actions */}
               <div className="flex items-center gap-1 md:hidden">
                 <ChangelogDialog />
-                <ThemeToggle />
                 <Button
                   variant="ghost"
                   size="icon"
@@ -222,7 +227,7 @@ export default function DashboardLayout({
           {menuOpen && (
             <div
               id="mobile-nav"
-              className="border-t border-white/10 duration-200 animate-in fade-in slide-in-from-top-2 md:hidden"
+              className="max-h-[calc(100dvh-9rem-env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain border-t border-white/10 duration-200 animate-in fade-in slide-in-from-top-2 motion-reduce:animate-none md:hidden"
             >
               <div className="space-y-1 px-3 pb-4 pt-3">
                 {[...primaryLinks, ...accountLinks].map((item) => (
@@ -247,6 +252,10 @@ export default function DashboardLayout({
                     </Link>
                   </Button>
                 ))}
+                <div className="flex items-center justify-between border-t border-white/10 px-3 pt-2 text-sm text-white/80">
+                  <span>Appearance</span>
+                  <ThemeToggle />
+                </div>
                 <div className="mt-3 border-t border-white/10 pt-3">
                   <div className="flex items-center gap-3 px-3 py-2">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white">
@@ -276,10 +285,34 @@ export default function DashboardLayout({
             </div>
           )}
         </nav>
-        <main className="mx-auto max-w-7xl px-2 py-3 sm:px-6 sm:py-6 lg:px-8">
+        <main id="main-content" tabIndex={-1} className="dashboard-content mx-auto max-w-7xl px-4 pt-4 outline-none sm:px-6 sm:pt-6 lg:px-8">
           <LiveClock />
           {children}
         </main>
+        <nav aria-label="Mobile navigation" className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 shadow-[0_-4px_20px_rgba(0,0,0,0.04)] backdrop-blur-md md:hidden">
+          <div className="mx-auto grid max-w-lg grid-cols-4 gap-1 px-2 pt-2">
+            {[
+              { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
+              { href: '/dashboard/schedule', label: 'Schedule', icon: CalendarDays },
+              { href: '/dashboard/ot-slips', label: 'OT Slips', icon: FileText },
+              { href: '/dashboard/profile', label: 'Profile', icon: User },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMenuOpen(false)}
+                aria-current={isActive(item.href) ? 'page' : undefined}
+                className={cn(
+                  'flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  isActive(item.href) ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'
+                )}
+              >
+                <item.icon className="h-5 w-5" aria-hidden="true" />
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
         <RulesNoticeDialog />
       </div>
     </ProtectedRoute>

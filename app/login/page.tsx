@@ -145,7 +145,7 @@ export default function LoginPage() {
   // Show loading state while checking authentication
   if (checkingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background" role="status" aria-label="Checking authentication">
+      <div className="min-h-dvh flex items-center justify-center bg-background" role="status" aria-label="Checking authentication">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" aria-hidden></div>
           <p className="mt-4 text-muted-foreground">Checking authentication...</p>
@@ -155,7 +155,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 text-foreground">
+    <div className="min-h-dvh grid grid-cols-1 lg:grid-cols-2 text-foreground">
       {/* Mobile background - visible only on small screens, theme-aware */}
       <div className="fixed inset-0 lg:hidden -z-10 bg-background">
         {/* Gradient overlay - adapts to theme */}
@@ -207,7 +207,7 @@ export default function LoginPage() {
           <ul className="space-y-3 text-white/80">
             <li className={`flex items-start gap-3 ${entrance}`} style={{ animationDelay: '240ms' }}>
               <span className="mt-1 h-2 w-2 rounded-full bg-emerald-300" aria-hidden />
-              Secure access backed by Firebase authentication
+              Secure access for department personnel
             </li>
             <li className={`flex items-start gap-3 ${entrance}`} style={{ animationDelay: '320ms' }}>
               <span className="mt-1 h-2 w-2 rounded-full bg-emerald-300" aria-hidden />
@@ -221,7 +221,7 @@ export default function LoginPage() {
       </div>
 
       {/* Login form panel */}
-      <div className="flex flex-col items-center justify-center p-6 sm:p-10">
+      <div className="flex flex-col items-center justify-center px-4 py-6 sm:p-10">
         {/* Mobile header - visible only on small screens */}
         <div className={`lg:hidden mb-6 text-center ${entrance}`}>
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 px-4 py-2 text-sm uppercase tracking-wide text-primary dark:text-primary-foreground backdrop-blur">
@@ -234,14 +234,14 @@ export default function LoginPage() {
           className={`w-full max-w-md border-border/60 bg-card/80 shadow-2xl backdrop-blur-xl ${entrance}`}
           style={{ animationDelay: '150ms' }}
         >
-          <CardHeader className="space-y-1 text-center">
+          <CardHeader className="space-y-1 p-4 text-center sm:p-6">
             <CardTitle className="text-2xl font-bold">Cheverly PD Metro Portal</CardTitle>
             <CardDescription>
               Sign in with your department-issued credentials to manage metro coverage.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 px-4 pb-4 sm:px-6 sm:pb-6">
               <div className="space-y-2 text-left">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -251,6 +251,10 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="next"
                   required
                 />
               </div>
@@ -266,13 +270,14 @@ export default function LoginPage() {
                     onKeyDown={(event) => setCapsLockOn(event.getModifierState('CapsLock'))}
                     onBlur={() => setCapsLockOn(false)}
                     autoComplete="current-password"
+                    enterKeyHint="go"
                     required
                     className="pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute inset-y-0 right-2 flex items-center rounded-md px-2 text-muted-foreground hover:text-foreground"
+                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-muted-foreground hover:text-foreground"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -286,7 +291,7 @@ export default function LoginPage() {
                 )}
               </div>
             </CardContent>
-            <CardFooter className="flex flex-col space-y-4">
+            <CardFooter className="flex flex-col space-y-4 px-4 pb-4 sm:px-6 sm:pb-6">
               <Button
                 type="submit"
                 className="h-11 w-full text-base shadow-lg shadow-primary/25 transition-all duration-200 hover:shadow-xl hover:shadow-primary/35 hover:brightness-110 active:scale-[0.98] motion-reduce:transition-none"
@@ -305,7 +310,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => { window.location.href = 'mailto:obiler@cheverlypolice.org'; }}
-                  className="text-primary hover:underline"
+                  className="min-h-11 text-primary hover:underline"
                 >
                   Forgot password or need access?
                 </button>

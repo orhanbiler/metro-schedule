@@ -5,10 +5,10 @@ export function ScheduleSkeleton() {
   return (
     <div className="space-y-4">
       {/* Header Skeleton */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <div>
           <Skeleton className="h-8 w-48 mb-2" />
-          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-4 w-48 sm:w-64" />
         </div>
         <Skeleton className="h-10 w-32" />
       </div>
@@ -16,8 +16,8 @@ export function ScheduleSkeleton() {
       {/* Schedule Cards Skeleton */}
       {[1, 2, 3, 4, 5].map((day) => (
         <Card key={day} className="overflow-hidden">
-          <CardHeader className="pb-3">
-            <div className="flex justify-between items-center">
+          <CardHeader className="pb-3 sm:pb-3">
+            <div className="flex flex-wrap justify-between items-center gap-2">
               <div className="flex items-center gap-3">
                 <Skeleton className="h-12 w-12 rounded-full" />
                 <div>
@@ -28,7 +28,7 @@ export function ScheduleSkeleton() {
               <Skeleton className="h-6 w-20 rounded-full" />
             </div>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="pt-0 sm:pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Morning Slot Skeleton */}
               <div className="space-y-2 p-3 rounded-lg bg-muted/30">

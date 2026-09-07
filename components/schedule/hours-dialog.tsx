@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -11,12 +11,14 @@ import { addMinutesToTimeString, MIN_SHIFT_BLOCK_MINUTES } from '@/lib/schedule-
 interface HoursDialogProps {
   children: React.ReactNode;
   originalTime: string;
+  shiftLabel?: string;
   onConfirm: (customHours: string) => void;
   onCancel: () => void;
   maxBlockMinutes?: number;
 }
 
-export function HoursDialog({ children, originalTime, onConfirm, onCancel, maxBlockMinutes }: HoursDialogProps) {
+export function HoursDialog({ children, originalTime, shiftLabel, onConfirm, onCancel, maxBlockMinutes }: HoursDialogProps) {
+  const fieldId = useId();
   const blockMinutes = maxBlockMinutes ?? null;
   const blockEnforced = blockMinutes !== null;
   const [open, setOpen] = useState(false);
@@ -184,20 +186,14 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel, maxBl
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Sign Up for Shift</DialogTitle>
           <DialogDescription>
-            Choose your working hours for this shift. You can work the full scheduled time or customize your hours.
-            <br />
-            <span className="text-xs text-muted-foreground mt-2 block">
-              Tip: For split shifts, use format like &quot;05:00-10:00,11:00-13:00&quot; (minimum 1 hour per block)
-            </span>
-            {blockEnforced && (
-              <span className="text-xs text-primary mt-1 block">
-                New policy: pick up to {(blockMinutes || 0) / 60} continuous hours between {formatDisplayTime(originalStart)} and {formatDisplayTime(originalEnd)}.
-              </span>
-            )}
+            {shiftLabel && <span className="mb-2 block font-medium text-foreground">{shiftLabel}</span>}
+            {blockEnforced
+              ? `Choose up to ${(blockMinutes || 0) / 60} continuous hours within the available window.`
+              : 'Work the full shift or choose custom start and end times.'}
           </DialogDescription>
         </DialogHeader>
         
@@ -205,47 +201,43 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel, maxBl
           <div className="space-y-3">
             <div className="rounded-md border p-3 bg-muted/30">
               <Label className="text-xs sm:text-sm font-medium">Available Shift Window</Label>
-              <p className="text-sm sm:text-lg font-semibold mt-1">
+              <p className="text-lg font-semibold mt-1">
                 {originalStart.slice(0, 2)}:{originalStart.slice(2)} - {originalEnd.slice(0, 2)}:{originalEnd.slice(2)}
               </p>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="customHours"
-                checked={useCustomHours}
-                disabled={blockEnforced}
-                onChange={(e) => {
-                  if (blockEnforced) return;
-                  setUseCustomHours(e.target.checked);
-                  if (e.target.checked) {
-                    setStartTime(originalStart);
-                    setEndTime(originalEnd);
-                  } else {
-                    setStartTime('');
-                    setEndTime('');
-                  }
-                }}
-                className="rounded"
-              />
-              <Label htmlFor="customHours" className="text-xs sm:text-sm font-medium">
-                Custom hours within this window
-              </Label>
-            </div>
-
-            {blockEnforced && (
-              <p className="text-2xs text-primary font-medium">
-                This shift allows a single continuous block up to {(blockMinutes || 0) / 60} hours inside the listed window.
-              </p>
+            {!blockEnforced && (
+              <div className="flex min-h-11 items-center gap-3">
+                <input
+                  type="checkbox"
+                  id={`${fieldId}-custom`}
+                  checked={useCustomHours}
+                  disabled={blockEnforced}
+                  onChange={(e) => {
+                    if (blockEnforced) return;
+                    setUseCustomHours(e.target.checked);
+                    if (e.target.checked) {
+                      setStartTime(originalStart);
+                      setEndTime(originalEnd);
+                    } else {
+                      setStartTime('');
+                      setEndTime('');
+                    }
+                  }}
+                  className="h-5 w-5 shrink-0 rounded accent-primary"
+                />
+                <Label htmlFor={`${fieldId}-custom`} className="flex min-h-11 flex-1 items-center text-sm font-medium">
+                  Custom hours within this window
+                </Label>
+              </div>
             )}
 
             {useCustomHours && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-md border bg-background">
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-md border bg-background">
                 <div className="space-y-2">
-                  <Label htmlFor="startTime" className="text-xs sm:text-sm">Start Time</Label>
+                  <Label htmlFor={`${fieldId}-start`} className="text-sm">Start time</Label>
                   <Select value={startTime} onValueChange={handleStartTimeChange}>
-                    <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
+                    <SelectTrigger id={`${fieldId}-start`}>
                       <SelectValue placeholder="Select start" />
                     </SelectTrigger>
                     <SelectContent>
@@ -268,9 +260,9 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel, maxBl
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="endTime" className="text-xs sm:text-sm">End Time</Label>
+                  <Label htmlFor={`${fieldId}-end`} className="text-sm">End time</Label>
                   <Select value={endTime} onValueChange={handleEndTimeChange}>
-                    <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
+                    <SelectTrigger id={`${fieldId}-end`}>
                       <SelectValue placeholder={startTime || !blockEnforced ? 'Select end' : 'Pick start first'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -304,7 +296,7 @@ export function HoursDialog({ children, originalTime, onConfirm, onCancel, maxBl
             {useCustomHours && startTime && endTime && (
               <div className="rounded-md border p-3 bg-primary/10">
                 <Label className="text-xs sm:text-sm font-medium">Your Selected Hours</Label>
-                <p className="text-sm sm:text-lg font-semibold mt-1">
+                <p className="text-lg font-semibold mt-1">
                   {formatDisplayTime(startTime)} - {formatDisplayTime(endTime)}
                 </p>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1">

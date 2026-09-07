@@ -32,6 +32,7 @@ const MANUAL_ENTRY_VALUE = '__manual_entry__';
 interface AdminAssignDialogProps {
   users: User[];
   originalTime: string;
+  shiftLabel?: string;
   onConfirm: (officerName: string, customHours?: string) => void;
   disabled?: boolean;
   maxBlockMinutes?: number;
@@ -40,6 +41,7 @@ interface AdminAssignDialogProps {
 export function AdminAssignDialog({
   users,
   originalTime,
+  shiftLabel,
   onConfirm,
   disabled = false,
   maxBlockMinutes,
@@ -231,17 +233,19 @@ export function AdminAssignDialog({
         <Button
           size="sm"
           variant="outline"
-          className="h-6 w-6 sm:h-8 sm:w-8 p-0 sm:p-1"
+          className="h-11 flex-1 gap-2 px-3 sm:h-8 sm:flex-none"
           disabled={disabled}
           title="Manually assign officer"
         >
-          <UserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
+          <UserPlus className="h-4 w-4" aria-hidden="true" />
+          Assign
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>Assign Officer to Shift</DialogTitle>
           <DialogDescription>
+            {shiftLabel && <span className="mb-2 block font-medium text-foreground">{shiftLabel}</span>}
             Select an officer and choose drop-down hours within the shift window.
           </DialogDescription>
         </DialogHeader>
@@ -281,7 +285,7 @@ export function AdminAssignDialog({
           </div>
 
           <div className="grid gap-2">
-            <div className="flex items-center space-x-2">
+            <div className="flex min-h-11 items-center gap-3">
               <input
                 type="checkbox"
                 id="custom-hours"
@@ -298,22 +302,22 @@ export function AdminAssignDialog({
                     setEndTime(shiftEnd);
                   }
                 }}
-                className="rounded border-gray-300"
+                className="h-5 w-5 shrink-0 rounded border-gray-300 accent-primary"
               />
-              <Label htmlFor="custom-hours">Custom hours within this window</Label>
+              <Label htmlFor="custom-hours" className="flex min-h-11 flex-1 items-center">Custom hours within this window</Label>
             </div>
             {blockEnforced && (
-              <p className="text-2xs text-primary">
+              <p className="text-sm text-muted-foreground">
                 Allows one continuous block up to {(blockMinutes || 0) / 60} hours between {shiftStartDisplay} and {shiftEndDisplay}.
               </p>
             )}
 
             {useCustomHours && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+              <div className="grid grid-cols-2 gap-3 mt-2">
                 <div className="space-y-2">
-                  <Label className="text-xs">Start Time</Label>
+                  <Label htmlFor="assign-start-time" className="text-sm">Start time</Label>
                   <Select value={startTime} onValueChange={handleStartChange}>
-                    <SelectTrigger>
+                    <SelectTrigger id="assign-start-time">
                       <SelectValue placeholder="Select start" />
                     </SelectTrigger>
                     <SelectContent>
@@ -336,9 +340,9 @@ export function AdminAssignDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs">End Time</Label>
+                  <Label htmlFor="assign-end-time" className="text-sm">End time</Label>
                   <Select value={endTime} onValueChange={handleEndChange}>
-                    <SelectTrigger>
+                    <SelectTrigger id="assign-end-time">
                       <SelectValue placeholder={effectiveStart ? 'Select end' : 'Pick start first'} />
                     </SelectTrigger>
                     <SelectContent>

@@ -76,7 +76,7 @@ export default function ProfilePage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 px-4 pb-4 sm:px-6 sm:pb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <Skeleton className="h-4 w-24" />
@@ -108,8 +108,8 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Profile Header */}
-      <div className="flex items-start gap-6">
-        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
+      <div className="flex items-start gap-3 sm:gap-6">
+        <div className="h-14 w-14 shrink-0 sm:h-20 sm:w-20 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
           <Image
             src="/media/avatar/police-avatar-no-bg.png"
             alt="Police Officer Avatar"
@@ -118,12 +118,12 @@ export default function ProfilePage() {
             className="w-full h-full object-contain"
           />
         </div>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        <div className="min-w-0 flex-1">
+          <h1 className="break-words text-xl font-bold text-foreground sm:text-3xl">
             {user.rank && user.idNumber ? formatOfficerName(user.name, user.rank, user.idNumber) : user.name}
           </h1>
-          <p className="text-muted-foreground mt-1">{user.email}</p>
-          <div className="flex items-center gap-2 mt-2">
+          <p className="break-words text-sm text-muted-foreground mt-1">{user.email}</p>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
             <Badge 
               variant={user.role === 'admin' ? 'default' : 'secondary'}
               className={user.role === 'admin' ? 'bg-navy-800 text-white' : ''}
@@ -142,8 +142,8 @@ export default function ProfilePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Account Information */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-xl">
               <UserIcon className="w-5 h-5" />
               Account Information
             </CardTitle>
@@ -151,17 +151,17 @@ export default function ProfilePage() {
               Your basic account details and information
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-4 pb-4 sm:px-6 sm:pb-6">
             <div className="flex items-start gap-3">
-              <Mail className="w-5 h-5 text-muted-foreground mt-0.5" />
-              <div>
+              <Mail className="w-5 h-5 shrink-0 text-muted-foreground mt-0.5" />
+              <div className="min-w-0">
                 <div className="font-medium">Email Address</div>
-                <div className="text-sm text-muted-foreground">{user.email}</div>
+                <div className="break-all text-sm text-muted-foreground">{user.email}</div>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <UserIcon className="w-5 h-5 text-muted-foreground mt-0.5" />
+              <UserIcon className="w-5 h-5 shrink-0 text-muted-foreground mt-0.5" />
               <div>
                 <div className="font-medium">Name</div>
                 <div className="text-sm text-muted-foreground">{user.name}</div>
@@ -169,7 +169,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex items-start gap-3">
-              <Shield className="w-5 h-5 text-muted-foreground mt-0.5" />
+              <Shield className="w-5 h-5 shrink-0 text-muted-foreground mt-0.5" />
               <div>
                 <div className="font-medium">Role</div>
                 <div className="text-sm text-muted-foreground">
@@ -180,7 +180,7 @@ export default function ProfilePage() {
 
             {user.idNumber && (
               <div className="flex items-start gap-3">
-                <div className="w-5 h-5 text-muted-foreground mt-0.5 font-bold text-xs">#</div>
+                <div className="w-5 h-5 shrink-0 text-muted-foreground mt-0.5 font-bold text-xs">#</div>
                 <div>
                   <div className="font-medium">ID Number</div>
                   <div className="text-sm text-muted-foreground font-mono">#{user.idNumber}</div>
@@ -190,7 +190,7 @@ export default function ProfilePage() {
 
             {user.rank && (
               <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-muted-foreground mt-0.5" />
+                <Shield className="w-5 h-5 shrink-0 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="font-medium">Rank</div>
                   <div className="text-sm text-muted-foreground">{user.rank}</div>
@@ -200,7 +200,7 @@ export default function ProfilePage() {
 
             {user.assignment && (
               <div className="flex items-start gap-3">
-                <UserIcon className="w-5 h-5 text-muted-foreground mt-0.5" />
+                <UserIcon className="w-5 h-5 shrink-0 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="font-medium">Assignment</div>
                   <div className="text-sm text-muted-foreground">{user.assignment}</div>
@@ -212,8 +212,8 @@ export default function ProfilePage() {
 
         {/* Activity Information */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-xl">
               <Clock className="w-5 h-5" />
               Activity Information
             </CardTitle>
@@ -221,7 +221,7 @@ export default function ProfilePage() {
               Your account activity and session details
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-4 pb-4 sm:px-6 sm:pb-6">
             <div className="flex items-start gap-3">
               <Clock className="w-5 h-5 text-green-600 mt-0.5" />
               <div>
@@ -236,7 +236,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex items-start gap-3">
-              <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
+              <Calendar className="w-5 h-5 shrink-0 text-muted-foreground mt-0.5" />
               <div>
                 <div className="font-medium">Account Created</div>
                 <div className="text-sm text-muted-foreground">
@@ -249,7 +249,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="w-5 h-5 text-muted-foreground mt-0.5">
+              <div className="w-5 h-5 shrink-0 text-muted-foreground mt-0.5">
                 <div className="w-full h-full bg-blue-500 rounded-full"></div>
               </div>
               <div>
@@ -262,7 +262,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="w-5 h-5 text-muted-foreground mt-0.5">
+              <div className="w-5 h-5 shrink-0 text-muted-foreground mt-0.5">
                 <div className="w-full h-full bg-purple-500 rounded-sm"></div>
               </div>
               <div>

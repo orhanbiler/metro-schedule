@@ -39,21 +39,26 @@ export function LiveClock() {
 
   return (
     <div
-      className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border bg-muted/40 px-3 py-2 text-sm sm:mb-4"
+      className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border bg-muted/40 px-3 py-2 text-xs sm:text-sm sm:mb-4"
       role="status"
       aria-live="off"
     >
       <div className="flex min-w-0 items-center gap-2">
         {/* Pulsing dot = liveness indicator: it stops if the app hangs. */}
-        <span className="relative flex h-2.5 w-2.5 shrink-0" title="Live">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative hidden h-2.5 w-2.5 shrink-0 sm:flex" title="Live">
+          <span className="absolute inline-flex h-full w-full animate-ping motion-reduce:animate-none rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
         </span>
         <Clock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <span className="truncate font-medium text-foreground">{dateLabel}</span>
+        <span className="truncate font-medium text-foreground">
+          <span className="hidden sm:inline">{dateLabel}</span>
+          <span className="sm:hidden">
+            {now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          </span>
+        </span>
       </div>
       <div className="flex items-center gap-2">
-        <span className="font-mono text-base font-semibold tabular-nums tracking-tight text-foreground">
+        <span className="font-mono text-xs sm:text-base font-semibold tabular-nums tracking-tight text-foreground">
           {timeLabel}
         </span>
         <span className="text-xs text-muted-foreground">{tzAbbr}</span>

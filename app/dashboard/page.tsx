@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarCheck2, Clock3, Percent, Users, AlertTriangle } from 'lucide-react';
+import { CalendarCheck2, Clock3, Percent, Users, AlertTriangle, FileText, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -311,7 +311,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4 sm:p-6">
           <CardTitle className="text-2xl">
             {user?.name ? (
               `Welcome, ${user.name}`
@@ -323,19 +323,27 @@ export default function DashboardPage() {
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
           <p className="text-muted-foreground">
-            Welcome to the Cheverly Police Department Metro Schedule Management System.
+            Your Metro shifts, coverage, and overtime forms in one place.
           </p>
+          <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+            <Button asChild className="gap-2">
+              <Link href="/dashboard/schedule">View schedule <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+            </Button>
+            <Button asChild variant="outline" className="gap-2">
+              <Link href="/dashboard/ot-slips"><FileText className="h-4 w-4" aria-hidden="true" /> Create OT slip</Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="space-y-1">
+        <CardHeader className="space-y-1 p-4 sm:p-6">
           <CardTitle className="text-base font-semibold">Metro Coverage Snapshot</CardTitle>
           <CardDescription>Live scheduling health for the rest of this month</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
           {statsLoading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -444,14 +452,14 @@ export default function DashboardPage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4 sm:p-6">
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
           <div className="space-y-3">
             <Link
               href="/dashboard/schedule"
-              className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="flex items-center justify-between gap-3 p-4 rounded-lg border hover:bg-accent hover:text-accent-foreground transition-colors"
             >
               <div>
                 <div className="font-medium">View Schedule</div>
@@ -459,14 +467,14 @@ export default function DashboardPage() {
                   Check available overtime opportunities
                 </div>
               </div>
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">
                 <Users className="h-3 w-3 mr-1" />
                 Schedule
               </Badge>
             </Link>
             <Link
               href="/dashboard/profile"
-              className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="flex items-center justify-between gap-3 p-4 rounded-lg border hover:bg-accent hover:text-accent-foreground transition-colors"
             >
               <div>
                 <div className="font-medium">Update Profile</div>
@@ -474,7 +482,7 @@ export default function DashboardPage() {
                   Manage your account settings
                 </div>
               </div>
-              <Badge variant="outline">Profile</Badge>
+              <Badge variant="outline" className="shrink-0">Profile</Badge>
             </Link>
           </div>
         </CardContent>

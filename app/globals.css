@@ -36,10 +36,74 @@ html {
   text-rendering: geometricPrecision;
 }
 
-/* Fix for iOS status bar in PWA mode */
-@media screen and (display-mode: standalone) {
-  body {
-    padding-top: env(safe-area-inset-top);
+/* Keep page content clear of phone navigation and the home indicator. */
+.dashboard-content {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+
+.mobile-bottom-nav {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.schedule-shift {
+  scroll-margin-top: calc(5rem + env(safe-area-inset-top));
+}
+
+@media (min-width: 768px) {
+  .dashboard-content { padding-bottom: 2rem; }
+}
+
+/* The same schedule rows become day cards on phones. Actions and data
+   remain shared with the desktop table. Explicit table roles preserve
+   table navigation for assistive technology when display changes. */
+@media (max-width: 639px) {
+  .schedule-table,
+  .schedule-table > tbody {
+    display: block;
+  }
+
+  .schedule-shift {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+
+  .schedule-morning {
+    border-radius: 0.875rem 0.875rem 0 0;
+  }
+
+  .schedule-afternoon {
+    margin-bottom: 1rem;
+    border-top: 0;
+    border-radius: 0 0 0.875rem 0.875rem;
+  }
+
+  .schedule-shift > td {
+    display: block;
+    min-width: 0;
+  }
+
+  .schedule-shift > td:first-child {
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in oklch, var(--muted) 35%, transparent);
+  }
+
+  .schedule-morning > td:first-child {
+    border-radius: 0.875rem 0.875rem 0 0;
+  }
+
+  .schedule-afternoon > td:first-child {
+    border-top: 1px solid var(--border);
+  }
+
+  .schedule-actions > span {
+    display: flex;
+    align-items: center;
+    min-height: 2rem;
+    font-size: 0.875rem;
   }
 }
 
@@ -63,7 +127,7 @@ html {
     --popover-foreground: oklch(0.1884 0.0128 248.5103);    /* Dark text in popover */
     
     /* Primary Brand (Modern Blue) */
-    --primary: oklch(0.6723 0.1606 244.9955);               /* Modern blue primary */
+    --primary: oklch(0.5500 0.1606 244.9955);               /* Blue with legible white action labels */
     --primary-foreground: oklch(1.0000 0 0);                /* White text on primary */
     
     /* Secondary Colors */
@@ -76,7 +140,7 @@ html {
     
     /* Accent Colors */
     --accent: oklch(0.9392 0.0166 250.8453);                /* Light accent background */
-    --accent-foreground: oklch(0.6723 0.1606 244.9955);     /* Primary blue text on accent */
+    --accent-foreground: oklch(0.5500 0.1606 244.9955);     /* Primary blue text on accent */
     
     /* Status Colors */
     --destructive: oklch(0.6188 0.2376 25.7658);            /* Modern red */
@@ -154,7 +218,7 @@ html {
     
     /* Muted/Subdued */
     --muted: oklch(0.2090 0 0);                             /* Dark muted background */
-    --muted-foreground: oklch(0.5637 0.0078 247.9662);      /* Mid-tone text */
+    --muted-foreground: oklch(0.7200 0.0078 247.9662);      /* Readable supporting text on dark cards */
     
     /* Accent Colors */
     --accent: oklch(0.1928 0.0331 242.5459);                /* Dark accent */
